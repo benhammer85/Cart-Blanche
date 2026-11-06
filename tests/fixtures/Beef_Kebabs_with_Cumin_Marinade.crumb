@@ -1,0 +1,140 @@
+{
+ "isPublicRecipe": false,
+ "name": "Beef Kebabs with Cumin Marinade",
+ "notes": "Tip: If you want sweet beef kebabs instead, substitute 2 tablespoons of pineapple juice concentrate for the 2 tablespoons of lemon juice. And use pineapple and mango chunks instead of the mushroom caps and tomatoes.",
+ "serves": 4,
+ "tags": [],
+ "defaultScale": 1,
+ "uuid": "8D929CEF-F73C-45B6-BB71-DCF954048BEE",
+ "folderIDs": [],
+ "images": [
+  "/9j/thumb",
+  "/9j/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+ ],
+ "webLink": "https://www.whattoexpect.com/pregnancy/recipes/beef-kebabs-with-cumin/",
+ "ingredients": [
+  {
+   "order": 0,
+   "quantity": {
+    "amount": 0.5,
+    "quantityType": "POUND"
+   },
+   "uuid": "F70A0086-F7B3-4FEF-A06E-C45F71BDFCD2",
+   "ingredient": {
+    "name": "lean beef, such as top sirloin, well trimmed and cut into 1-inch pieces",
+    "uuid": "B6B72AE9-9B5B-404C-B644-8CD84AE4EEDE"
+   }
+  },
+  {
+   "order": 1,
+   "quantity": {
+    "amount": 2,
+    "quantityType": "TABLESPOON"
+   },
+   "uuid": "F02176BD-245C-400F-BA68-A84C8890A738",
+   "ingredient": {
+    "name": "low-sodium soy sauce",
+    "uuid": "0B10C0C1-FAE7-4474-81CE-C60C907C8852"
+   }
+  },
+  {
+   "order": 2,
+   "quantity": {
+    "amount": 2,
+    "quantityType": "TABLESPOON"
+   },
+   "uuid": "E6E8BFCD-D7D7-4563-82A4-1F3466EA7F43",
+   "ingredient": {
+    "name": "fresh lemon juice",
+    "uuid": "88BE4BB3-B004-4D72-BCFD-39F6410D98DF"
+   }
+  },
+  {
+   "order": 3,
+   "quantity": {
+    "amount": 1,
+    "quantityType": "TABLESPOON"
+   },
+   "uuid": "D4BB7713-CAC5-4B05-9316-4E8769BF6D6D",
+   "ingredient": {
+    "name": "olive oil",
+    "uuid": "E3766F96-6215-4138-9759-4AA94DDFF254"
+   }
+  },
+  {
+   "order": 4,
+   "quantity": {
+    "amount": 1,
+    "quantityType": "TEASPOON"
+   },
+   "uuid": "09989D95-5BDB-4EF2-BD4C-D51CCEA387A3",
+   "ingredient": {
+    "name": "ground cumin",
+    "uuid": "85C1C1D8-7203-4111-967C-BE285EF48EFE"
+   }
+  },
+  {
+   "order": 5,
+   "quantity": {
+    "amount": 1,
+    "quantityType": "ITEM"
+   },
+   "uuid": "59DFC980-72A4-4D02-BF7A-83D5FA6A98DA",
+   "ingredient": {
+    "name": "medium-size red onion, cut into 2-inch pieces",
+    "uuid": "1FC1ABE6-CDE1-4D1C-B79E-A01193CE920B"
+   }
+  },
+  {
+   "order": 6,
+   "quantity": {
+    "amount": 12,
+    "quantityType": "ITEM"
+   },
+   "uuid": "FA2CE6D7-06D5-4686-ACA5-2483BC22F33A",
+   "ingredient": {
+    "name": "white button mushrooms, caps only, wiped clean",
+    "uuid": "5F97AF73-3C73-4287-BD67-C68817F711DE"
+   }
+  },
+  {
+   "order": 7,
+   "quantity": {
+    "amount": 12,
+    "quantityType": "ITEM"
+   },
+   "uuid": "EC12FB30-8BB5-4824-8272-B675C9412188",
+   "ingredient": {
+    "name": "cherry or grape tomatoes",
+    "uuid": "EBCE19E6-F7B8-4DE1-BA06-9B2848AAA7B1"
+   }
+  }
+ ],
+ "rating": 4,
+ "steps": [
+  {
+   "order": 0,
+   "uuid": "6357B67D-409C-44B4-AA61-FBB181BDA341",
+   "isSection": false,
+   "step": "Place the beef, soy sauce, lemon juice, olive oil and cumin in a bowl and stir to coat the beef evenly with the marinade. Cover the bowl with plastic wrap and refrigerate for at least 3 hours or as long as overnight."
+  },
+  {
+   "order": 1,
+   "uuid": "6BC5A568-753F-4D60-A1EB-80BEF517C7B9",
+   "isSection": false,
+   "step": "Preheat the broiler or set up the grill and preheat it to high."
+  },
+  {
+   "order": 2,
+   "uuid": "5DBD6CF7-7FA6-4094-926A-79525F3A54AB",
+   "isSection": false,
+   "step": "Remove the beef from the marinade and thread it onto 8 skewers, alternating pieces of bell pepper, onion, mushrooms and tomatoes between the pieces of meat."
+  },
+  {
+   "order": 3,
+   "uuid": "FFDAD66D-B948-47E2-AFA1-5832D4A20399",
+   "isSection": false,
+   "step": "Broil or grill the kebabs until the beef is tender, turning occasionally, 8 to 10 minutes."
+  }
+ ]
+}

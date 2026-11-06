@@ -1,0 +1,114 @@
+@import "tailwindcss";
+
+/* Cart Blanche — warm, quiet, photo-first (inspired by iOS recipe apps).
+   One accent (tomato), warm paper background, white cards, big titles. */
+:root {
+  --bg: #f7f5f2;
+  --card: #ffffff;
+  --ink: #1d1b19;
+  --muted: #8b857e;
+  --line: #ebe7e1;
+  --soft: #f0ece6;
+  --accent: #e2553a;
+  --accent-ink: #ffffff;
+  --accent-soft: #fdebe6;
+  --ok: #3a9a5b;
+  --warn: #c98a12;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #121110;
+    --card: #1c1a19;
+    --ink: #f3f0ec;
+    --muted: #9b958e;
+    --line: #2c2927;
+    --soft: #252220;
+    --accent: #f06a4e;
+    --accent-ink: #ffffff;
+    --accent-soft: #3a211b;
+    --ok: #5cc07e;
+    --warn: #e0a83a;
+  }
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-card: var(--card);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-line: var(--line);
+  --color-soft: var(--soft);
+  --color-accent: var(--accent);
+  --color-accent-ink: var(--accent-ink);
+  --color-accent-soft: var(--accent-soft);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", "Segoe UI", Roboto, sans-serif;
+  --font-display: ui-rounded, -apple-system, "SF Pro Rounded", "SF Pro Display", "Inter", sans-serif;
+  --font-serif: "New York", ui-serif, Georgia, "Times New Roman", serif;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--ink);
+  -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+body {
+  font-family: var(--font-sans);
+}
+
+.large-title {
+  font-family: var(--font-display);
+  font-size: 2.125rem;
+  line-height: 1.1;
+  font-weight: 750;
+  letter-spacing: -0.02em;
+}
+.recipe-title {
+  font-family: var(--font-serif);
+  letter-spacing: -0.01em;
+}
+.card {
+  background: var(--card);
+  border-radius: 1.25rem;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 4px 16px rgb(0 0 0 / 0.04);
+}
+.hairline {
+  border-color: var(--line);
+}
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+}
+.pt-safe {
+  padding-top: env(safe-area-inset-top);
+}
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  scrollbar-width: none;
+}
+input,
+textarea,
+select {
+  font-size: 16px; /* stops iOS zoom-on-focus */
+}
+@keyframes sheet-up {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.animate-sheet { animation: sheet-up 0.28s cubic-bezier(0.2, 0.9, 0.3, 1); }
+.animate-fade { animation: fade-in 0.2s ease-out; }
+@keyframes check-pop {
+  0% { transform: scale(0.6); }
+  60% { transform: scale(1.15); }
+  100% { transform: scale(1); }
+}
+.check-pop { animation: check-pop 0.22s ease-out; }

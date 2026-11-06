@@ -1,0 +1,179 @@
+{
+ "images": [
+  "/9j/thumb",
+  "/9j/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+ ],
+ "steps": [
+  {
+   "order": 0,
+   "uuid": "6372ED54-087B-4945-BA85-0F6C404E403A",
+   "isSection": false,
+   "step": "Stir together in instant pot: honey, garlic powder, onion powder, cumin and chiles + sauce"
+  },
+  {
+   "order": 1,
+   "uuid": "7136287E-7D3B-4D30-801C-03019FC885B8",
+   "isSection": false,
+   "step": "Add chicken and coat well"
+  },
+  {
+   "order": 2,
+   "uuid": "91FBCF6F-D906-45F3-B9B1-2FC6898C5378",
+   "isSection": false,
+   "step": "Pressure cook on high for 13 minutes"
+  },
+  {
+   "order": 3,
+   "uuid": "B3BE88CD-21C0-4D58-B437-BE97F98A01D5",
+   "isSection": false,
+   "step": "Add black beans and saute to cook off liquid as needed"
+  }
+ ],
+ "defaultScale": 1,
+ "rating": 5,
+ "tags": [
+  {
+   "name": "Instant Pot",
+   "color": "#FF81A3",
+   "uuid": "861F0B45-157F-4955-92A5-569B978B50EA"
+  }
+ ],
+ "uuid": "95556353-8551-4DDA-9148-BBAB8541A8B4",
+ "folderIDs": [],
+ "name": "Instant Pot Chipotle Chicken",
+ "isPublicRecipe": false,
+ "ingredients": [
+  {
+   "quantity": {
+    "amount": 1.5,
+    "quantityType": "POUND"
+   },
+   "order": 0,
+   "ingredient": {
+    "name": "boneless skinless chicken thighs - diced",
+    "uuid": "E75F4C1C-DAC4-4911-ACA9-6A91E4EA673B"
+   },
+   "uuid": "612A37C6-9FAE-4CEA-B3D3-B62E5EB0E1F2"
+  },
+  {
+   "order": 1,
+   "ingredient": {
+    "name": "",
+    "uuid": "8C3CB5DA-52E1-4208-9F2E-655E8509096C"
+   },
+   "uuid": "EFEB5D9B-DA67-40F0-9E70-3FB8F3F9E92C"
+  },
+  {
+   "quantity": {
+    "amount": 3,
+    "quantityType": "TABLESPOON"
+   },
+   "order": 2,
+   "ingredient": {
+    "name": "honey",
+    "uuid": "8DDECA0C-91C3-42A9-8B08-A8C25BBE5766"
+   },
+   "uuid": "AF5EE5B3-FA59-404C-89CC-15E25C26E79A"
+  },
+  {
+   "order": 3,
+   "ingredient": {
+    "name": "",
+    "uuid": "29DDB871-E173-416F-8ED7-E9B015414A63"
+   },
+   "uuid": "82BAF50E-BC9E-4CAA-A383-C39F26DD7E20"
+  },
+  {
+   "quantity": {
+    "amount": 1,
+    "quantityType": "TEASPOON"
+   },
+   "order": 4,
+   "ingredient": {
+    "name": "garlic powder",
+    "uuid": "80BA4B84-1625-4FD5-80FA-DDB4D5D7064B"
+   },
+   "uuid": "0293E291-11A7-4819-8164-812C8185B865"
+  },
+  {
+   "order": 5,
+   "ingredient": {
+    "name": "",
+    "uuid": "8DE1A1C7-4C94-4B28-BB17-8792E766B2E9"
+   },
+   "uuid": "726FBDBE-BC49-46A1-918B-9FA659222213"
+  },
+  {
+   "quantity": {
+    "amount": 1,
+    "quantityType": "TEASPOON"
+   },
+   "order": 6,
+   "ingredient": {
+    "name": "onion powder",
+    "uuid": "86A1A26A-6C27-45DF-9E10-197915BCEFED"
+   },
+   "uuid": "42D471AF-8499-4405-A89E-6BBFEDE1415E"
+  },
+  {
+   "order": 7,
+   "ingredient": {
+    "name": "",
+    "uuid": "C45030B9-F019-4B41-B9E8-6596F0143422"
+   },
+   "uuid": "FC6D9789-B8FF-4361-AF3F-A108832A23D9"
+  },
+  {
+   "quantity": {
+    "amount": 1,
+    "quantityType": "TEASPOON"
+   },
+   "order": 8,
+   "ingredient": {
+    "name": "cumin",
+    "uuid": "6F39CE47-DA81-4E77-B33E-C886FE7E8564"
+   },
+   "uuid": "C8265150-F272-48E1-A147-AD1AA83515D9"
+  },
+  {
+   "order": 9,
+   "ingredient": {
+    "name": "",
+    "uuid": "F7A0ED12-AA39-4525-93A2-6AE3F3CF2570"
+   },
+   "uuid": "77CB216C-A4EE-42F6-A235-F4DBE1802C69"
+  },
+  {
+   "quantity": {
+    "amount": 2,
+    "quantityType": "TABLESPOON"
+   },
+   "order": 10,
+   "ingredient": {
+    "name": "adobo sauce",
+    "uuid": "7A76C969-AFFB-46A5-BA75-733527C449CB"
+   },
+   "uuid": "D6C73520-713A-44B8-B510-4981377204F2"
+  },
+  {
+   "order": 11,
+   "ingredient": {
+    "name": "",
+    "uuid": "C29DF500-8446-47DE-91F6-990D888C2FBF"
+   },
+   "uuid": "AD3D7189-23D4-4F13-B265-95876EAC3E54"
+  },
+  {
+   "quantity": {
+    "amount": 1,
+    "quantityType": "CAN"
+   },
+   "order": 12,
+   "ingredient": {
+    "name": "black beans",
+    "uuid": "5725DB8B-E649-4024-9E8D-D3AFA70D6334"
+   },
+   "uuid": "B7DA5B2A-0B1D-4FD2-9709-E021D4CDF43F"
+  }
+ ]
+}

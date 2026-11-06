@@ -1,0 +1,210 @@
+{
+ "duration": 10,
+ "uuid": "5F7F3020-029A-43C6-842A-CE63C378B378",
+ "cookingDuration": 40,
+ "tags": [
+  {
+   "color": "#2DCA8C",
+   "name": "Molly Favorites",
+   "uuid": "A91E9CF5-E8E1-4D49-931A-6F56F83BC525"
+  }
+ ],
+ "sourceName": "splendidtable.org",
+ "isPublicRecipe": false,
+ "folderIDs": [],
+ "ingredients": [
+  {
+   "quantity": {
+    "amount": 1,
+    "quantityType": "TABLESPOON"
+   },
+   "order": 0,
+   "ingredient": {
+    "name": "harissa paste or sauce",
+    "uuid": "3A6E47B2-40D9-4E4D-96EA-A065F2A91DCA"
+   },
+   "uuid": "B0ED827D-BA69-4DCA-B1E0-6DC80BFCEC46"
+  },
+  {
+   "quantity": {
+    "amount": 1,
+    "quantityType": "ITEM"
+   },
+   "order": 1,
+   "ingredient": {
+    "name": "teaspoons fine sea salt. divided, plus more to taste % teaspoon freshly ground black pepper, plus more as needed",
+    "uuid": "BB631FE3-C9D6-4DD5-BF49-270A6D591C5D"
+   },
+   "uuid": "4269A4A4-EE32-4361-A86B-8AD4B8013B67"
+  },
+  {
+   "quantity": {
+    "amount": 5,
+    "quantityType": "ITEM"
+   },
+   "order": 2,
+   "ingredient": {
+    "name": "tablespoons extra-virgin olive oil, divided, plus more as needed",
+    "uuid": "D253AF88-06D0-474C-A9AC-7719E5407088"
+   },
+   "uuid": "FB63BA37-DAD0-4BE9-875C-1986DCFA3405"
+  },
+  {
+   "quantity": {
+    "amount": 1,
+    "quantityType": "ITEM"
+   },
+   "order": 3,
+   "ingredient": {
+    "name": "large head of cauliflower , trimmed and cut into bite-size pieces (about 2 pounds)",
+    "uuid": "60075200-CF5C-461A-86E5-7DC296B84818"
+   },
+   "uuid": "9D02F97D-A34F-43A5-986E-F1E68B478FC7"
+  },
+  {
+   "quantity": {
+    "secondaryAmount": 3,
+    "amount": 2,
+    "quantityType": "ITEM"
+   },
+   "order": 4,
+   "ingredient": {
+    "name": "Yukon Gold potatoes, cut into 1-inch chunks",
+    "uuid": "79E7A2FE-5AC6-4B78-A48D-CCEC7948F7A6"
+   },
+   "uuid": "51F79F9A-32B8-43E0-9CB8-68FE7A46D208"
+  },
+  {
+   "quantity": {
+    "amount": 2,
+    "quantityType": "ITEM"
+   },
+   "order": 5,
+   "ingredient": {
+    "name": "leeks, white and light green parts, halved lengthwise and thinly sliced into half moons",
+    "uuid": "4390F7F7-5591-434A-A058-E38C74102F0A"
+   },
+   "uuid": "32A15C85-FBB4-4827-9FFB-A2269DCB72B4"
+  },
+  {
+   "quantity": {
+    "amount": 0.5,
+    "quantityType": "TEASPOON"
+   },
+   "order": 6,
+   "ingredient": {
+    "name": "finely grated lemon zest (from 1/2 lemon)",
+    "uuid": "E807AB7D-DB36-4425-BD1F-31B20E480884"
+   },
+   "uuid": "5562398B-458A-482F-A54A-495817E11A31"
+  },
+  {
+   "quantity": {
+    "amount": 1,
+    "quantityType": "CUP"
+   },
+   "order": 7,
+   "ingredient": {
+    "name": "plain yogurt (if using Greek yogurt, thin it down with a little milk until pourable)",
+    "uuid": "F853E231-5F5E-4111-86F4-286B00DB4F6F"
+   },
+   "uuid": "2F3052B5-C8EC-4514-A688-341F230A9E2F"
+  },
+  {
+   "quantity": {
+    "amount": 3,
+    "quantityType": "ITEM"
+   },
+   "order": 8,
+   "ingredient": {
+    "name": "garlic cloves",
+    "uuid": "1D4423AC-442E-400A-A14B-6F7ECA760A88"
+   },
+   "uuid": "73B2D695-74BC-475D-B394-BF740BD8743B"
+  },
+  {
+   "quantity": {
+    "amount": 1,
+    "quantityType": "CUP"
+   },
+   "order": 9,
+   "ingredient": {
+    "name": "mixed soft fresh herbs, such as dill, parsley, mint, or cilantro, torn",
+    "uuid": "B11C0543-A657-413A-81AB-4AFA7B69A198"
+   },
+   "uuid": "FE000958-26D2-479A-B61B-BF71F5011615"
+  },
+  {
+   "quantity": {
+    "amount": 0.5,
+    "quantityType": "CUP"
+   },
+   "order": 10,
+   "ingredient": {
+    "name": "coarsely chopped toasted, salted almonds",
+    "uuid": "C5FA7AD2-FABF-440C-B2C9-F6B0FB7EBE96"
+   },
+   "uuid": "BA625403-2F24-4032-8068-413B22C569F5"
+  },
+  {
+   "order": 11,
+   "ingredient": {
+    "name": "Lemon wedges, as needed",
+    "uuid": "60F0AE4C-4D08-4A44-954C-97E4A935DA8E"
+   },
+   "uuid": "B2DAB3A2-F3A8-46C0-AADC-C7846D9511AB"
+  }
+ ],
+ "defaultScale": 1,
+ "images": [
+  "/9j/thumb",
+  "/9j/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+ ],
+ "steps": [
+  {
+   "isSection": false,
+   "order": 0,
+   "step": "1. Heat the oven to 450\u00baF.",
+   "uuid": "22D8E94F-0095-4780-B9B6-563626DAB694"
+  },
+  {
+   "isSection": false,
+   "order": 1,
+   "step": "2. In a large bowl, whisk together the harissa, 1\u00bc teaspoons of the salt, pepper, 1.5 tsp cumin, and 4 tablespoons of the oil. Add the cauliflower and potatoes and toss to combine. 3. In a medium bowl, mix together the leeks, lemon zest, the remaining \u00bc teaspoon salt, and the remaining 1\u00bd tablespoons oil.",
+   "uuid": "AE4869B6-0956-4A2C-8D14-22BB1635B06C"
+  },
+  {
+   "isSection": false,
+   "order": 2,
+   "step": "4. On a large rimmed sheet pan, arrange the cauliflower and potatoes in a single layer. Roast for 20 minutes.",
+   "uuid": "5F6A3F87-7749-4B3D-8C6C-1B1E48E4CF1F"
+  },
+  {
+   "isSection": false,
+   "order": 3,
+   "step": "Stir the vegetables and scatter the leeks over them.",
+   "uuid": "780FACC9-A5CB-40AE-9165-F5A13512D89F"
+  },
+  {
+   "isSection": false,
+   "order": 4,
+   "step": "5. Reduce the oven temperature to 425\u00baF. Continue to roast until the potatoes are cooked through and everything is golden and slightly crisped, 15 to 20 minutes longer.",
+   "uuid": "06933170-9BCC-4C2F-B536-2CE8508A2621"
+  },
+  {
+   "isSection": false,
+   "order": 5,
+   "step": "6. While the veggies cook, place the yogurt in a small bowl. Grate or use a press to press the garlic into the yogurt and season with a pinch each of salt and pepper. Stir well.",
+   "uuid": "4C796F4A-8416-41E6-A059-BA84F24B2DF1"
+  },
+  {
+   "isSection": false,
+   "order": 6,
+   "step": "7. Spoon the yogurt sauce over the vegetables on the sheet pan. Then scatter the herbs and almonds over everything. Drizzle with oil and a few squeezes from a lemon wedge or two and serve at once, with remaining lemon wedges on the side.",
+   "uuid": "D5A00DCA-3C26-420B-ACBA-9AF946C78851"
+  }
+ ],
+ "serves": 3,
+ "webLink": "https://www.splendidtable.org/story/2022/10/18/roasted-cauliflower-and-potatoes-with-harissa-yogurt-and-toasted-almonds",
+ "name": "Roasted Cauliflower And Potatoes With Harissa, Yogurt, And Toasted Almonds  The Splendid Table"
+}

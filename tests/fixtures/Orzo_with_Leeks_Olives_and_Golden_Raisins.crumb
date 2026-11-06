@@ -1,0 +1,165 @@
+{
+ "images": [
+  "/9j/thumb",
+  "/9j/AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
+ ],
+ "steps": [
+  {
+   "isSection": false,
+   "order": 0,
+   "step": "Bring a large pot of salted water to a boil over high heat. Add the orzo and cook until al dente according to the package instructions. Drain the orzo in a colander.",
+   "uuid": "160126AB-7766-4C87-BF4B-A703CEF5342C"
+  },
+  {
+   "isSection": false,
+   "order": 1,
+   "step": "While the orzo is cooking, heat the olive oil in a large pan over medium-high heat. When the oil begins to shimmer, add the leeks and cook, stirring occasionally, until softened and bright green, about 5 minutes. Add the olives, raisins, pine nuts, garlic, and za'atar and cook, stirring occasionally, until deeply aromatic, about 2 minutes.",
+   "uuid": "6842D773-630F-4253-BB16-E97ABE113AB8"
+  },
+  {
+   "isSection": false,
+   "order": 2,
+   "step": "Transfer the orzo and the leek mixture to a large bowl. Add the parsley, lemon juice, and 2 teaspoons salt and stir to combine. Serve the orzo hot or let it cool to room temperature and store it in an airtight container to serve later, chilled or at room temp.",
+   "uuid": "F14EF275-839D-4B92-950B-CD971A02F63D"
+  }
+ ],
+ "defaultScale": 1,
+ "serves": 4,
+ "sourceName": "kaleidoscopic-kangaroo-6f4da7.netlify.app",
+ "tags": [],
+ "webLink": "https://kaleidoscopic-kangaroo-6f4da7.netlify.app/",
+ "folderIDs": [],
+ "uuid": "773E2EEE-4E63-4629-8591-47A040D3C464",
+ "name": "Orzo with Leeks, Olives, and Golden Raisins",
+ "isPublicRecipe": false,
+ "ingredients": [
+  {
+   "order": 0,
+   "ingredient": {
+    "name": "Kosher salt",
+    "uuid": "592B6776-FE92-4809-BFB8-919789BFE25A"
+   },
+   "uuid": "D7662B5E-0526-4415-A1EF-1725E7B9AC71"
+  },
+  {
+   "quantity": {
+    "amount": 1.5,
+    "quantityType": "CUP"
+   },
+   "order": 1,
+   "ingredient": {
+    "name": "orzo",
+    "uuid": "03FB1537-815D-40A8-95E0-73AD586966E3"
+   },
+   "uuid": "317C56BC-A817-4B07-955A-F948774D8DA8"
+  },
+  {
+   "quantity": {
+    "amount": 0.5,
+    "quantityType": "CUP"
+   },
+   "order": 2,
+   "ingredient": {
+    "name": "extra-virgin olive oil",
+    "uuid": "8B36FE98-1F26-45AB-91A5-FFD840EC4356"
+   },
+   "uuid": "15725EF4-6675-4C8C-9FC0-8F1955E66857"
+  },
+  {
+   "quantity": {
+    "amount": 3,
+    "quantityType": "ITEM"
+   },
+   "order": 3,
+   "ingredient": {
+    "name": "medium leeks, white and light green parts only, well washed and thinly sliced",
+    "uuid": "04CDDBFE-AE9D-4B2B-B98A-7350E484DBF4"
+   },
+   "uuid": "9CE8A247-1387-4B39-B4E4-47CB5424831B"
+  },
+  {
+   "quantity": {
+    "amount": 1,
+    "quantityType": "CUP"
+   },
+   "order": 4,
+   "ingredient": {
+    "name": "pitted Castelvetrano olives, roughly torn",
+    "uuid": "4D88F203-3C65-4B5B-8E4D-A8C14DB39C68"
+   },
+   "uuid": "6AB0A533-E87C-4451-A31C-7050FEB70B85"
+  },
+  {
+   "quantity": {
+    "amount": 1,
+    "quantityType": "CUP"
+   },
+   "order": 5,
+   "ingredient": {
+    "name": "golden raisins",
+    "uuid": "FD63F28E-3217-42EA-B73A-332DABC8E96D"
+   },
+   "uuid": "2BC04A74-A8A2-4BB6-9A0E-39CC38410B6F"
+  },
+  {
+   "quantity": {
+    "amount": 0.5,
+    "quantityType": "CUP"
+   },
+   "order": 6,
+   "ingredient": {
+    "name": "pine nuts",
+    "uuid": "81AFBDE2-314F-4208-8551-AE55BAE223D7"
+   },
+   "uuid": "BA581A8A-124F-4561-AF5E-A4E852596B12"
+  },
+  {
+   "quantity": {
+    "amount": 3,
+    "quantityType": "ITEM"
+   },
+   "order": 7,
+   "ingredient": {
+    "name": "garlic cloves, minced",
+    "uuid": "CD55CB4E-28A8-40BD-A061-56A20B048C93"
+   },
+   "uuid": "B0A396D6-028F-40D5-A2EE-86EEA112349F"
+  },
+  {
+   "quantity": {
+    "amount": 1,
+    "quantityType": "TABLESPOON"
+   },
+   "order": 8,
+   "ingredient": {
+    "name": "za'atar",
+    "uuid": "4C117641-2AFA-4413-9CFB-04B17BD0E9E7"
+   },
+   "uuid": "CFABFB47-63DD-40CB-9A45-B803418136CA"
+  },
+  {
+   "quantity": {
+    "amount": 0.5,
+    "quantityType": "BUNCH"
+   },
+   "order": 9,
+   "ingredient": {
+    "name": "flat-leaf parsley, coarsely chopped (about 1 cup)",
+    "uuid": "4FF55E7A-1413-403B-B3E8-D76DC5790D7D"
+   },
+   "uuid": "EDE1853F-F002-405D-9298-6C569E5944FD"
+  },
+  {
+   "quantity": {
+    "amount": 1,
+    "quantityType": "ITEM"
+   },
+   "order": 10,
+   "ingredient": {
+    "name": "lemon (about 2 tablespoons)",
+    "uuid": "A5D81834-5404-48FE-B89C-BA45BC3C98C0"
+   },
+   "uuid": "3FB0B13C-82AA-447C-BA14-002C3C55B4C6"
+  }
+ ]
+}
