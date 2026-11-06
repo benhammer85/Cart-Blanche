@@ -3,15 +3,15 @@
 /* Cart Blanche — warm, quiet, photo-first (inspired by iOS recipe apps).
    One accent (tomato), warm paper background, white cards, big titles. */
 :root {
-  --bg: #f7f5f2;
+  --bg: #faf6ee;
   --card: #ffffff;
-  --ink: #1d1b19;
-  --muted: #8b857e;
-  --line: #ebe7e1;
-  --soft: #f0ece6;
-  --accent: #e2553a;
+  --ink: #13243a;
+  --muted: #85827c;
+  --line: #ece5d8;
+  --soft: #f2ecdf;
+  --accent: #d8341f;
   --accent-ink: #ffffff;
-  --accent-soft: #fdebe6;
+  --accent-soft: #fbe4dc;
   --ok: #3a9a5b;
   --warn: #c98a12;
 }
@@ -23,7 +23,7 @@
     --muted: #9b958e;
     --line: #2c2927;
     --soft: #252220;
-    --accent: #f06a4e;
+    --accent: #ec5a42;
     --accent-ink: #ffffff;
     --accent-soft: #3a211b;
     --ok: #5cc07e;

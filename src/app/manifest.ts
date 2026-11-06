@@ -7,8 +7,8 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Meal plans and a shared shopping list",
     start_url: "/list",
     display: "standalone",
-    background_color: "#f7f5f2",
-    theme_color: "#f7f5f2",
+    background_color: "#faf6ee",
+    theme_color: "#faf6ee",
     icons: [
       { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
       { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png" },
