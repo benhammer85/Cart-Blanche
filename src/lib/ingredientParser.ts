@@ -82,7 +82,7 @@ export function readUnit(s: string): { unit: string | null; rest: string } {
     const u = canonicalUnit(two[1]);
     if (u) return { unit: u, rest: two[2] };
   }
-  const one = s.match(/^([a-zA-Z]+\.?)(?=\s|$|\))\s*(?:of\s+)?(.*)$/);
+  const one = s.match(/^([a-zA-Z]+\.?)(?=\s|$|\)|\/)\s*(?:of\s+)?(.*)$/);
   if (one) {
     const u = canonicalUnit(one[1]);
     if (u) return { unit: u, rest: one[2] };
@@ -115,17 +115,11 @@ export function parseIngredientLine(rawLine: string, synonyms: Record<string, st
   }
 
   let { unit, rest } = readUnit(s);
-  // "2 heaping tbs PB2" — modifier before the unit
-  if (!unit) {
-    const mod = s.match(/^(heaping|level|scant|generous|rounded|large|small|medium)\s+(.*)$/i);
-    if (mod) {
-      const r = readUnit(mod[2]);
-      if (r.unit) {
-        unit = r.unit;
-        rest = r.rest;
-      }
-    }
-  }
+  // "heaping tbs PB2", "large or 2 small bunches kale", "plus 1/4 cup cornstarch"
+  const peeled = peelAmountWords(rest, unit);
+  rest = peeled.rest;
+  unit = unit ?? peeled.unit;
+  const qtyMaxFinal = qtyMax ?? (qty != null && peeled.qtyMax != null && peeled.qtyMax > qty ? peeled.qtyMax : null);
   // "pinch of salt" with no number
   const finalQty = qty ?? (unit && ["pinch", "dash"].includes(unit) ? 1 : null);
 
@@ -136,13 +130,72 @@ export function parseIngredientLine(rawLine: string, synonyms: Record<string, st
   return {
     raw,
     qty: finalQty,
-    qtyMax,
+    qtyMax: qtyMaxFinal,
     unit: unit ?? (finalQty != null ? "each" : null),
     name: cleanName || raw,
     nameNorm: normalizeName(cleanName || raw, synonyms),
     note: notes,
     ok: looksOk(raw, cleanName),
   };
+}
+
+const AMOUNT_MODIFIERS = /^(?:heaping|level|scant|rounded|generous|large|medium|small|big|packed|lightly packed|loosely packed|firmly packed|medium-size|medium-sized|good)\s+/i;
+
+/**
+ * Strip amount words Crouton and recipe sites leave in front of the name:
+ *   "large or 2 small bunches kale" → { qtyMax: 2, unit: "bunch", rest: "kale" }
+ *   "to 2 ripe avocados"            → { qtyMax: 2, rest: "ripe avocados" }
+ *   "packed cup fresh dill"         → { unit: "cup", rest: "fresh dill" }
+ *   "plus 1/4 cup cornstarch"       → { rest: "cornstarch" }
+ *   "block firm tofu" (unit block)  → { rest: "firm tofu" }  (repeated unit)
+ */
+export function peelAmountWords(text: string, knownUnit: string | null = null): { rest: string; qtyMax: number | null; unit: string | null } {
+  let rest = text.trim();
+  let qtyMax: number | null = null;
+  let unit: string | null = null;
+  for (let i = 0; i < 6; i++) {
+    const before = rest;
+    rest = rest.replace(AMOUNT_MODIFIERS, "");
+    const range = rest.match(/^(?:to|or|-|–)\s+(\d+(?:\.\d+)?(?:\/\d+)?)\s+(.*)$/i);
+    if (range) {
+      const [n, d] = range[1].split("/");
+      qtyMax = d ? +n / +d : +n;
+      rest = range[2];
+      continue;
+    }
+    const plus = rest.match(/^(?:plus|and|\+)\s+[\d\s/.]+\s*[a-zA-Z]+\.?\s+(.*)$/i);
+    if (plus) {
+      rest = plus[1];
+      continue;
+    }
+    // A second measurement or a size: "/ 7 oz / 200 g oats", "14.5-oz. can tomatoes", '4" piece ginger'
+    const inch = rest.match(/^\d+(?:\.\d+)?\s*(?:"|”|-inch|inch)\s+(.*)$/i);
+    if (inch) {
+      rest = inch[1];
+      continue;
+    }
+    const alt = rest.match(/^\/?\s*(?:or\s+)?\d+(?:[.\/]\d+)?\s*-?\s*([a-zA-Z]+)\.?\s*\/?\s*(.*)$/);
+    if (alt && canonicalUnit(alt[1]) && alt[2] && (knownUnit || unit || /^(cans?|packages?|jars?|bags?|box(es)?|pieces?|sticks?|bottles?|containers?)\b/i.test(alt[2]))) {
+      rest = alt[2];
+      continue;
+    }
+    const r = readUnit(rest);
+    if (r.unit && r.rest && (!knownUnit || r.unit === knownUnit) && !unit) {
+      if (!knownUnit) unit = r.unit;
+      rest = r.rest;
+      continue;
+    }
+    if (rest === before) break;
+  }
+  return { rest, qtyMax, unit };
+}
+
+/** Section headings ("For Serving:") and equipment ("An Instant Pot") aren't groceries. */
+export function isJunkLine(raw: string): boolean {
+  const t = raw.trim();
+  if (/:\s*$/.test(t) && t.length < 40) return true;
+  if (/^(ingredients?\b|special equipment|equipment\b|\/\/|for the\b.*:)/i.test(t)) return true;
+  return /^(an?\s+|\d+\s+)?(instant pot|pressure cooker|slow cooker|mason jar|cocktail shaker|glass(es)?|skillet|sheet pan|baking dish|food processor|blender|stand mixer|thermometer)\b/i.test(t);
 }
 
 /**
@@ -153,6 +206,7 @@ export function looksOk(raw: string, name: string): boolean {
   if (!name || name.length < 2) return false;
   if (/[%@#{}<>]/.test(raw)) return false;
   if (/^\d/.test(name)) return false;
+  if (canonicalUnit(name)) return false; // the name is just a unit ("2 teaspoons, plus more")
   return true;
 }
 

@@ -1,6 +1,6 @@
 import type { ParsedIngredient } from "./ingredientParser";
 
-export type MealType = "dinner" | "lunch" | "breakfast";
+export type MealType = "dinner" | "lunch" | "breakfast" | "side" | "dessert";
 export type RecipeOrigin = "crouton" | "url" | "manual" | "paste" | "claude" | "ai" | "seed";
 
 export interface Step {

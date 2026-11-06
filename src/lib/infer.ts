@@ -24,11 +24,20 @@ export function inferMainProtein(title: string, ingredientNames: string[]): stri
 }
 
 export function inferMealTypes(title: string, tags: string[]): MealType[] {
-  const text = `${title} ${tags.join(" ")}`.toLowerCase();
-  if (/\b(oats|oatmeal|pancake|waffle|granola|smoothie|muffin|french toast|breakfast|scone|porridge)\b/.test(text)) {
-    return ["breakfast"];
+  const t = title.toLowerCase();
+  const text = `${t} ${tags.join(" ")}`.toLowerCase();
+  const hasProtein = inferMainProtein(title, []) !== null && !/\b(eggs)\b/.test(inferMainProtein(title, []) ?? "");
+  const savoryPie = /\b(pot pie|shepherd'?s pie|meat pie|chicken pie|cottage pie)\b/.test(t);
+  if (/\b(oats|oatmeal|pancakes?|waffles?|granola|smoothie|muffins?|french toast|breakfast|scones?|porridge|banana bread|zucchini bread)\b/.test(text)) {
+    return hasProtein ? ["breakfast", "dinner"] : ["breakfast"]; // e.g. chicken rice porridge
+  }
+  if (!hasProtein && !savoryPie && /\b(cakes?|cookies?|brownies?|pie|tart|cobbler|crumble|pudding|ice cream|sorbet|gelato|creamie|fudge|cupcakes?|blondies?|dessert|frosting|cheesecake)\b|\bcrisp$/.test(t + " " + tags.join(" ").toLowerCase())) {
+    return ["dessert"];
   }
   if (/\b(lunch|sandwich|wrap)\b/.test(text)) return ["lunch", "dinner"];
+  // Breads and single-vegetable dishes are sides — never planned as a dinner.
+  if (!hasProtein && /\b(rolls?|bread|biscuits?|focaccia|cornbread)\b/.test(text)) return ["side"];
+  if (/^(roasted|steamed|sauteed|sautéed|grilled|charred|glazed)\s+(broccoli|broccolini|carrots?|green beans|asparagus|brussels sprouts|cauliflower|potatoes|sweet potatoes|zucchini|squash|beets)\b(?!.*\band\b)/.test(t)) return ["side"];
   return ["dinner"];
 }
 

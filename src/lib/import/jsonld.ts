@@ -1,6 +1,6 @@
 // Extract a schema.org Recipe from a web page's JSON-LD.
 import { z } from "zod";
-import { parseIngredientLine } from "../ingredientParser";
+import { isJunkLine, parseIngredientLine } from "../ingredientParser";
 import type { RecipeDraft, Step } from "../types";
 import { inferMainProtein, inferMealTypes } from "../infer";
 
@@ -132,7 +132,7 @@ function toTags(...vals: unknown[]): string[] {
 
 export function recipeFromJsonLd(node: Record<string, unknown>, url: string, synonyms: Record<string, string> = {}): RecipeDraft {
   const r = looseRecipe.parse(node);
-  const ingredients = r.recipeIngredient.map((l) => parseIngredientLine(decode(l), synonyms)).filter((i) => i.name);
+  const ingredients = r.recipeIngredient.filter((l) => !isJunkLine(decode(l))).map((l) => parseIngredientLine(decode(l), synonyms)).filter((i) => i.name);
   const yieldStr = firstString(node.recipeYield);
   const servings = yieldStr ? parseInt(yieldStr.match(/\d+/)?.[0] ?? "", 10) || 4 : 4;
   const prep = isoMinutes(node.prepTime) ?? null;

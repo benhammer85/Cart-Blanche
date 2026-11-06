@@ -43,6 +43,16 @@ export async function buildContext(db: SupabaseClient, req: AiPlanRequest): Prom
     db.from("synonyms").select("alias, canonical"),
   ]);
   type R = { id: string; title: string; tags: string[]; times_made: number; last_made_at: string | null; kid_friendly: boolean; prep_min: number | null; meal_types: string[]; recipe_ingredients: { name_norm: string }[] };
+  // Never send names: scrub household names out of titles and tags
+  // ("Asa and Saul Favorites" → "kids favorites", "Molly Favorites" → "family favorites").
+  const { data: names } = await db.from("household_people").select("name, kind");
+  const { data: members } = await db.from("household_members").select("display_name");
+  const kidNames = ((names ?? []) as { name: string; kind: string }[]).filter((p) => p.kind === "kid").map((p) => p.name);
+  const adultNames = [
+    ...((names ?? []) as { name: string; kind: string }[]).filter((p) => p.kind === "adult").map((p) => p.name),
+    ...((members ?? []) as { display_name: string }[]).map((m) => m.display_name),
+  ];
+  const scrub = (text: string) => scrubNames(text, kidNames, adultNames);
   // Short ids keep the prompt small; map back after.
   const favIds = new Map<string, string>();
   const favorites = ((recipes.data ?? []) as R[])
@@ -52,8 +62,8 @@ export async function buildContext(db: SupabaseClient, req: AiPlanRequest): Prom
       favIds.set(short, r.id);
       return {
         id: short,
-        title: r.title,
-        tags: r.tags,
+        title: scrub(r.title),
+        tags: r.tags.map(scrub),
         ingredients: r.recipe_ingredients.map((x) => x.name_norm),
         timesMade: r.times_made,
         lastMade: r.last_made_at,
@@ -80,10 +90,20 @@ export async function buildContext(db: SupabaseClient, req: AiPlanRequest): Prom
       stores: ((stores.data ?? []) as { id: string; name: string }[]).filter((s) => req.storeIds.includes(s.id)).map((s) => s.name),
       staples: ((staples.data ?? []) as { name_norm: string }[]).map((s) => s.name_norm),
       favorites,
-      recentTitles: [...new Set(((recent.data ?? []) as { title: string }[]).map((r) => r.title))],
+      recentTitles: [...new Set(((recent.data ?? []) as { title: string }[]).map((r) => scrub(r.title)))],
       pinnedIds: req.pinnedIds.map((id) => reverse.get(id)).filter(Boolean) as string[],
     },
   };
+}
+
+export function scrubNames(text: string, kidNames: string[], adultNames: string[]): string {
+  const esc = (n: string) => n.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  let out = text;
+  const kids = kidNames.filter(Boolean).map(esc);
+  if (kids.length) out = out.replace(new RegExp(`\\b(${kids.join("|")})('s)?\\b(\\s*(and|&)\\s*\\b(${kids.join("|")})('s)?\\b)*`, "gi"), "kids");
+  const adults = adultNames.filter(Boolean).map(esc);
+  if (adults.length) out = out.replace(new RegExp(`\\b(${adults.join("|")})('s)?\\b`, "gi"), "family");
+  return out;
 }
 
 export function newMealToDraft(m: AiNewMeal, synonyms: Record<string, string>): RecipeDraft {

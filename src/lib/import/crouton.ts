@@ -15,9 +15,9 @@
 //   • blank ingredient rows, leading "- " bullets, OCR garbage ("% teaspoon")
 
 import { z } from "zod";
-import { parseIngredientLine, readUnit, looksOk, type ParsedIngredient } from "../ingredientParser";
+import { parseIngredientLine, peelAmountWords, looksOk, isJunkLine, type ParsedIngredient } from "../ingredientParser";
 import { normalizeName, splitNameAndNote } from "../normalize";
-import { formatAmount } from "../units";
+import { canonicalUnit, formatAmount } from "../units";
 import type { RecipeDraft } from "../types";
 import { inferMainProtein, inferMealTypes } from "../infer";
 
@@ -72,7 +72,8 @@ export type Crumb = z.infer<typeof crumbSchema>;
 
 const QUANTITY_TYPES: Record<string, string> = {
   ITEM: "each", TEASPOON: "tsp", TABLESPOON: "tbsp", CUP: "cup", POUND: "lb", OUNCE: "oz",
-  GRAM: "g", KILOGRAM: "kg", MILLILITER: "ml", MILLILITRE: "ml", LITER: "l", LITRE: "l",
+  GRAM: "g", GRAMS: "g", KILOGRAM: "kg", KGS: "kg", KG: "kg", MILLILITER: "ml", MILLILITRE: "ml", MILLS: "ml", ML: "ml",
+  LITER: "l", LITRE: "l", LITERS: "l",
   CAN: "can", BUNCH: "bunch", PACKAGE: "package", PACKET: "package", PINCH: "pinch",
   DASH: "dash", CLOVE: "clove", SLICE: "slice", JAR: "jar", BOTTLE: "bottle", BAG: "bag",
   BOX: "box", HEAD: "head", STICK: "stick", FLUID_OUNCE: "fl oz", PINT: "pint", QUART: "quart",
@@ -84,7 +85,7 @@ export function crumbIngredient(
   synonyms: Record<string, string> = {},
 ): ParsedIngredient | null {
   const rawName = (ing.ingredient?.name ?? "").trim();
-  if (!rawName) return null; // Crouton exports blank spacer rows
+  if (!rawName || isJunkLine(rawName)) return null; // blank spacer rows, "For Serving:", equipment
 
   const q = ing.quantity;
   if (!q || (q.amount == null && q.secondaryAmount == null)) {
@@ -94,23 +95,22 @@ export function crumbIngredient(
 
   let qty = q.amount ?? q.secondaryAmount ?? null;
   let qtyMax = q.amount != null && q.secondaryAmount != null && q.secondaryAmount > q.amount ? q.secondaryAmount : null;
-  let unit = QUANTITY_TYPES[(q.quantityType ?? "ITEM").toUpperCase()] ?? (q.quantityType ?? "each").toLowerCase();
+  let unit = QUANTITY_TYPES[(q.quantityType ?? "ITEM").toUpperCase()] ?? canonicalUnit(q.quantityType ?? "") ?? "each";
   let text = rawName.replace(/^[-•*\s]+/, "");
 
-  // ITEM + unit hidden in the name: "teaspoons fine sea salt", "heaping tbs PB2"
-  if (unit === "each") {
-    const stripped = text.replace(/^(heaping|level|scant|rounded|generous|large|medium|small)\s+/i, "");
-    const r = readUnit(stripped);
-    if (r.unit && r.rest) {
-      unit = r.unit;
-      text = r.rest;
-    }
-  }
+  // Amount words left in the name: "teaspoons fine sea salt" (ITEM), "to 2 ripe
+  // avocados", "large or 2 small bunches kale", "packed cup dill", "block block tofu"
+  const peeled = peelAmountWords(text, unit === "each" ? null : unit);
+  text = peeled.rest || text;
+  if (unit === "each" && peeled.unit) unit = peeled.unit;
+  if (peeled.qtyMax != null && qty != null && peeled.qtyMax > qty) qtyMax = peeled.qtyMax;
   if (qty != null && qty <= 0) qty = null;
   if (qtyMax != null && qty == null) qtyMax = null;
 
   const { name, note } = splitNameAndNote(text);
-  const raw = `${formatAmount(qty, unit, qtyMax)} ${rawName}`.trim();
+  const ok = looksOk(rawName, name);
+  // Show a clean line ("1–2 ripe avocados, halved") unless it needs fixing by hand.
+  const raw = `${formatAmount(qty, unit, qtyMax)} ${ok ? text : rawName}`.trim();
   return {
     raw,
     qty,
@@ -119,7 +119,7 @@ export function crumbIngredient(
     name: name || text,
     nameNorm: normalizeName(name || text, synonyms),
     note,
-    ok: looksOk(rawName, name),
+    ok,
   };
 }
 
@@ -169,7 +169,8 @@ export function parseCrumb(json: unknown, synonyms: Record<string, string> = {})
       tags,
       mealTypes: inferMealTypes(title, tags),
       mainProtein: inferMainProtein(title, ingredientNames),
-      kidFriendly: false,
+      // A tag like "Asa and Saul Favorites" or "Kid Favorites" means the kids eat it.
+      kidFriendly: tags.some((t) => /\b(kids?|children|asa|saul)\b/i.test(t)),
       isKidMeal: false,
       origin: "crouton",
       externalId: c.uuid,

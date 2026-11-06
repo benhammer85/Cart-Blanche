@@ -12,7 +12,8 @@ const DESCRIPTORS = [
   "seeded", "deseeded", "cored", "boneless", "skinless", "skin-on", "bone-in",
   "toasted", "cooked", "uncooked", "raw", "frozen", "thawed", "divided", "optional",
   "to taste", "plus more", "as needed", "about", "approximately", "roughly", "generous",
-  "good-quality", "good quality", "organic", "salted", "unsalted", "low-sodium", "reduced-sodium", "store-bought", "homemade", "lean",
+  "good-quality", "good quality", "organic", "salted", "unsalted", "low-sodium", "low sodium", "reduced-sodium", "store-bought", "homemade", "lean",
+  "cooled", "cleaned", "scrubbed", "squeezed", "juiced", "zested", "unbleached", "seedless", "smashed", "deveined", "patted dry", "very soft", "chilled", "warm", "cold",
 ];
 
 // Words that stay part of the product name even though they look like descriptors.
@@ -80,6 +81,8 @@ export function splitNameAndNote(text: string): { name: string; note: string | n
     if (inner.trim()) notes.push(inner.trim());
     return " ";
   });
+  // "potatoes peeled & cut into chunks" → prep starts at the verb
+  s = s.replace(/\s+(?:and|&)\s+(?=(?:cut|sliced|diced|chopped|minced|halved|quartered|peeled|seeded|torn|crushed|drained)\b)/i, ", ");
   // Anything after the first comma or " - " / " – " is prep.
   const m = s.match(/^(.*?)(?:\s*,\s*|\s+[-–—]\s+|\s*;\s*)(.*)$/);
   if (m && m[1].trim()) {
@@ -106,13 +109,37 @@ function isOnlyDescriptors(text: string): boolean {
 }
 
 /** Normalize to the canonical shopping name used for merging and lookups. */
+const SUFFIX_JUNK =
+  /\b(depending on|for extra|see tip|see note|see below|if desired|if possible|if using|if unavailable|to taste|to top|for serving|for garnish|for cooking|for drizzling|approx\.?|preferably|i like|i used|i make|no need to|leave whole|with juice|cut lengthwise|of choice|of your choice|is great too|plus more|plus an additional|as needed)\b.*$/;
+
+/** "chicken broth or vegetable broth" → "chicken broth"; "light or dark brown sugar" → "light brown sugar". */
+export function pickAlternative(s: string): string {
+  const m = s.match(/^(.+?)\s+or\s+(.+)$/);
+  if (!m) return s;
+  const [a, b] = [m[1].trim(), m[2].trim()];
+  if (/\bother\b/.test(b)) return a; // "spaghetti or other long pasta"
+  if (a.split(" ").length >= 2) return a;
+  const bw = b.split(" ");
+  return bw.length > 1 ? `${a} ${bw.slice(1).join(" ")}` : a; // "cherry or grape tomato" → "cherry tomato"
+}
+
+/** Normalize to the canonical shopping name used for merging and lookups. */
 export function normalizeName(text: string, synonyms: Record<string, string> = {}): string {
   let s = splitNameAndNote(text).name.toLowerCase();
+  s = s.normalize("NFD").replace(/[\u0300-\u036f]/g, ""); // jalapeño → jalapeno, gruyère → gruyere
   s = s.replace(/^[-•*·\s]+/, "");
-  s = s.replace(descriptorRe, " ");
-  s = s.replace(/\b(and|or|of|the|a|an)\s*$/g, "");
-  s = s.replace(/^(of|the|a|an)\s+/g, "");
-  s = s.replace(/[^a-z0-9'\-& ]+/g, " ");
+  s = s.replace(/\band\/or\b/g, "or").replace(/\s*\/.*$/, ""); // "ranch dressing/seasoning mix" → first option
+  s = s.replace(SUFFIX_JUNK, "");
+  s = s.replace(/\s+\d+(\.\d+)?\s*(ounces?|oz|grams?|g|pounds?|lbs?|ml)\b.*$/, ""); // "carrots 10 ounces"
+  s = s.replace(/^(zest|juice) of (half |one )?(an? )?/, "");
+  s = s.replace(descriptorRe, " ").replace(/\s+/g, " ").trim();
+  s = s.replace(/\s*\b(and|with)\s+(tender|fine)\s+stems?\b/g, "").replace(/\s+(leaves|leaf)$/, "");
+  for (let i = 0; i < 3; i++) s = s.replace(/^(and|or|with|of|the|a|an|-)\s+/, "").replace(/^-+/, "").trim();
+  s = s.replace(/^(packages?|cans?|jars?|bags?|boxes|box|bottles?)\s+(of\s+)?/, "");
+  s = s.replace(/\b(and|or|of|the|a|an|with)\s*$/g, "");
+  s = s.replace(/\s+or water$/, ""); // "chicken broth or water" → shop for the broth
+  s = pickAlternative(s);
+  s = s.replace(/[^\p{L}\p{N}'\-& ]+/gu, " ");
   s = s.replace(/\s+/g, " ").trim();
   // some descriptors are hyphen-joined ("extra-virgin" stays; "well-trimmed" goes)
   s = s.replace(/^-+|-+$/g, "").trim();

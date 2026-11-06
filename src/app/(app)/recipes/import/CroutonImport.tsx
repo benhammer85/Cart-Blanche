@@ -62,6 +62,7 @@ export function CroutonImport() {
     }
 
     const seen = new Set(items.map((i) => i.draft.externalId));
+    const seenTitles = new Set(items.map((i) => i.draft.title.toLowerCase()));
     const next: Item[] = [];
     for (const [n, src] of sources.entries()) {
       setReading(`Reading ${n + 1} of ${sources.length}…`);
@@ -69,7 +70,10 @@ export function CroutonImport() {
         const parsed = parseCrumb(JSON.parse(await src.read()), synonyms);
         if (parsed.recipe.externalId && seen.has(parsed.recipe.externalId)) continue;
         seen.add(parsed.recipe.externalId);
-        const duplicate = isDuplicate(parsed.recipe, keys);
+        const titleKey = parsed.recipe.title.toLowerCase();
+        // Same recipe exported twice (e.g. "Tofu and Broccoli" and "Tofu and Broccoli-1")
+        const duplicate = isDuplicate(parsed.recipe, keys) ?? (seenTitles.has(titleKey) ? "same recipe twice in this import" : null);
+        seenTitles.add(titleKey);
         next.push({
           key: `${src.name}-${n}-${Date.now()}`,
           fileName: src.name,

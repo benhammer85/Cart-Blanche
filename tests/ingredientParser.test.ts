@@ -23,6 +23,13 @@ describe("parseIngredientLine", () => {
     ["1 large head of cauliflower", 1, null, "head", "cauliflower"],
     ["- milk", null, null, null, "milk"],
     ["Kosher salt", null, null, null, "kosher salt"],
+    // from the full Crouton export
+    ["1 to 2 ripe avocados, halved", 1, 2, "each", "avocado"],
+    ["1 large or 2 small bunches kale, collard greens", 1, 2, "bunch", "kale"],
+    ["A big handful of cilantro leaves, chopped", 1, null, "handful", "cilantro"],
+    ["4 packed cups baby spinach (about 5 ounces)", 4, null, "cup", "baby spinach"],
+    ["1 tsp plus 1/4 cup cornstarch, divided", 1, null, "tsp", "cornstarch"],
+    ["4 cups low-sodium chicken broth or water", 4, null, "cup", "chicken broth"],
   ];
   test.each(cases)("%s", (line, qty, qtyMax, unit, norm) => {
     const r = parseIngredientLine(line);

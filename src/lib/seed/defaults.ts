@@ -217,6 +217,23 @@ export const SEED_SYNONYMS: Record<string, string> = {
   "lime juice": "lime",
   "lemon zest": "lemon",
   "lemon wedge": "lemon",
+  "corn starch": "cornstarch",
+  "crimini mushroom": "cremini mushroom",
+  "red-wine vinegar": "red wine vinegar",
+  "parmigiano-reggiano cheese": "parmesan",
+  "spagetti": "spaghetti",
+  "spaghetti noodles": "spaghetti",
+  "shitake mushroom": "shiitake mushroom",
+  "all purpose flour": "all-purpose flour",
+  "feta cheese": "feta",
+  "crumbled feta": "feta",
+  "mozzarella cheese": "mozzarella",
+  "red-pepper flake": "red pepper flake",
+  "ground chicken or turkey": "ground chicken",
+  "broccoli crown": "broccoli",
+  "corn kernel": "corn",
+  "cilantro leaf and stem": "cilantro",
+  "dill leaves and fine stem": "dill",
   "lime wedge": "lime",
   "orange juice": "orange juice",
   "hot dog": "hot dogs",
@@ -243,4 +260,4 @@ export const SEED_PEOPLE = [
   { name: "Saul", kind: "kid" as const, birthdate: "2022-03-22" },
 ];
 
-export const SEED_BONUS_TAGS = ["Molly Favorites"];
+export const SEED_BONUS_TAGS = ["Molly Favorites", "Asa and Saul Favorites"];

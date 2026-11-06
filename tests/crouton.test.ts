@@ -59,6 +59,23 @@ describe("Crouton .crumb parser (real exports)", () => {
     expect(r.imageBase64?.length).toBeGreaterThan(20);
   });
 
+  test("amount words left in Crouton names are peeled off", () => {
+    const ing = (name: string, quantity: Record<string, unknown>) =>
+      parseCrumb({ uuid: "x", name: "T", ingredients: [{ order: 0, ingredient: { name }, quantity }], steps: [], tags: [], images: [] }).recipe.ingredients[0];
+    expect(ing("to 2 ripe avocados, halved", { amount: 1, quantityType: "ITEM" })).toMatchObject({ qty: 1, qtyMax: 2, unit: "each", nameNorm: "avocado", raw: "1–2 ripe avocados, halved" });
+    expect(ing("large or 2 small bunches kale", { amount: 1, quantityType: "ITEM" })).toMatchObject({ qtyMax: 2, unit: "bunch", nameNorm: "kale" });
+    expect(ing("packed cup fresh dill", { amount: 0.33, quantityType: "ITEM" })).toMatchObject({ unit: "cup", nameNorm: "dill" });
+    expect(ing("block firm tofu, drained", { amount: 1, quantityType: "BLOCK" })).toMatchObject({ unit: "block", nameNorm: "firm tofu" });
+    expect(ing("plus 1/4 cup cornstarch, divided", { amount: 1, quantityType: "TEASPOON" })).toMatchObject({ unit: "tsp", nameNorm: "cornstarch" });
+  });
+
+  test("breads and simple vegetable dishes are sides, not dinners", () => {
+    const meal = (name: string) => parseCrumb({ uuid: "x", name, ingredients: [], steps: [], tags: [], images: [] }).recipe.mealTypes;
+    expect(meal("Quick Poppy Seed Rolls")).toEqual(["side"]);
+    expect(meal("Roasted Broccoli With Vinegar-Mustard Glaze")).toEqual(["side"]);
+    expect(meal("Roasted Cauliflower And Potatoes With Harissa")).toEqual(["dinner"]);
+  });
+
   test("rejects files that aren't Crouton recipes", () => {
     expect(() => parseCrumb({ foo: 1 })).toThrow();
   });

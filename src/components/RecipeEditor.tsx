@@ -31,7 +31,7 @@ export function RecipeEditor({ draft, onChange, synonyms = {} }: { draft: Recipe
 
       <Section title="Meal">
         <div className="flex flex-wrap gap-2">
-          {(["dinner", "lunch", "breakfast"] as MealType[]).map((m) => (
+          {(["dinner", "lunch", "breakfast", "side", "dessert"] as MealType[]).map((m) => (
             <Chip
               key={m}
               active={draft.mealTypes.includes(m)}
