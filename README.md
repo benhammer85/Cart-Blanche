@@ -29,19 +29,10 @@ A private, phone-first web app for our household: plan the week's dinners from o
 
 1. Create a free project at <https://supabase.com> (any name, e.g. `cart-blanche`). Pick a region near Boston (us-east-1).
 2. **SQL Editor → New query:** paste the whole contents of `supabase/migrations/20261106000001_init.sql` and click **Run**. This creates all tables, security rules, the live-sync publication and the `recipe-images` storage bucket.
-3. **Authentication → Sign In / Providers → Email:** make sure Email is enabled. Under **Authentication → Settings**, you can leave "Allow new users to sign up" on: only allowlisted emails can request a code, and anyone else has no household and sees nothing.
-4. **Authentication → Emails → Magic Link** template: replace the body with this, so the email has both a code (for the home-screen app) and a link (for Safari):
-
-   ```html
-   <h2>Your Cart Blanche sign-in code</h2>
-   <p style="font-size:28px;letter-spacing:4px"><b>{{ .Token }}</b></p>
-   <p>Or tap: <a href="{{ .SiteURL }}/auth/confirm?token_hash={{ .TokenHash }}&type=email">Sign in to Cart Blanche</a></p>
-   ```
-
-5. **Authentication → URL Configuration:** set **Site URL** to your Vercel URL (e.g. `https://cart-blanche.vercel.app`) and add `https://cart-blanche.vercel.app/**` to **Redirect URLs**.
+3. **Authentication → Sign In / Providers → Email:** keep Email enabled, and turn **off** "Allow new users to sign up". That way nobody can create an account; only the two you add exist.
+4. **Authentication → Users → Add user → Create new user:** add Ben and Molly, each with an email and a password, and tick **Auto Confirm User**. Use the same emails as in `ALLOWED_EMAILS`. No emails are ever sent, so you don't need SMTP.
+5. **Authentication → URL Configuration:** set **Site URL** to your Vercel URL (e.g. `https://cart-blanche.vercel.app`).
 6. **Project Settings → API:** copy the **Project URL**, the **anon / publishable** key and the **service_role / secret** key for step 2.
-
-> Supabase's built-in email sender only allows a few emails per hour. That's fine for two people. If you hit the limit, add free SMTP (e.g. Resend) under Authentication → Emails → SMTP.
 
 ### 2. Vercel
 
@@ -64,8 +55,8 @@ A private, phone-first web app for our household: plan the week's dinners from o
 
 ### 3. On each iPhone
 
-1. Open the Vercel URL in **Safari** and sign in with the 6-digit code from the email.
-2. **Share → Add to Home Screen.** Open the app from the home screen and sign in once more with a fresh code. (iOS keeps home-screen apps separate from Safari, so links in emails open in Safari. That's why the email includes a code.)
+1. Open the Vercel URL in **Safari** and sign in with your email and password.
+2. **Share → Add to Home Screen**, open it from the home screen and sign in once more. (Home-screen apps keep their own sign-in, separate from Safari.)
 3. The first login creates the household with your stores, store rules, people, pantry staples and kids' favorites. The second person joins the same household automatically.
 
 ### 4. Gemini (optional)
