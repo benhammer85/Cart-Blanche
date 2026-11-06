@@ -216,6 +216,9 @@ export const SEED_SYNONYMS: Record<string, string> = {
   "lemon juice": "lemon",
   "lime juice": "lime",
   "lemon zest": "lemon",
+  "lemon wedge": "lemon",
+  "lime wedge": "lime",
+  "orange juice": "orange juice",
   "hot dog": "hot dogs",
 };
 

@@ -57,7 +57,7 @@ export function IngredientsSettings() {
               </Button>
             )}
             <Section title={`${list.length} ingredients`}>
-              <ul className="card divide-y hairline overflow-hidden">
+              <ul className="card divide-y divide-line overflow-hidden">
                 {list.slice(0, 200).map((i) => (
                   <li key={i.id}>
                     <button className="flex min-h-[52px] w-full items-center gap-3 px-4 py-1.5 text-left" onClick={() => setOpen(i)}>
@@ -83,7 +83,7 @@ export function IngredientsSettings() {
               <Button aria-label="Add synonym"><IconPlus /></Button>
             </form>
             <Section>
-              <ul className="card divide-y hairline overflow-hidden">
+              <ul className="card divide-y divide-line overflow-hidden">
                 {Object.entries(data.synonyms).sort().map(([a, c]) => (
                   <li key={a} className="flex min-h-[48px] items-center gap-2 px-4">
                     <span className="flex-1 text-[15px]">{a} <span className="text-muted">→</span> {c}</span>

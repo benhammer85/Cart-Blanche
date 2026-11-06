@@ -2,6 +2,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Chip, Empty, Sheet, cx } from "@/components/ui";
+import { RecipeImage } from "@/components/RecipeImage";
 import { IconBook, IconChat, IconClock, IconLink, IconPencil, IconPlus, IconSearch, IconUpload } from "@/components/icons";
 
 export interface RecipeCard {
@@ -111,14 +112,7 @@ export function RecipesClient({ recipes }: { recipes: RecipeCard[] }) {
           {shown.map((r) => (
             <Link key={r.id} href={`/recipes/${r.id}`} className="group active:scale-[0.98] transition">
               <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-soft">
-                {r.image_path ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={r.image_path} alt="" loading="lazy" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="grid h-full w-full place-items-center bg-gradient-to-br from-accent-soft to-soft">
-                    <span className="recipe-title px-4 text-center text-[22px] leading-tight text-accent/80">{r.title.split(" ").slice(0, 3).join(" ")}</span>
-                  </div>
-                )}
+                <RecipeImage src={r.image_path} title={r.title} />
                 {(r.kid_friendly || r.is_kid_meal) && (
                   <span className="absolute top-2 left-2 rounded-full bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur">{r.is_kid_meal ? "Kids" : "Kids ✓"}</span>
                 )}
@@ -135,7 +129,7 @@ export function RecipesClient({ recipes }: { recipes: RecipeCard[] }) {
       {recipes.length > 0 && !shown.length && <Empty title="Nothing matches">Try a different search or filter.</Empty>}
 
       <Sheet open={adding} onClose={() => setAdding(false)} title="Add recipes">
-        <div className="card divide-y hairline overflow-hidden">
+        <div className="card divide-y divide-line overflow-hidden">
           {[
             { href: "/recipes/new?mode=url", icon: <IconLink />, label: "From a link", detail: "Paste a recipe website address" },
             { href: "/recipes/new?mode=paste", icon: <IconPencil />, label: "Type or paste", detail: "Ingredients, a blank line, then steps" },

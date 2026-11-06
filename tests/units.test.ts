@@ -109,3 +109,17 @@ describe("buildShoppingList merging", () => {
     expect(buildShoppingList([m], opts())[0].qty).toBe(3);
   });
 });
+
+describe("citrus and quantity addition", () => {
+  test("lemon juice by volume becomes whole lemons", () => {
+    const items = buildShoppingList([meal("A", 4, 4, [[2, "tbsp", "lemon"], [1, "each", "lemon"]])], opts());
+    expect(items[0].displayQty).toBe("2"); // 2 tbsp ≈ 1 lemon + 1 lemon
+  });
+  test("addQty", async () => {
+    const { addQty } = await import("@/lib/units");
+    expect(addQty(2, "lb", 12, "oz")).toEqual({ qty: 2.75, unit: "lb" });
+    expect(addQty(1, "can", 2, "can")).toEqual({ qty: 3, unit: "can" });
+    expect(addQty(1, "can", 2, "each")).toBeNull();
+    expect(addQty(null, "lb", 1, "lb")).toBeNull();
+  });
+});

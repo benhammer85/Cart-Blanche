@@ -4,12 +4,13 @@ import { useRouter } from "next/navigation";
 import { Button, Chip, Section, Segmented, Sheet, Stepper, TextField, Toast, Toggle, cx } from "@/components/ui";
 import { IconCheck, IconLock, IconSearch, IconSparkle, IconSwap, IconUnlock, IconX, IconPlus, IconClock } from "@/components/icons";
 import { useMembership } from "@/components/AppShell";
+import { RecipeImage } from "@/components/RecipeImage";
 import { planMeals, pickKidMeals, rng, swapMeal, type PlannerRecipe, type PlanParams } from "@/lib/planner/planner";
 import { buildShoppingList, portionsFor, type DraftListItem, type PlannedMealForList } from "@/lib/list/buildList";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { saveRecipe } from "@/lib/data/recipes";
 import { PLAN_INBOX_KEY } from "@/lib/planInbox";
-import { round } from "@/lib/units";
+import { addQty, formatAmount, round } from "@/lib/units";
 import type { HouseholdData } from "@/lib/data/household";
 import type { IngredientInfo, ListItem, MealType, PlannerDefaults, RecipeDraft, RecipeIngredient } from "@/lib/types";
 
@@ -343,10 +344,12 @@ export function PlanClient({ household, recipes, repeat }: { household: Househol
       for (const it of preview.filter((x) => !x.have)) {
         const match = (existing as ListItem[] | null)?.find((e) => e.name_norm === it.nameNorm && e.store_id === it.storeId);
         if (match) {
+          const sum = addQty(match.qty, match.unit, it.qty, it.unit);
           rows.push({
             ...match,
-            display_qty: [match.display_qty, it.displayQty].filter(Boolean).join(" + ") || null,
-            qty: null,
+            display_qty: sum ? formatAmount(sum.qty, sum.unit) : [match.display_qty, it.displayQty].filter(Boolean).join(" + ") || null,
+            qty: sum?.qty ?? null,
+            unit: sum?.unit ?? match.unit,
             source_meals: [...(match.source_meals ?? []), ...it.sourceMeals],
             client_updated_at: now,
           });
@@ -432,7 +435,7 @@ export function PlanClient({ household, recipes, repeat }: { household: Househol
               </div>
             </Section>
 
-            <div className="card mt-6 divide-y hairline">
+            <div className="card mt-6 divide-y divide-line">
               <div className="flex items-center justify-between px-4 py-3">
                 <span className="text-[17px]">Meals</span>
                 <Stepper value={p.mealCount} min={1} max={14} onChange={(v) => setP({ ...p, mealCount: v })} />
@@ -492,7 +495,7 @@ export function PlanClient({ household, recipes, repeat }: { household: Househol
               </div>
             </Section>
 
-            <div className="card mt-6 divide-y hairline">
+            <div className="card mt-6 divide-y divide-line">
               <label className="flex items-center justify-between px-4 py-3">
                 <span>
                   <span className="block text-[17px]">Variety</span>
@@ -541,11 +544,10 @@ export function PlanClient({ household, recipes, repeat }: { household: Househol
                   <li key={s.key} className="card overflow-hidden">
                     <div className="flex gap-3 p-3">
                       <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-soft">
-                        {r?.image_path ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={r.image_path} alt="" className="h-full w-full object-cover" />
+                        {s.draft && !r ? (
+                          <div className="grid h-full w-full place-items-center bg-gradient-to-br from-accent-soft to-soft text-2xl text-accent"><IconSparkle /></div>
                         ) : (
-                          <div className="grid h-full w-full place-items-center bg-gradient-to-br from-accent-soft to-soft text-2xl text-accent">{s.draft ? <IconSparkle /> : "🍽"}</div>
+                          <RecipeImage src={r?.image_path} title={s.title} placeholderText={false} />
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
@@ -579,7 +581,7 @@ export function PlanClient({ household, recipes, repeat }: { household: Househol
             </ul>
             <div className="mt-3 flex gap-2">
               <Button variant="secondary" className="flex-1" onClick={() => setPicker({ mode: "add", index: -1 })}><IconPlus /> Add meal</Button>
-              <Button variant="secondary" className="flex-1" onClick={planIt} disabled={!!busy}><IconSwap /> Re-plan unlocked</Button>
+              <Button variant="secondary" className="flex-1" onClick={planIt} disabled={!!busy}><IconSwap /> Re-plan</Button>
             </div>
             <Button size="lg" className="mt-4 w-full" onClick={buildPreview} disabled={!slots.length || !!busy}>{busy ?? "Build shopping list"}</Button>
           </>
@@ -699,7 +701,7 @@ function RecipePicker({ recipes, onPick, onClose }: { recipes: PlanRecipe[]; onP
   return (
     <Sheet open onClose={onClose} title="Pick a recipe">
       <TextField value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search recipes" autoFocus />
-      <ul className="card mt-3 divide-y hairline overflow-hidden">
+      <ul className="card mt-3 divide-y divide-line overflow-hidden">
         {shown.slice(0, 80).map((r) => (
           <li key={r.id}>
             <button className="flex min-h-[52px] w-full items-center gap-3 px-4 py-2 text-left" onClick={() => onPick(r)}>

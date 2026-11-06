@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { IconBack, IconClock, IconPencil, IconUsers, IconLink } from "@/components/icons";
 import { Button, Chip, cx } from "@/components/ui";
+import { RecipeImage } from "@/components/RecipeImage";
 import { formatAmount } from "@/lib/units";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Recipe } from "@/lib/types";
@@ -26,12 +27,9 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
   return (
     <article>
       <div className="relative">
-        {r.image_path ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={r.image_path} alt="" className="aspect-[4/3] w-full object-cover" />
-        ) : (
-          <div className="pt-safe aspect-[5/2] w-full bg-gradient-to-br from-accent-soft to-soft" />
-        )}
+        <div className={r.image_path ? "aspect-[4/3] w-full" : "aspect-[5/2] w-full"}>
+          <RecipeImage src={r.image_path} title={r.title} placeholderText={false} />
+        </div>
         <div className="pt-safe absolute inset-x-0 top-0 flex justify-between px-4 pt-2">
           <Link href="/recipes" className="grid h-10 w-10 place-items-center rounded-full bg-black/35 text-2xl text-white backdrop-blur" aria-label="Back">
             <IconBack />
@@ -74,7 +72,7 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
             <div className="mb-2 flex gap-2">
               {[0.5, 1, 1.5, 2].map((s) => <Chip key={s} active={scale === s} onClick={() => setScale(s)}>{s}×</Chip>)}
             </div>
-            <ul className="divide-y hairline">
+            <ul className="divide-y divide-line">
               {ingredients.map((i) => (
                 <li key={i.id} className="flex gap-3 py-3 text-[16px]">
                   <span className="w-20 shrink-0 font-semibold tabular-nums">{formatAmount(i.qty != null ? Number(i.qty) * scale : null, i.unit, i.qty_max != null ? Number(i.qty_max) * scale : null)}</span>

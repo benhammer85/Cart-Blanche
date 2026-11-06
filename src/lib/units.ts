@@ -119,6 +119,17 @@ export function fromBase(base: number, dimension: Dimension, preferMetric = fals
   return { qty: base, unit: "each" };
 }
 
+/** Add two amounts when their units are compatible (same count unit, or both volume/weight). */
+export function addQty(aQty: number | null, aUnit: string | null, bQty: number | null, bUnit: string | null): { qty: number; unit: string } | null {
+  if (aQty == null || bQty == null) return null;
+  const ua = aUnit ?? "each";
+  const ub = bUnit ?? "each";
+  const da = unitDimension(ua);
+  if (da !== unitDimension(ub)) return null;
+  if (da === "count") return ua === ub ? { qty: aQty + bQty, unit: ua } : null;
+  return fromBase(toBase(aQty, ua) + toBase(bQty, ub), da);
+}
+
 export function round(n: number, digits: number): number {
   const p = 10 ** digits;
   return Math.round(n * p) / p;

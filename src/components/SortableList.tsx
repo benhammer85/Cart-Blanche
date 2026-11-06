@@ -30,7 +30,7 @@ export function SortableList<T extends { id: string }>({
   return (
     <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
       <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-        <ul className="card divide-y hairline overflow-hidden">
+        <ul className="card divide-y divide-line overflow-hidden">
           {items.map((item, i) => (
             <SortableRow key={item.id} id={item.id}>
               {render(item, i)}

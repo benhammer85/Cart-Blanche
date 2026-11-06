@@ -54,7 +54,7 @@ export function RecipeEditor({ draft, onChange, synonyms = {} }: { draft: Recipe
         </div>
       </Section>
 
-      <div className="card mt-4 divide-y hairline">
+      <div className="card mt-4 divide-y divide-line">
         <label className="flex items-center justify-between px-4 py-3">
           <span>
             <span className="block text-[17px]">Kids eat this too</span>

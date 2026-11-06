@@ -88,6 +88,9 @@ export function ListClient() {
       byStore.set(key, [...(byStore.get(key) ?? []), i]);
     }
     const order = [...stores.map((s) => s.id), NO_STORE];
+    // Stores with nothing left to get sink to the bottom.
+    const left = (id: string) => (byStore.get(id) ?? []).some((i) => !i.checked);
+    order.sort((x, y) => Number(left(y)) - Number(left(x)));
     return order
       .filter((id) => byStore.has(id))
       .map((storeId) => {
@@ -171,7 +174,11 @@ export function ListClient() {
                 {g.location && <p className="text-[13px] text-muted">{g.location}</p>}
               </div>
               <div className="flex items-center gap-2">
-                <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-[13px] font-semibold text-accent">{g.todoCount}</span>
+                {g.todoCount ? (
+                  <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-[13px] font-semibold text-accent">{g.todoCount}</span>
+                ) : (
+                  <span className="grid h-6 w-6 place-items-center rounded-full bg-ok text-white"><IconCheck strokeWidth={3} /></span>
+                )}
                 <button onClick={() => copy(storeText(g), g.name)} className="grid h-9 w-9 place-items-center rounded-full bg-soft text-lg text-muted" aria-label={`Copy ${g.name} list`}>
                   <IconCopy />
                 </button>
@@ -250,7 +257,7 @@ export function ListClient() {
       </div>
 
       <Sheet open={menu} onClose={() => setMenu(false)} title="List">
-        <div className="card divide-y hairline overflow-hidden">
+        <div className="card divide-y divide-line overflow-hidden">
           <button className="flex h-14 w-full items-center gap-3 px-4 text-left text-[17px]" onClick={() => { copy(groups.map(storeText).join("\n\n"), "Whole list"); setMenu(false); }}>
             <IconCopy className="text-muted" /> Copy whole list as text
           </button>
@@ -294,7 +301,7 @@ function ItemRow({ item, onToggle, onEdit }: { item: ListItem; onToggle: () => v
   const meals = item.source_meals?.map((m) => m.title).join(", ");
   return (
     <li className="flex items-stretch">
-      <button onClick={onToggle} className="flex min-h-[60px] flex-1 items-center gap-3.5 pl-4 text-left active:bg-soft" aria-pressed={item.checked}>
+      <button onClick={onToggle} className="flex min-h-[60px] min-w-0 flex-1 items-center gap-3.5 pl-4 text-left active:bg-soft" aria-pressed={item.checked}>
         <span
           className={cx(
             "grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 transition",
@@ -313,7 +320,7 @@ function ItemRow({ item, onToggle, onEdit }: { item: ListItem; onToggle: () => v
           )}
         </span>
       </button>
-      <button onClick={onEdit} className="flex items-center gap-2 pr-4 pl-2 text-muted" aria-label={`Edit ${item.name}`}>
+      <button onClick={onEdit} className="flex shrink-0 items-center gap-2 pr-4 pl-2 text-muted" aria-label={`Edit ${item.name}`}>
         {item.is_manual && item.added_by && (
           <span className="grid h-6 min-w-6 place-items-center rounded-full bg-soft px-1.5 text-[11px] font-semibold">{item.added_by}</span>
         )}

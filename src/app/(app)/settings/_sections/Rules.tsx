@@ -19,7 +19,7 @@ export function RulesSettings() {
       <PageHeader title="Store rules" back="/settings" subtitle="For each kind of item, the first store on your trip in this order wins." />
       <div className="px-4">
         <Section>
-          <ul className="card divide-y hairline overflow-hidden">
+          <ul className="card divide-y divide-line overflow-hidden">
             {data.categories.map((c) => {
               const order = data.rules.filter((r) => r.category_id === c.id).sort((a, b) => a.priority - b.priority).map((r) => storeName(r.store_id));
               return (

@@ -29,7 +29,7 @@ export function PantrySettings() {
           </form>
         </Section>
         <Section title={`${staples.length} staples`}>
-          <ul className="card divide-y hairline overflow-hidden">
+          <ul className="card divide-y divide-line overflow-hidden">
             {staples.map((s) => (
               <li key={s.id} className="flex min-h-[56px] items-center gap-3 px-4">
                 <span className="flex-1 text-[17px] capitalize">{s.name_norm}</span>

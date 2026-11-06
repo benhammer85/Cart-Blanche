@@ -51,6 +51,9 @@ interface Acc {
   meals: Map<string, { title: string; recipeId: string | null }>;
 }
 
+/** Teaspoons of juice one fruit gives. */
+const CITRUS_TSP: Record<string, number> = { lemon: 6, lime: 4, orange: 12 };
+
 export function scaleQty(qty: number | null, base: number, target: number): number | null {
   if (qty == null) return null;
   if (!base || base <= 0) return qty;
@@ -89,11 +92,18 @@ export function buildShoppingList(meals: PlannedMealForList[], opts: BuildListOp
       }
       g.meals.set(meal.key, { title: meal.title, recipeId: meal.recipeId });
 
-      const mk = mergeKey(unit);
-      const slot = g.amounts.get(mk) ?? { base: 0, unit, hasQty: false };
-      if (qty != null) {
-        const dim = unitDimension(unit);
-        slot.base += dim === "count" ? qty : toBase(qty, unit!);
+      // Juice/zest measured by volume → whole fruit (≈2 tbsp juice per lemon/lime).
+      let u2 = unit;
+      let q2 = qty;
+      if (CITRUS_TSP[nameNorm] && qty != null && unitDimension(unit) === "volume") {
+        q2 = toBase(qty, unit!) / CITRUS_TSP[nameNorm];
+        u2 = "each";
+      }
+      const mk = mergeKey(u2);
+      const slot = g.amounts.get(mk) ?? { base: 0, unit: u2, hasQty: false };
+      if (q2 != null) {
+        const dim = unitDimension(u2);
+        slot.base += dim === "count" ? q2 : toBase(q2, u2!);
         slot.hasQty = true;
       }
       g.amounts.set(mk, slot);
