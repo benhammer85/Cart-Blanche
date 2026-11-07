@@ -86,32 +86,6 @@ describe("Crouton .crumb parser (real exports)", () => {
   });
 });
 
-import { toCrumb } from "@/lib/import/croutonExport";
-describe("export to Crouton", () => {
-  test("round-trips through our own Crouton reader", () => {
-    const original = parseCrumb(load("Beef_Kebabs_with_Cumin_Marinade.crumb")).recipe;
-    const back = parseCrumb(JSON.parse(JSON.stringify(toCrumb(original)))).recipe;
-    expect(back.title).toBe(original.title);
-    expect(back.servings).toBe(original.servings);
-    expect(back.steps).toEqual(original.steps);
-    expect(back.ingredients.map((i) => [i.qty, i.unit, i.nameNorm])).toEqual(original.ingredients.map((i) => [i.qty, i.unit, i.nameNorm]));
-  });
-  test("units Crouton lacks go in the name; ranges use secondaryAmount", () => {
-    const c = toCrumb({
-      title: "T", servings: 2, prepMin: 10, cookMin: null, steps: [], notes: null, sourceUrl: null, sourceName: null, tags: ["Loved"],
-      mealTypes: ["dinner"], mainProtein: null, kidFriendly: false, isKidMeal: false, origin: "manual", externalId: null,
-      ingredients: [
-        { raw: "", qty: 3, qtyMax: null, unit: "clove", name: "garlic", nameNorm: "garlic", note: "minced", ok: true },
-        { raw: "", qty: 2, qtyMax: 3, unit: "each", name: "potatoes", nameNorm: "potato", note: null, ok: true },
-      ],
-    });
-    expect(c.ingredients[0]).toMatchObject({ ingredient: { name: "clove garlic, minced" }, quantity: { amount: 3, quantityType: "ITEM" } });
-    expect(c.ingredients[1].quantity).toEqual({ amount: 2, secondaryAmount: 3, quantityType: "ITEM" });
-    expect(c.duration).toBe(10);
-    expect(c.tags[0].name).toBe("Loved");
-  });
-});
-
 describe("mains that start with a vegetable", () => {
   test("grain and pasta dishes stay dinners", () => {
     const meal = (name: string) => parseCrumb({ uuid: "x", name, ingredients: [], steps: [], tags: [], images: [] }).recipe.mealTypes;

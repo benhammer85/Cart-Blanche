@@ -140,6 +140,8 @@ export interface PlannerDefaults {
   familyNights?: number;
   /** cookware and appliances we have (used for ideas, Discover and cooking tips) */
   kitchen?: string[];
+  /** how many receipts each item appears on (from our receipts), for suggestions */
+  purchaseCounts?: Record<string, number>;
 }
 
 export const DEFAULT_PLANNER: PlannerDefaults = {

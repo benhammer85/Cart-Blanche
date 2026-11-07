@@ -225,3 +225,35 @@ export function siteName(html: string, url: string): string {
   if (og) return decode(og).trim();
   return new URL(url).hostname.replace(/^www\./, "");
 }
+
+/** A page's own photos, best first: the recipe's photos, then og:image / twitter:image. */
+export function pageImages(html: string, pageUrl: string): string[] {
+  const out: string[] = [];
+  const add = (u: unknown) => {
+    const s = typeof u === "string" ? u : u && typeof u === "object" ? ((u as { url?: string; contentUrl?: string }).url ?? (u as { contentUrl?: string }).contentUrl) : null;
+    if (!s) return;
+    try {
+      const abs = new URL(decode(s), pageUrl).href;
+      if (/^https?:/.test(abs) && !out.includes(abs) && !/\.(svg|gif)(\?|$)/i.test(abs) && !/logo|avatar|icon|sprite|placeholder/i.test(abs)) out.push(abs);
+    } catch {
+      /* skip */
+    }
+  };
+  const visit = (n: unknown) => {
+    if (!n || typeof n !== "object") return;
+    if (Array.isArray(n)) return n.forEach(visit);
+    const o = n as Record<string, unknown>;
+    const t = o["@type"];
+    if ((typeof t === "string" && /recipe$/i.test(t)) || (Array.isArray(t) && t.some((x) => typeof x === "string" && /recipe$/i.test(x)))) {
+      const img = o.image;
+      (Array.isArray(img) ? img : [img]).forEach(add);
+    }
+    for (const k of ["@graph", "mainEntity", "itemListElement", "item"]) if (o[k]) visit(o[k]);
+  };
+  findJsonLdBlocks(html).forEach(visit);
+  for (const re of [/<meta[^>]+(?:property|name)=["']og:image(?::secure_url)?["'][^>]+content=["']([^"']+)["']/gi, /<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']og:image["']/gi, /<meta[^>]+name=["']twitter:image["'][^>]+content=["']([^"']+)["']/gi]) {
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(html))) add(m[1]);
+  }
+  return out.slice(0, 4);
+}

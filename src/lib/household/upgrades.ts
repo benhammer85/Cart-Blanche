@@ -1,4 +1,5 @@
 import "server-only";
+import { SHAWS_HISTORY } from "../seed/shawsHistory";
 import { sortSections, walkOrderFor } from "../list/walkOrder";
 import { parseIngredientLine } from "../ingredientParser";
 import { OUR_KITCHEN } from "../kitchen";
@@ -37,6 +38,7 @@ export async function applyUpgrades(db: SupabaseClient, householdId: string): Pr
     await setUpKitchen(db, householdId);
     await addChickenRamen(db, householdId);
     await setWalkOrder(db, householdId);
+    await addShawsHistory(db, householdId);
     done.add(householdId);
   } catch (e) {
     console.error("household upgrade failed", e);
@@ -265,4 +267,38 @@ async function setWalkOrder(db: SupabaseClient, household_id: string) {
     for (const [i, sec] of sorted.entries()) if (sec.sort_order !== i) await db.from("store_sections").update({ sort_order: i }).eq("id", sec.id);
   }
   await db.from("household_settings").update({ planner_defaults: { ...d, _walkOrderV1: true } }).eq("household_id", household_id);
+}
+
+/**
+ * Everything from our Shaw's receipts: new items get an aisle, and how often
+ * we buy each one ranks suggestions while typing. No store is set, so they
+ * still follow the store rules (Market Basket first).
+ */
+async function addShawsHistory(db: SupabaseClient, household_id: string) {
+  const { data: settings } = await db.from("household_settings").select("planner_defaults").eq("household_id", household_id).maybeSingle();
+  const d = (settings?.planner_defaults ?? {}) as Record<string, unknown>;
+  if (!settings || d._shawsHistoryV1) return;
+  const [{ data: cats }, { data: known }, { data: syn }] = await Promise.all([
+    db.from("categories").select("id, name").eq("household_id", household_id),
+    db.from("ingredients").select("id, name_norm, category_id").eq("household_id", household_id),
+    db.from("synonyms").select("alias, canonical").eq("household_id", household_id),
+  ]);
+  const synonyms = Object.fromEntries(((syn ?? []) as { alias: string; canonical: string }[]).map((x) => [x.alias, x.canonical]));
+  const byName = new Map(((known ?? []) as { id: string; name_norm: string; category_id: string | null }[]).map((k) => [k.name_norm, k]));
+  const catId = (n: string) => ((cats ?? []) as { id: string; name: string }[]).find((c) => c.name === n)?.id ?? null;
+  const counts: Record<string, number> = { ...((d.purchaseCounts as Record<string, number>) ?? {}) };
+  const fresh: Record<string, unknown>[] = [];
+  for (const [raw, cat, n] of SHAWS_HISTORY) {
+    const name_norm = normalizeName(raw, synonyms);
+    if (!name_norm) continue;
+    counts[name_norm] = Math.max(counts[name_norm] ?? 0, n);
+    const k = byName.get(name_norm);
+    if (!k) {
+      if (!fresh.some((f) => f.name_norm === name_norm)) fresh.push({ household_id, name_norm, category_id: catId(cat) });
+    } else if (!k.category_id && catId(cat)) {
+      await db.from("ingredients").update({ category_id: catId(cat) }).eq("id", k.id);
+    }
+  }
+  for (let i = 0; i < fresh.length; i += 100) await db.from("ingredients").insert(fresh.slice(i, i + 100));
+  await db.from("household_settings").update({ planner_defaults: { ...d, purchaseCounts: counts, _shawsHistoryV1: true } }).eq("household_id", household_id);
 }

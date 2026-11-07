@@ -56,11 +56,12 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
   const [sort, setSort] = useState<Sort>("az");
   const [adding, setAdding] = useState(false);
   const [filtering, setFiltering] = useState(false);
+  const [noPhoto, setNoPhoto] = useState(false);
   const [view, setView] = useState<"ours" | "discover">("ours");
   // "Best at <store>": sort by how much of each recipe that store usually carries.
   const [storeFocus, setStoreFocus] = useState<string | null>(null);
   const stores = household.stores.filter((s) => !s.archived);
-  const filterCount = (storeFocus ? 1 : 0) + (maxPrep ? 1 : 0) + (sort !== "az" ? 1 : 0);
+  const filterCount = (storeFocus ? 1 : 0) + (maxPrep ? 1 : 0) + (sort !== "az" ? 1 : 0) + (noPhoto ? 1 : 0);
   const fitCtx = useMemo(
     () => makeFitContext({ categories: household.categories, rules: household.rules, ingredients: new Map<string, IngredientInfo>(household.ingredients.map((i) => [i.name_norm, i])), synonyms: household.synonyms }),
     [household],
@@ -85,6 +86,7 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
       if (r.is_kid_meal && tag !== "kids") return false;
       if (tag && !r.tags.includes(tag)) return false;
       if (maxPrep && r.prep_min != null && r.prep_min > maxPrep) return false;
+      if (noPhoto && r.image_path) return false;
       return !needle || r.title.toLowerCase().includes(needle) || r.tags.some((t) => t.toLowerCase().includes(needle)) || !!usesIngredient(r, needle);
     });
     if (fits) {
@@ -102,7 +104,7 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
       return a.title.localeCompare(b.title);
     });
     return list;
-  }, [recipes, q, tag, maxPrep, sort, fits, special, storeFocus]);
+  }, [recipes, q, tag, maxPrep, sort, fits, special, storeFocus, noPhoto]);
 
   return (
     <div>
@@ -159,8 +161,8 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
       </div>
       {filterCount > 0 && (
         <p className="mt-1.5 px-6 text-[13px] text-muted">
-          {[storeFocus && `Best at ${stores.find((st) => st.id === storeFocus)?.name}`, maxPrep && `${maxPrep} min or less`, sort !== "az" && SORTS.find((x) => x.value === sort)?.label].filter(Boolean).join(" · ")}
-          <button className="ml-2 font-semibold text-accent" onClick={() => { setStoreFocus(null); setMaxPrep(null); setSort("az"); }}>Clear</button>
+          {[storeFocus && `Best at ${stores.find((st) => st.id === storeFocus)?.name}`, maxPrep && `${maxPrep} min or less`, sort !== "az" && SORTS.find((x) => x.value === sort)?.label, noPhoto && "Needs a photo"].filter(Boolean).join(" · ")}
+          <button className="ml-2 font-semibold text-accent" onClick={() => { setStoreFocus(null); setMaxPrep(null); setSort("az"); setNoPhoto(false); }}>Clear</button>
         </p>
       )}
 
@@ -216,6 +218,9 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
         </Section>
         <Section title="Hands-on time">
           <Segmented value={maxPrep} onChange={setMaxPrep} options={[{ value: null, label: "Any" }, { value: 15, label: "15 min" }, { value: 30, label: "30 min" }, { value: 45, label: "45 min" }]} />
+        </Section>
+        <Section title="Photos">
+          <Chip active={noPhoto} onClick={() => setNoPhoto(!noPhoto)}>Needs a photo</Chip>
         </Section>
         <Section title="Sort">
           <Segmented value={sort} onChange={setSort} options={SORTS} />

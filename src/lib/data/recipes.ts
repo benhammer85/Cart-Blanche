@@ -58,9 +58,9 @@ export function base64ToBlob(b64: string, type = "image/jpeg"): Blob {
  * Upload a recipe photo (resized) and return its public URL.
  * Always a new file name, so no "overwrite" permission is needed.
  */
-export async function uploadRecipeImage(db: SupabaseClient, householdId: string, recipeId: string, image: Blob): Promise<{ url: string | null; error: string | null }> {
+export async function uploadRecipeImage(db: SupabaseClient, householdId: string, recipeId: string, image: Blob, maxPx = 1000): Promise<{ url: string | null; error: string | null }> {
   try {
-    const small = await resizeImage(image);
+    const small = await resizeImage(image, maxPx, 0.85);
     const path = `${householdId}/${recipeId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.jpg`;
     const { error } = await db.storage.from("recipe-images").upload(path, small, { contentType: "image/jpeg", upsert: false, cacheControl: "31536000" });
     if (error) return { url: null, error: error.message };

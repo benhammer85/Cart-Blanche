@@ -128,7 +128,7 @@ export function ListClient() {
   const addStoreId = storeOverride ?? (parsed ? usualStore(parsed.nameNorm) : null) ?? viewing ?? predicted?.storeId ?? stores[0]?.id ?? null;
 
   // Suggestions while typing: "ro" → Rotisserie chicken (Costco).
-  const candidates = useMemo(() => buildCandidates((household?.ingredients ?? []).map((i) => ({ name: i.name_norm, bought: !!i.learned_store_id })), history), [household, history]);
+  const candidates = useMemo(() => buildCandidates((household?.ingredients ?? []).map((i) => ({ name: i.name_norm, bought: !!i.learned_store_id })), history, household?.plannerDefaults.purchaseCounts), [household, history]);
   const typedName = useMemo(() => (text.trim() ? parseIngredientLine(text, {}).name : ""), [text]);
   const suggestions = useMemo(() => {
     const onList = new Set(items.filter((i) => !i.checked && !i.deleted_at).map((i) => i.name_norm ?? i.name.toLowerCase()));

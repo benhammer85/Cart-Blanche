@@ -50,3 +50,12 @@ describe("pages with several recipes", () => {
     expect(d.sourceName).toBe("X");
   });
 });
+
+import { pageImages } from "@/lib/import/pageRecipes";
+describe("a page's photos", () => {
+  test("recipe photos first, then og:image; no logos", () => {
+    const html = `<head><meta property="og:image" content="https://x.test/og.jpg"><meta property="og:image" content="/logo.png">
+      <script type="application/ld+json">{"@graph":[{"@type":"Recipe","name":"A","image":[{"@type":"ImageObject","url":"https://x.test/big.jpg"},"https://x.test/sq.jpg"]}]}</script></head>`;
+    expect(pageImages(html, "https://x.test/r/")).toEqual(["https://x.test/big.jpg", "https://x.test/sq.jpg", "https://x.test/og.jpg"]);
+  });
+});

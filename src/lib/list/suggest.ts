@@ -44,12 +44,12 @@ export function suggestItems(query: string, candidates: SuggestCandidate[], excl
  * Things we buy at a particular store (from receipts or a move) start with a
  * head start, so "ro" offers rotisserie chicken before rosemary.
  */
-export function buildCandidates(known: (string | { name: string; bought?: boolean })[], history: { name: string; name_norm: string | null }[]): SuggestCandidate[] {
+export function buildCandidates(known: (string | { name: string; bought?: boolean })[], history: { name: string; name_norm: string | null }[], receipts: Record<string, number> = {}): SuggestCandidate[] {
   const map = new Map<string, SuggestCandidate>();
   for (const k of known) {
     const n = typeof k === "string" ? k : k.name;
     const bought = typeof k === "string" ? false : !!k.bought;
-    map.set(n, { nameNorm: n, label: n.charAt(0).toUpperCase() + n.slice(1), count: bought ? 3 : 0 });
+    map.set(n, { nameNorm: n, label: n.charAt(0).toUpperCase() + n.slice(1), count: (bought ? 3 : 0) + (receipts[n] ?? 0) });
   }
   for (const h of history) {
     const key = h.name_norm ?? h.name.toLowerCase();
