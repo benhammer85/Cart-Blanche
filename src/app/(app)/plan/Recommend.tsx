@@ -8,6 +8,7 @@ import { RecipeImage } from "@/components/RecipeImage";
 import { StoreBadge } from "@/components/StoreBadge";
 import { fitShare, makeFitContext, onlyAtStores, tripFit, type StoreFit } from "@/lib/trip";
 import { OnlyAtBadge } from "@/components/OnlyAtBadge";
+import { FlipThrough } from "@/components/FlipThrough";
 import { rng, scoreRecipe } from "@/lib/planner/planner";
 import { COOKING_STYLES, cookingStyles, type CookingStyle } from "@/lib/infer";
 import type { HouseholdData } from "@/lib/data/household";
@@ -38,6 +39,7 @@ export function Recommend({
   const [lovedOnly, setLovedOnly] = useState(false);
   const [limit, setLimit] = useState(12);
   const [flash, setFlash] = useState<string | null>(null);
+  const [flipping, setFlipping] = useState(false);
   // Ranking has a little randomness, so build it on the phone only (no server/phone mismatch).
   const [seed, setSeed] = useState<number | null>(null);
   useEffect(() => setSeed(Date.now()), []);
@@ -111,14 +113,38 @@ export function Recommend({
 
   return (
     <section className="mt-6">
-      <div className="mb-3 flex items-start justify-between gap-3 px-1">
-        <div>
-          <h2 className="recipe-title text-[22px] font-semibold">Suggested dinners</h2>
-          <p className="text-[13px] text-muted">Best for {storeNames.length > 2 ? "your stores" : storeNames.join(" & ")}</p>
+      {flipping && (
+        <FlipThrough
+          cards={ranked.slice(0, 40).map(({ r, fit }) => ({
+            id: r.id,
+            title: r.title,
+            image: r.image_path,
+            prepMin: r.prep_min,
+            lines: [
+              lastMadeShort(r.times_made, r.last_made_at),
+              r.tags.includes("Loved") && "loved",
+              r.kid_friendly && "kid-friendly",
+              fit.missing.length > 0 && `also need ${fit.missing.slice(0, 2).join(", ")}`,
+            ].filter(Boolean) as string[],
+          }))}
+          picked={picked}
+          onToggle={onToggle}
+          onClose={() => setFlipping(false)}
+        />
+      )}
+      <div className="mb-3 px-1">
+        <h2 className="recipe-title text-[22px] font-semibold">Suggested dinners</h2>
+        <div className="flex items-center justify-between gap-3">
+          <p className="truncate text-[13px] text-muted">Best for {storeNames.length > 2 ? "your stores" : storeNames.join(" & ")}</p>
+          <div className="-mr-2 flex shrink-0 items-center">
+            <button onClick={() => setFlipping(true)} disabled={!ranked.length} className="h-11 px-2 text-[16px] whitespace-nowrap text-accent disabled:opacity-40">
+              Flip through
+            </button>
+            <button onClick={surprise} disabled={!ranked.length} className="h-11 px-2 text-[16px] whitespace-nowrap text-accent disabled:opacity-40">
+              Pick one
+            </button>
+          </div>
         </div>
-        <button onClick={surprise} disabled={!ranked.length} className="h-9 shrink-0 px-1 text-[16px] whitespace-nowrap text-accent disabled:opacity-40">
-          Pick one
-        </button>
       </div>
       <div className="no-scrollbar -mx-4 mb-2 flex gap-2 overflow-x-auto px-4 pb-1">
         <Chip active={!focus} onClick={() => setFocus(null)}>Your stores</Chip>

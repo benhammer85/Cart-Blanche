@@ -667,60 +667,65 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
                 <ul className="mt-1 list-disc pl-5 text-muted">{suggestions.map((s) => <li key={s}>{s}</li>)}</ul>
               </div>
             )}
-            <div className="card mt-4 px-5 pt-6 pb-2">
-              <div className="text-center">
-                <p className="menu-label text-accent">The menu</p>
-                <p className="recipe-title mt-1 text-[22px] italic">{weekOf()}</p>
-                <div className="menu-rule mt-3"><span className="h-1.5 w-1.5 rotate-45 bg-line" /></div>
-              </div>
-              <DayList
-                ids={slots.map((s) => s.key)}
-                onReorder={(keys) => setSlots(keys.map((k) => slots.find((s) => s.key === k)!))}
-                render={(key, i, handle) => {
-                  const s = slots.find((x) => x.key === key)!;
-                  const r = s.recipeId ? byId.get(s.recipeId) : null;
-                  const prep = r?.prep_min ?? s.draft?.prepMin;
-                  return (
-                    <div className="bg-card pt-4 pb-1">
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className={cx("menu-label", i === 0 ? "text-accent" : "text-muted")}>{dayLabel(i)}</span>
-                        <span className="-my-3 -mr-2 grid h-11 w-11 place-items-center">{handle}</span>
+            <DayList
+              ids={slots.map((s) => s.key)}
+              onReorder={(keys) => setSlots(keys.map((k) => slots.find((s) => s.key === k)!))}
+              render={(key, i, handle) => {
+                const s = slots.find((x) => x.key === key)!;
+                const r = s.recipeId ? byId.get(s.recipeId) : null;
+                const prep = r?.prep_min ?? s.draft?.prepMin;
+                const photo = r?.image_path ?? s.draft?.imageUrl ?? null;
+                const title = (
+                  <>
+                    {s.title}
+                    {s.locked && <IconLock className="ml-1.5 inline align-baseline text-[14px] opacity-70" aria-label="Locked" />}
+                  </>
+                );
+                return (
+                  <div className="card overflow-hidden">
+                    {photo ? (
+                      // The photo leads; day and dish sit on it, like a magazine spread.
+                      <div className="relative aspect-[16/10] bg-soft">
+                        <RecipeImage src={photo} title={s.title} />
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+                        <span className="absolute top-1.5 right-1.5 grid h-11 w-11 place-items-center rounded-full bg-black/25 text-white backdrop-blur [&_button]:text-white">{handle}</span>
+                        <div className="absolute inset-x-0 bottom-0 p-4 text-white">
+                          <p className="menu-label opacity-90">{dayLabel(i)}</p>
+                          <p className="recipe-title mt-0.5 text-[22px] leading-tight font-semibold">{title}</p>
+                        </div>
                       </div>
-                      <div className="flex gap-3">
-                      <div className="min-w-0 flex-1">
-                      <p className="recipe-title mt-1 text-[20px] leading-snug font-semibold">
-                        {s.title}
-                        {s.locked && <IconLock className="ml-1.5 inline align-baseline text-[13px] text-muted" aria-label="Locked" />}
-                      </p>
+                    ) : (
+                      <div className="flex items-start justify-between gap-3 px-4 pt-4">
+                        <div>
+                          <p className={cx("menu-label", i === 0 ? "text-accent" : "text-muted")}>{dayLabel(i)}</p>
+                          <p className="recipe-title mt-0.5 text-[22px] leading-tight font-semibold">{title}</p>
+                        </div>
+                        <span className="-mt-2 -mr-2 grid h-11 w-11 shrink-0 place-items-center">{handle}</span>
+                      </div>
+                    )}
+                    <div className="px-4 pt-2.5">
                       {s.kid ? (
-                        <button onClick={() => cycleKid(i)} className="recipe-title mt-0.5 text-left text-[15px] text-muted italic">
-                          For the kids: {s.kid.title} <span className="not-italic text-accent">↻</span>
+                        <button onClick={() => cycleKid(i)} className="text-left text-[15px]">
+                          <span className="text-muted">Kids:</span> {s.kid.title} <span className="text-accent">↻</span>
                         </button>
                       ) : (
-                        isKidFriendly(s) && <p className="recipe-title mt-0.5 text-[15px] text-muted italic">Everyone eats this</p>
+                        isKidFriendly(s) && <p className="text-[15px] text-muted">Kid-friendly</p>
                       )}
-                      <p className="mt-1 text-[13px] text-muted">
+                      <p className="mt-0.5 text-[13px] text-muted">
                         {[prep != null && `${prep} min`, s.draft && !s.recipeId ? "new recipe" : s.reason].filter(Boolean).join(" · ")}
                       </p>
-                      </div>
-                      {r?.image_path && (
-                        <div className="mt-1 h-16 w-16 shrink-0 overflow-hidden rounded-lg">
-                          <RecipeImage src={r.image_path} title={s.title} />
-                        </div>
-                      )}
-                      </div>
-                      <div className="-mx-2 mt-1 flex text-[15px]">
-                        <button className="h-11 px-2 text-accent disabled:opacity-40" onClick={() => swap(i)} disabled={s.locked || !!busy}>Swap</button>
-                        <button className="h-11 px-2 text-accent" onClick={() => setPicker({ mode: "replace", index: i })}>Change</button>
-                        <button className="h-11 px-2 text-muted" aria-pressed={s.locked} onClick={() => setSlots(slots.map((x, j) => (j === i ? { ...x, locked: !x.locked } : x)))}>{s.locked ? "Unlock" : "Lock"}</button>
-                        <button className="h-11 px-2 text-muted" onClick={() => setSlots(slots.filter((_, j) => j !== i))}>Remove</button>
-                        {s.draft && !s.recipeId && <button className="ml-auto h-11 px-2 font-semibold text-accent" onClick={() => saveDraftToFavorites(i)}>Save</button>}
-                      </div>
                     </div>
-                  );
-                }}
-              />
-            </div>
+                    <div className="mt-1 flex px-2 pb-1 text-[15px]">
+                      <button className="h-11 px-2 text-accent disabled:opacity-40" onClick={() => swap(i)} disabled={s.locked || !!busy}>Swap</button>
+                      <button className="h-11 px-2 text-accent" onClick={() => setPicker({ mode: "replace", index: i })}>Change</button>
+                      <button className="h-11 px-2 text-muted" aria-pressed={s.locked} onClick={() => setSlots(slots.map((x, j) => (j === i ? { ...x, locked: !x.locked } : x)))}>{s.locked ? "Unlock" : "Lock"}</button>
+                      <button className="h-11 px-2 text-muted" onClick={() => setSlots(slots.filter((_, j) => j !== i))}>Remove</button>
+                      {s.draft && !s.recipeId && <button className="ml-auto h-11 px-2 font-semibold text-accent" onClick={() => saveDraftToFavorites(i)}>Save</button>}
+                    </div>
+                  </div>
+                );
+              }}
+            />
             <div className="mt-3 flex gap-2">
               <Button variant="secondary" className="flex-1" onClick={() => setPicker({ mode: "add", index: -1 })}><IconPlus /> Add meal</Button>
               <Button variant="secondary" className="flex-1" onClick={planIt} disabled={!!busy}><IconSwap /> Re-plan</Button>
@@ -863,10 +868,6 @@ function RecipePicker({ recipes, onPick, onClose }: { recipes: PlanRecipe[]; onP
 }
 
 /** "Tonight", "Tomorrow", then weekday names. */
-function weekOf(): string {
-  return `Week of ${new Date().toLocaleDateString(undefined, { month: "long", day: "numeric" })}`;
-}
-
 function dayLabel(i: number): string {
   if (i === 0) return "Tonight";
   if (i === 1) return "Tomorrow";
@@ -891,7 +892,7 @@ function DayList({ ids, onReorder, render }: { ids: string[]; onReorder: (ids: s
       }}
     >
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-        <ul className="mt-2 divide-y divide-line">
+        <ul className="mt-4 space-y-4">
           {ids.map((id, i) => (
             <DayItem key={id} id={id}>
               {(handle) => render(id, i, handle)}

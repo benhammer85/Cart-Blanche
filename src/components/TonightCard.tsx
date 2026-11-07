@@ -96,7 +96,7 @@ export function TonightCard() {
         <div className="min-w-0 flex-1">
           <p className="menu-label text-accent">Tonight</p>
           <p className="recipe-title text-[18px] leading-snug font-semibold">{tonight.title}</p>
-          {kids && <p className="recipe-title text-[15px] text-muted italic">For the kids: {kids.title}</p>}
+          {kids && <p className="text-[14px] text-muted">Kids: {kids.title}</p>}
           {next && <p className="truncate text-[12px] text-muted">Then: {next.title}</p>}
         </div>
       </div>

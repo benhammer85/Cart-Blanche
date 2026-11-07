@@ -127,7 +127,7 @@ export function scoreRecipe(r: PlannerRecipe, p: PlanParams, rand: () => number)
   const days = daysSince(r.last_made_at, today);
   if (days == null) {
     score += 1;
-    reasons.push(r.times_made ? "not made recently" : "new to us");
+    reasons.push(r.times_made ? "not made recently" : "not made yet");
   } else if (days < 21) {
     score -= 3;
     reasons.push(lastMadeShort(r.times_made || 1, r.last_made_at, today));
