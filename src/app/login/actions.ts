@@ -16,5 +16,6 @@ export async function login(_: LoginState, form: FormData): Promise<LoginState> 
   const supabase = await supabaseServer();
   const { error } = await supabase.auth.signInWithPassword({ email, password });
   if (error) return { email, error: "That email and password don’t match." };
-  redirect("/list");
+  const next = String(form.get("next") ?? "");
+  redirect(next.startsWith("/") && !next.startsWith("//") ? next : "/list");
 }

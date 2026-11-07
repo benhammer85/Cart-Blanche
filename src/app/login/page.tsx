@@ -1,6 +1,7 @@
 import { LoginForm } from "./LoginForm";
 
-export default function LoginPage() {
+export default async function LoginPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+  const { next } = await searchParams;
   return (
     <main className="pt-safe mx-auto flex min-h-dvh max-w-md flex-col px-6">
       <div className="mt-[18vh]">
@@ -9,7 +10,7 @@ export default function LoginPage() {
         <h1 className="large-title">Cart Blanche</h1>
         <p className="mt-2 text-[17px] text-muted">Dinner plans and one shared list for the whole family.</p>
       </div>
-      <LoginForm />
+      <LoginForm next={next} />
     </main>
   );
 }

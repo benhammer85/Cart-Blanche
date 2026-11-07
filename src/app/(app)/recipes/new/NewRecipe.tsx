@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { RecipeEditor, emptyDraft } from "@/components/RecipeEditor";
@@ -13,22 +13,32 @@ import type { RecipeDraft } from "@/lib/types";
 
 type Mode = "url" | "paste" | "manual";
 
-export function NewRecipe({ initialMode }: { initialMode: Mode }) {
+export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mode; initialUrl?: string | null }) {
   const router = useRouter();
   const { householdId } = useMembership();
   const [mode, setMode] = useState<Mode>(initialMode);
-  const [url, setUrl] = useState("");
+  const [url, setUrl] = useState(initialUrl ?? "");
   const [paste, setPaste] = useState("");
   const [draft, setDraft] = useState<RecipeDraft | null>(initialMode === "manual" ? emptyDraft() : null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
 
-  async function fetchUrl() {
+  // Opened from the share sheet with a link: read it straight away.
+  const started = useRef(false);
+  useEffect(() => {
+    if (initialUrl && !started.current) {
+      started.current = true;
+      fetchUrl(initialUrl);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialUrl]);
+
+  async function fetchUrl(target = url) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/recipe-from-url", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url }) });
+      const res = await fetch("/api/recipe-from-url", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: target }) });
       const body = await res.json();
       if (!res.ok) throw new Error(body.error ?? "Couldn’t read that page");
       setDraft(body.recipe);

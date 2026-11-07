@@ -24,7 +24,7 @@ export async function proxy(request: NextRequest) {
     if (path.startsWith("/api/")) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    url.search = "";
+    url.search = path === "/" || path === "/list" ? "" : `?next=${encodeURIComponent(path + request.nextUrl.search)}`;
     return NextResponse.redirect(url);
   }
   return response;
