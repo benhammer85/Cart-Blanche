@@ -11,6 +11,7 @@ import { resizeImage } from "@/lib/data/recipes";
 import { parseIngredientLine } from "@/lib/ingredientParser";
 import { buildVocabulary, correctSpelling } from "@/lib/spell";
 import { assignStore, buildKeywordIndex } from "@/lib/list/storeAssign";
+import { buildCandidates, suggestItems } from "@/lib/list/suggest";
 import { formatAmount } from "@/lib/units";
 import type { IngredientInfo, ListItem } from "@/lib/types";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -23,17 +24,18 @@ export function ListClient() {
 
   // Quick-add: the things we add by hand most often (from past lists).
   const [frequent, setFrequent] = useState<string[]>([]);
+  const [history, setHistory] = useState<{ name: string; name_norm: string | null }[]>([]);
   useEffect(() => {
     supabaseBrowser()
       .from("shopping_list_items")
-      .select("name, name_norm")
-      .eq("is_manual", true)
-      .neq("added_by", "Alexa")
+      .select("name, name_norm, is_manual, added_by")
       .order("created_at", { ascending: false })
-      .limit(400)
+      .limit(800)
       .then(({ data }) => {
+        const rows = (data ?? []) as { name: string; name_norm: string | null; is_manual: boolean; added_by: string | null }[];
+        setHistory(rows);
         const counts = new Map<string, { name: string; n: number }>();
-        for (const r of (data ?? []) as { name: string; name_norm: string | null }[]) {
+        for (const r of rows.filter((x) => x.is_manual && x.added_by !== "Alexa")) {
           const key = r.name_norm ?? r.name.toLowerCase();
           const cur = counts.get(key);
           counts.set(key, { name: cur?.name ?? r.name, n: (cur?.n ?? 0) + 1 });
@@ -116,8 +118,37 @@ export function ListClient() {
   const parsed = useMemo(() => (spelled.text.trim() ? parseIngredientLine(spelled.text, household?.synonyms ?? {}) : null), [spelled.text, household]);
   const predicted = useMemo(() => (parsed && assignCtx ? assignStore(parsed.nameNorm, assignCtx) : null), [parsed, assignCtx]);
   const viewing = viewStore !== "all" && stores.some((s) => s.id === viewStore) ? viewStore : null;
-  // When looking at one store, new items go to that store unless you pick another.
-  const addStoreId = storeOverride ?? viewing ?? predicted?.storeId ?? stores[0]?.id ?? null;
+  // Where it usually goes: an item we always buy at one store (rotisserie chicken → Costco) goes there.
+  const usualStore = (nameNorm: string) => {
+    const learned = assignCtx?.ingredients.get(nameNorm)?.learned_store_id;
+    return learned && stores.some((s) => s.id === learned) ? learned : null;
+  };
+  // Otherwise, when looking at one store, new items go to that store unless you pick another.
+  const addStoreId = storeOverride ?? (parsed ? usualStore(parsed.nameNorm) : null) ?? viewing ?? predicted?.storeId ?? stores[0]?.id ?? null;
+
+  // Suggestions while typing: "ro" → Rotisserie chicken (Costco).
+  const candidates = useMemo(() => buildCandidates((household?.ingredients ?? []).map((i) => ({ name: i.name_norm, bought: !!i.learned_store_id })), history), [household, history]);
+  const typedName = useMemo(() => (text.trim() ? parseIngredientLine(text, {}).name : ""), [text]);
+  const suggestions = useMemo(() => {
+    const onList = new Set(items.filter((i) => !i.checked && !i.deleted_at).map((i) => i.name_norm ?? i.name.toLowerCase()));
+    return suggestItems(typedName, candidates, onList).map((c) => {
+      const storeId = storeOverride ?? usualStore(c.nameNorm) ?? (assignCtx ? assignStore(c.nameNorm, assignCtx).storeId : null) ?? viewing;
+      return { ...c, storeId };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [typedName, candidates, items, storeOverride, assignCtx, viewing]);
+  function addSuggestion(sg: (typeof suggestions)[number]) {
+    const p = parseIngredientLine(text, household?.synonyms ?? {});
+    const line = p.qty != null ? `${formatAmount(p.qty, p.unit)} ${sg.label}` : sg.label;
+    const item = makeItem(parseIngredientLine(line, household?.synonyms ?? {}), sg.storeId);
+    if (!item) return;
+    write([item]);
+    if (navigator.vibrate) navigator.vibrate(8);
+    setToast(`Added ${sg.label}${sg.storeId ? ` · ${stores.find((x) => x.id === sg.storeId)?.name}` : ""}`);
+    setText("");
+    setKeepSpelling(false);
+    setStoreOverride(null);
+  }
 
   /** A list row from one parsed line, in the chosen store (or the store our rules pick). */
   function makeItem(parsed: ReturnType<typeof parseIngredientLine>, storeId: string | null): ListItem | null {
@@ -422,6 +453,25 @@ export function ListClient() {
             <button type="button" onClick={() => setKeepSpelling(true)} className="mb-2 ml-1 rounded-full bg-card px-3 py-1.5 text-[13px] shadow-sm ring-1 ring-line">
               Adding as <b>{spelled.corrections.map((c) => c.to).join(", ")}</b>. <span className="text-accent">Keep “{spelled.corrections.map((c) => c.from).join(", ")}”</span>
             </button>
+          )}
+          {suggestions.length > 0 && (
+            <div className="card mb-2 divide-y divide-line overflow-hidden" role="listbox" aria-label="Suggestions">
+              {suggestions.map((sg) => {
+                const st = stores.find((x) => x.id === sg.storeId);
+                return (
+                  <button key={sg.nameNorm} role="option" aria-selected="false" onClick={() => addSuggestion(sg)} className="flex min-h-[48px] w-full items-center gap-3 px-4 text-left active:bg-soft">
+                    <IconPlus className="shrink-0 text-accent" />
+                    <span className="min-w-0 flex-1 truncate text-[16px]">{sg.label}</span>
+                    {st && (
+                      <span className="flex shrink-0 items-center gap-1.5 text-[13px] text-muted">
+                        <StoreBadge name={st.name} size={18} />
+                        {st.name}
+                      </span>
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           )}
           {text.trim() && stores.length > 0 && (
             <div className="no-scrollbar mb-2 flex gap-2 overflow-x-auto px-1">
