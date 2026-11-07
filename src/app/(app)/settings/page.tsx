@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PageHeaderStatic } from "./_sections/Header";
-import { IconChevron, IconLeaf, IconStore, IconUsers, IconX, IconBook, IconSettings } from "@/components/icons";
+import { IconChevron, IconLeaf, IconStore, IconUsers, IconX, IconBook, IconSettings, IconSnow, IconReceipt } from "@/components/icons";
 import type { ReactNode } from "react";
 
 const ITEMS: { href: string; label: string; detail: string; icon: ReactNode; tint: string }[] = [
@@ -9,6 +9,8 @@ const ITEMS: { href: string; label: string; detail: string; icon: ReactNode; tin
   { href: "/settings/rules", label: "Store rules", detail: "Which store gets which category", icon: <IconSettings />, tint: "#8a6de9" },
   { href: "/settings/pantry", label: "Pantry staples", detail: "Never added unless we’re out", icon: <IconLeaf />, tint: "#3a9a5b" },
   { href: "/settings/ingredients", label: "Ingredients", detail: "Categories, bulk pack sizes, synonyms", icon: <IconBook />, tint: "#c98a12" },
+  { href: "/settings/stock", label: "Freezer & bulk stock", detail: "What’s left from Costco packs", icon: <IconSnow />, tint: "#2f9bbf" },
+  { href: "/settings/receipts", label: "Learn from receipts", detail: "Which store we buy each item at", icon: <IconReceipt />, tint: "#6b7a90" },
   { href: "/settings/avoid", label: "Avoid & favorites", detail: "Never-use list, bonus tags", icon: <IconX />, tint: "#d23c3c" },
 ];
 

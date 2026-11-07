@@ -17,6 +17,8 @@ export interface AssignContext {
   rules: CategoryStoreRule[];
   sections: StoreSection[];
   ingredients: Map<string, IngredientInfo>;
+  /** every active store (for "only at" items when that store isn't on the trip) */
+  allStoreIds?: string[];
   /** keyword index: lowercase ingredient names sorted longest first */
   keywordIndex?: string[];
 }
@@ -27,6 +29,8 @@ export interface Assignment {
   categoryId: string | null;
   /** true when nothing matched and it fell back to the first store/Other */
   unknown: boolean;
+  /** only sold at this store (may be a store that isn't on this trip) */
+  onlyAt?: boolean;
 }
 
 export function buildKeywordIndex(ingredients: Map<string, IngredientInfo>): string[] {
@@ -66,6 +70,15 @@ export function assignStore(nameNorm: string, ctx: AssignContext): Assignment {
   const first = ctx.selectedStoreIds[0] ?? null;
   const info = lookupIngredient(nameNorm, ctx);
   const category = info?.category_id ? ctx.categories.find((c) => c.id === info.category_id) ?? null : null;
+
+  // 0. only sold at one store: always that store, even if it isn't on this trip
+  if (info?.only_at && info.learned_store_id && (ctx.allStoreIds ?? ctx.selectedStoreIds).includes(info.learned_store_id)) {
+    const sec =
+      info.learned_section_id && ctx.sections.some((s) => s.id === info.learned_section_id && s.store_id === info.learned_store_id)
+        ? info.learned_section_id
+        : sectionFor(info.learned_store_id, category?.default_section ?? null, ctx);
+    return { storeId: info.learned_store_id, sectionId: sec, categoryId: category?.id ?? null, unknown: false, onlyAt: true };
+  }
 
   // 1. learned
   if (info?.learned_store_id && ctx.selectedStoreIds.includes(info.learned_store_id)) {

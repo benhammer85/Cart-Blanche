@@ -68,7 +68,8 @@ export function storeFit(ingredientNames: string[], storeId: string, ctx: FitCon
     const info = infos[0];
     total++;
     const categoryId = info?.category_id ?? other?.id ?? null;
-    const sells = fullGrocery || info?.learned_store_id === storeId || (categoryId ? usual(categoryId) : true);
+    const elsewhereOnly = !!info?.only_at && !!info.learned_store_id && info.learned_store_id !== storeId;
+    const sells = !elsewhereOnly && (fullGrocery || info?.learned_store_id === storeId || (categoryId ? usual(categoryId) : true));
     if (sells) carried++;
     else missing.push(name);
   }
@@ -78,4 +79,22 @@ export function storeFit(ingredientNames: string[], storeId: string, ctx: FitCon
 /** 0–1 share of what we'd buy that this store carries (1 when nothing to buy). */
 export function fitShare(f: StoreFit): number {
   return f.total ? f.carried / f.total : 1;
+}
+
+/**
+ * Stores a recipe depends on because an ingredient is only sold there
+ * (e.g. Soyaki from Trader Joe's). Returns store ids with the item names.
+ */
+export function onlyAtStores(ingredientNames: string[], ctx: FitContext): { storeId: string; items: string[] }[] {
+  const assignCtx: AssignContext = { selectedStoreIds: [], categories: ctx.categories, rules: ctx.rules, sections: [], ingredients: ctx.ingredients, keywordIndex: ctx.keywordIndex };
+  const out = new Map<string, string[]>();
+  for (const raw of ingredientNames) {
+    const name = ctx.synonyms[raw] ?? raw;
+    const info = lookupIngredient(name, assignCtx);
+    if (!info?.only_at || !info.learned_store_id) continue;
+    const list = out.get(info.learned_store_id) ?? [];
+    if (!list.includes(info.name_norm)) list.push(info.name_norm);
+    out.set(info.learned_store_id, list);
+  }
+  return [...out.entries()].map(([storeId, items]) => ({ storeId, items }));
 }

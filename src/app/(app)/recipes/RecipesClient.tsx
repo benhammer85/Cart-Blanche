@@ -6,7 +6,8 @@ import { Chip, Empty, Segmented, Sheet, cx } from "@/components/ui";
 import { Discover } from "./Discover";
 import { RecipeImage } from "@/components/RecipeImage";
 import { StoreBadge } from "@/components/StoreBadge";
-import { fitShare, makeFitContext, storeFit, type StoreFit } from "@/lib/trip";
+import { fitShare, makeFitContext, onlyAtStores, storeFit, type StoreFit } from "@/lib/trip";
+import { OnlyAtBadge } from "@/components/OnlyAtBadge";
 import type { HouseholdData } from "@/lib/data/household";
 import type { IngredientInfo } from "@/lib/types";
 import { IconBook, IconChat, IconClock, IconLink, IconPencil, IconPlus, IconSearch, IconShare, IconUpload, IconDice } from "@/components/icons";
@@ -53,6 +54,7 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
     () => makeFitContext({ categories: household.categories, rules: household.rules, ingredients: new Map<string, IngredientInfo>(household.ingredients.map((i) => [i.name_norm, i])), synonyms: household.synonyms }),
     [household],
   );
+  const special = useMemo(() => new Map(recipes.map((r) => [r.id, onlyAtStores((r.recipe_ingredients ?? []).map((i) => i.name_norm), fitCtx)])), [recipes, fitCtx]);
   const fits = useMemo(() => {
     if (!storeFocus) return null;
     return new Map(recipes.map((r) => [r.id, storeFit((r.recipe_ingredients ?? []).map((i) => i.name_norm), storeFocus, fitCtx)]));
@@ -75,10 +77,12 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
       return !needle || r.title.toLowerCase().includes(needle) || r.tags.some((t) => t.toLowerCase().includes(needle));
     });
     if (fits) {
+      // Recipes that use something only this store sells come first among equals.
+      const fitRank = (r: RecipeCard) => fitShare(fits.get(r.id)!) + ((special.get(r.id) ?? []).some((x) => x.storeId === storeFocus) ? 0.15 : 0);
       // Store view: dinners and lunches only, best fit first.
       return list
         .filter((r) => !r.is_kid_meal && r.meal_types.some((t) => t === "dinner" || t === "lunch"))
-        .sort((a, b) => fitShare(fits.get(b.id)!) - fitShare(fits.get(a.id)!) || a.title.localeCompare(b.title));
+        .sort((a, b) => fitRank(b) - fitRank(a) || a.title.localeCompare(b.title));
     }
     list = [...list].sort((a, b) => {
       if (sort === "stale") return (a.last_made_at ?? "0000").localeCompare(b.last_made_at ?? "0000");
@@ -87,7 +91,7 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
       return a.title.localeCompare(b.title);
     });
     return list;
-  }, [recipes, q, tag, maxPrep, sort, fits]);
+  }, [recipes, q, tag, maxPrep, sort, fits, special, storeFocus]);
 
   return (
     <div>
@@ -177,6 +181,11 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
                 {(r.kid_friendly || r.is_kid_meal) && (
                   <span className="absolute top-2 left-2 rounded-full bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur">{r.is_kid_meal ? "Kids’ menu" : "Kid-friendly"}</span>
                 )}
+                {(() => {
+                  const sp = special.get(r.id)?.[0];
+                  const st = sp && stores.find((s) => s.id === sp.storeId);
+                  return st ? <OnlyAtBadge store={st.name} items={sp.items} /> : null;
+                })()}
               </div>
               <p className="recipe-title mt-2 line-clamp-2 px-0.5 text-[16px] leading-snug font-semibold">{r.title}</p>
               <p className="flex items-center gap-1 px-0.5 text-[12px] text-muted">

@@ -5,7 +5,8 @@ import { Chip, cx } from "@/components/ui";
 import { IconCheck, IconClock, IconDice, IconUpload } from "@/components/icons";
 import { RecipeImage } from "@/components/RecipeImage";
 import { StoreBadge } from "@/components/StoreBadge";
-import { fitShare, makeFitContext, tripFit, type StoreFit } from "@/lib/trip";
+import { fitShare, makeFitContext, onlyAtStores, tripFit, type StoreFit } from "@/lib/trip";
+import { OnlyAtBadge } from "@/components/OnlyAtBadge";
 import { rng, scoreRecipe } from "@/lib/planner/planner";
 import { COOKING_STYLES, cookingStyles, type CookingStyle } from "@/lib/infer";
 import type { HouseholdData } from "@/lib/data/household";
@@ -49,6 +50,7 @@ export function Recommend({
     () => makeFitContext({ categories: household.categories, rules: household.rules, ingredients: new Map<string, IngredientInfo>(household.ingredients.map((i) => [i.name_norm, i])), synonyms: household.synonyms }),
     [household],
   );
+  const special = useMemo(() => new Map(recipes.map((r) => [r.id, onlyAtStores(r.recipe_ingredients.map((i) => i.name_norm), ctx)])), [recipes, ctx]);
   const stylesOf = useMemo(() => new Map(recipes.map((r) => [r.id, cookingStyles(r.title, r.tags, r.steps ?? [])])), [recipes]);
 
   const adultRecipes = recipes.filter((r) => !r.is_kid_meal);
@@ -72,11 +74,13 @@ export function Recommend({
           rand,
         );
         const unknownTime = maxPrep != null && r.prep_min == null;
-        return { r, fit, rank: Math.round(fitShare(fit) * 10) * 100 + score - (unknownTime ? 50 : 0) };
+        // Recipes built around something only this store sells are what a trip there is for.
+        const signature = (special.get(r.id) ?? []).some((x) => shownIds.includes(x.storeId)) ? 150 : 0;
+        return { r, fit, rank: Math.round(fitShare(fit) * 10) * 100 + score + signature - (unknownTime ? 50 : 0) };
       })
       .sort((a, b) => b.rank - a.rank);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recipes, focus, storeIds, mealTypes, maxPrep, kidsOnly, lovedOnly, styles, ctx, household, seed, stylesOf]);
+  }, [recipes, focus, storeIds, mealTypes, maxPrep, kidsOnly, lovedOnly, styles, ctx, household, seed, stylesOf, special]);
 
   /** Pick a random dinner from the best matches that isn't picked yet. */
   function surprise() {
@@ -147,6 +151,11 @@ export function Recommend({
                     <IconCheck strokeWidth={3} />
                   </span>
                   {r.tags.includes("Loved") && <span className="absolute top-2 left-2 rounded-full bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur">♥</span>}
+                  {(() => {
+                    const sp = special.get(r.id)?.[0];
+                    const st = sp && allStores.find((s) => s.id === sp.storeId);
+                    return st ? <OnlyAtBadge store={st.name} items={sp.items} /> : null;
+                  })()}
                 </div>
                 <p className="recipe-title mt-1.5 line-clamp-2 px-0.5 text-[15px] leading-snug font-semibold">{r.title}</p>
                 <p className="flex items-center gap-1 px-0.5 text-[12px] text-muted">

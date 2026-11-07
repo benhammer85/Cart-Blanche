@@ -9,6 +9,7 @@
 import { assignStore, buildKeywordIndex, lookupIngredient, type AssignContext } from "./storeAssign";
 import { formatAmount, fromBase, mergeKey, toBase, unitDimension, niceFraction, round } from "../units";
 import { normalizeName } from "../normalize";
+import { parsePack, planPacks, useStock, type Amount } from "./bulk";
 import type { IngredientInfo, RecipeIngredient, Store } from "../types";
 
 export interface PlannedMealForList {
@@ -37,11 +38,21 @@ export interface DraftListItem {
   sourceMeals: { title: string; recipeId: string | null }[];
   /** true if it's a pantry staple marked "we're out" */
   wasOut: boolean;
+  /** only sold at its store */
+  onlyAt?: boolean;
+  /** taken from bulk/freezer stock (nothing or less to buy) */
+  fromStock?: Amount | null;
+  /** fully covered by stock: nothing to buy */
+  coveredByStock?: boolean;
+  /** what a bulk pack leaves over, to go into stock */
+  leftover?: Amount | null;
 }
 
 export interface BuildListOptions extends Omit<AssignContext, "keywordIndex"> {
   stores: Store[];
   synonyms: Record<string, string>;
+  /** what's left from bulk packs / in the freezer, by name */
+  stock?: Map<string, Amount>;
 }
 
 interface Acc {
@@ -127,25 +138,64 @@ export function buildShoppingList(meals: PlannedMealForList[], opts: BuildListOp
         parts.push({ qty: q, unit: u });
       }
     }
-    const assignment = assignStore(g.nameNorm, ctx);
+    const assignment = assignStore(g.nameNorm, { ...ctx, allStoreIds: ctx.allStoreIds ?? opts.stores.filter((s) => !s.archived).map((s) => s.id) });
     const info = lookupIngredient(g.nameNorm, ctx);
     const store = opts.stores.find((s) => s.id === assignment.storeId);
-    // Only mention bulk packs when we know the size (otherwise it's just noise).
-    const note = store?.is_bulk && info?.pack_size ? `Bulk pack: ${info.pack_size}` : null;
+    const notes: string[] = [];
+    let need: Amount | null = parts.length === 1 ? { qty: parts[0].qty, unit: parts[0].unit } : null;
+
+    // 1. Use what's in the freezer / left from a bulk pack first.
+    let fromStock: Amount | null = null;
+    let coveredByStock = false;
+    const have = opts.stock?.get(g.nameNorm);
+    if (need && have) {
+      const use = useStock(need, have);
+      if (use) {
+        fromStock = use.used;
+        if (!use.toBuy) {
+          coveredByStock = true;
+          notes.push(`Use ${formatAmount(use.used.qty, use.used.unit)} from stock`);
+        } else {
+          notes.push(`${formatAmount(use.used.qty, use.used.unit)} from stock`);
+          need = use.toBuy;
+        }
+      }
+    }
+
+    // 2. Bulk store: how far does a pack go?
+    let leftover: Amount | null = null;
+    if (!coveredByStock && store?.is_bulk && info?.pack_size) {
+      const pack = parsePack(info.pack_size);
+      const plan = need && pack ? planPacks(need, pack) : null;
+      if (plan && pack) {
+        leftover = plan.leftover;
+        notes.push(
+          `${plan.packs > 1 ? `${plan.packs} packs` : "Pack"} ≈ ${formatAmount(pack.qty * plan.packs, pack.unit)}` +
+            (leftover ? `, ${formatAmount(leftover.qty, leftover.unit)} left to freeze` : ""),
+        );
+      } else notes.push(`Bulk pack: ${info.pack_size}`);
+    }
+    if (assignment.onlyAt && store) notes.push(`Only at ${store.name}`);
+
+    const shown = need && fromStock && !coveredByStock ? [need] : parts;
     items.push({
       key: g.nameNorm,
       name: g.name,
       nameNorm: g.nameNorm,
-      qty: parts.length === 1 ? parts[0].qty : null,
-      unit: parts.length === 1 ? parts[0].unit : null,
-      displayQty: parts.map((p) => formatAmount(p.qty, p.unit) || String(p.qty)).join(" + "),
+      qty: shown.length === 1 ? shown[0].qty : null,
+      unit: shown.length === 1 ? shown[0].unit : null,
+      displayQty: shown.map((p) => formatAmount(p.qty, p.unit) || String(p.qty)).join(" + "),
       storeId: assignment.storeId,
       sectionId: assignment.sectionId,
       categoryId: assignment.categoryId,
       unknown: assignment.unknown,
-      note,
+      note: notes.join(" · ") || null,
       sourceMeals: [...g.meals.values()],
       wasOut: outStaples.has(g.nameNorm),
+      onlyAt: assignment.onlyAt,
+      fromStock,
+      coveredByStock,
+      leftover,
     });
   }
   return items.sort((a, b) => a.name.localeCompare(b.name));

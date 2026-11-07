@@ -68,7 +68,36 @@ describe("store assignment", () => {
       [{ key: "a", title: "A", recipeId: "a", baseServings: 4, servings: 4, ingredients: [{ qty: 2, qty_max: null, unit: "lb", name: "chicken thigh", name_norm: "chicken thigh", raw_text: "", parsed_ok: true }] }],
       { ...c, stores: [{ id: "costco", name: "Costco", location: null, sort_order: 0, is_bulk: true, archived: false }], synonyms: {} },
     );
-    expect(items[0].note).toBe("Bulk pack: ~6 lb");
+    expect(items[0].note).toBe("Pack ≈ 6 lb, 4 lb left to freeze");
+    expect(items[0].leftover).toEqual({ qty: 4, unit: "lb" });
+  });
+
+  const meal = (qty: number, unit: string, name: string) => ({
+    key: "a", title: "A", recipeId: "a", baseServings: 4, servings: 4,
+    ingredients: [{ qty, qty_max: null, unit, name, name_norm: name, raw_text: "", parsed_ok: true }],
+  });
+  const stores = [
+    { id: "costco", name: "Costco", location: null, sort_order: 0, is_bulk: true, archived: false },
+    { id: "tj", name: "Trader Joe's", location: null, sort_order: 1, is_bulk: false, archived: false },
+    { id: "mb", name: "Market Basket", location: null, sort_order: 2, is_bulk: false, archived: false },
+  ];
+
+  test("freezer stock is used first", () => {
+    const c = ctx(["costco"], [info("chicken thigh", "meat", { pack_size: "~6 lb" })]);
+    const covered = buildShoppingList([meal(1.5, "lb", "chicken thigh")], { ...c, stores, synonyms: {}, stock: new Map([["chicken thigh", { qty: 4.5, unit: "lb" }]]) });
+    expect(covered[0].coveredByStock).toBe(true);
+    expect(covered[0].note).toBe("Use 1½ lb from stock");
+    const partly = buildShoppingList([meal(2, "lb", "chicken thigh")], { ...c, stores, synonyms: {}, stock: new Map([["chicken thigh", { qty: 0.5, unit: "lb" }]]) });
+    expect(partly[0].coveredByStock).toBe(false);
+    expect(partly[0].displayQty).toBe("1½ lb");
+    expect(partly[0].note).toContain("½ lb from stock");
+  });
+
+  test("only-at items go to their store even when it isn't on the trip", () => {
+    const c = ctx(["costco", "mb"], [info("soyaki", "produce", { learned_store_id: "tj", only_at: true })]);
+    const items = buildShoppingList([meal(1, "each", "soyaki")], { ...c, stores, synonyms: {} });
+    expect(items[0]).toMatchObject({ storeId: "tj", onlyAt: true });
+    expect(items[0].note).toBe("Only at Trader Joe's");
   });
 });
 

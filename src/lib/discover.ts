@@ -101,11 +101,17 @@ export interface DiscoverFilters {
   kidFriendly?: boolean;
   style?: string | null;
   extra?: string | null;
+  /** filled in on the server: what we buy at the chosen store, in our words */
+  storeNotes?: string | null;
+  /** filled in on the server: products we can only get at the chosen store */
+  storeOnly?: string[];
 }
 
 export function buildDiscoverPrompt(p: TasteProfile, f: DiscoverFilters, kidAges: number[], avoid: string[], have: string[]): string {
   const wants = [
     f.store && `ingredients that are easy to buy at ${f.store} in one trip. ${storeStyle(f.store)}`,
+    f.store && f.storeNotes && `what we usually buy at ${f.store}: ${f.storeNotes.slice(0, 400)}`,
+    f.store && f.storeOnly?.length && `recipes that use products we get only at ${f.store} are especially welcome: ${f.storeOnly.slice(0, 15).join(", ")}`,
     f.maxMinutes && `about ${f.maxMinutes} minutes of hands-on time or less`,
     f.kidFriendly && `kid-friendly for children aged ${kidAges.join(" and ") || "4 to 6"}`,
     f.style && `cooked as ${f.style}`,

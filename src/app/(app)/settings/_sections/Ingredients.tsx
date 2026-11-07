@@ -64,7 +64,7 @@ export function IngredientsSettings() {
                       <span className="flex-1">
                         <span className="block text-[16px] capitalize">{i.name_norm}</span>
                         <span className="block text-[12px] text-muted">
-                          {[catName(i.category_id), i.is_staple && "staple", storeName(i.learned_store_id) && `always ${storeName(i.learned_store_id)}`, i.pack_size && `pack ${i.pack_size}`].filter(Boolean).join(" · ")}
+                          {[catName(i.category_id), i.is_staple && "staple", storeName(i.learned_store_id) && `${i.only_at ? "only at" : "always"} ${storeName(i.learned_store_id)}`, i.pack_size && `pack ${i.pack_size}`].filter(Boolean).join(" · ")}
                         </span>
                       </span>
                       <IconChevron className="text-muted" />
@@ -129,7 +129,9 @@ function IngredientSheet({ row, categories, stores, onClose, onDelete }: {
   const [staple, setStaple] = useState(row.is_staple);
   const [pack, setPack] = useState(row.pack_size ?? "");
   const [store, setStore] = useState(row.learned_store_id ?? "");
+  const [onlyAt, setOnlyAt] = useState(!!row.only_at);
   const patch = () => ({
+    ...(onlyAt !== !!row.only_at || onlyAt ? { only_at: onlyAt && !!store } : {}),
     category_id: cat || null,
     is_staple: staple,
     pack_size: pack.trim() || null,
@@ -153,6 +155,15 @@ function IngredientSheet({ row, categories, stores, onClose, onDelete }: {
             {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
           </Select>
         </label>
+        {store && (
+          <div className="card flex items-center justify-between px-4 py-3">
+            <span>
+              <span className="block text-[17px]">Only sold there</span>
+              <span className="block text-[13px] text-muted">Goes to {stores.find((s) => s.id === store)?.name} even when it isn’t on the trip</span>
+            </span>
+            <Toggle checked={onlyAt} onChange={setOnlyAt} label="Only sold there" />
+          </div>
+        )}
         <TextField value={pack} onChange={(e) => setPack(e.target.value)} placeholder="Bulk pack size (e.g. 6 lb)" aria-label="Bulk pack size" />
         <div className="card flex items-center justify-between px-4 py-3">
           <span className="text-[17px]">Pantry staple</span>

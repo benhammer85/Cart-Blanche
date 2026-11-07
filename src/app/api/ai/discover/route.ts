@@ -29,7 +29,9 @@ export async function POST(request: NextRequest) {
   const member = await getMembershipFor(user);
   const ai = getAiProvider();
   if (!ai || !member) return NextResponse.json({ ok: false, error: "Discover needs the Gemini key." });
-  const filters = (await request.json().catch(() => ({}))) as DiscoverFilters;
+  const body = (await request.json().catch(() => ({}))) as DiscoverFilters;
+  // Only take the filters the page sends; store details are looked up here.
+  const filters: DiscoverFilters = { store: body.store ?? null, maxMinutes: body.maxMinutes ?? null, kidFriendly: !!body.kidFriendly, style: body.style ?? null };
 
   const [{ data: recipes }, { data: people }, { data: settings }, { data: syn }, { data: members }] = await Promise.all([
     db.from("recipes").select("title, tags, main_protein, kid_friendly, times_made, source_url, is_kid_meal").eq("archived", false),
@@ -50,6 +52,14 @@ export async function POST(request: NextRequest) {
     mine.map((r) => ({ ...r, title: scrub(r.title), tags: r.tags })),
     (settings?.bonus_tags as string[] | undefined) ?? [],
   );
+  if (filters.store) {
+    const { data: st } = await db.from("stores").select("*").eq("name", filters.store).eq("archived", false).maybeSingle();
+    if (st) {
+      filters.storeNotes = typeof st.notes === "string" && st.notes.trim() ? scrub(st.notes.trim()) : null;
+      const { data: only } = await db.from("ingredients").select("name_norm").eq("learned_store_id", st.id).eq("only_at", true).limit(30);
+      filters.storeOnly = ((only ?? []) as { name_norm: string }[]).map((o) => o.name_norm);
+    }
+  }
   const prompt = buildDiscoverPrompt(
     profile,
     filters,

@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { StoreBadge } from "@/components/StoreBadge";
 import { useHousehold } from "@/lib/data/useHousehold";
-import { Button, PageHeader, Section, Sheet, TextField, Toggle } from "@/components/ui";
+import { Button, PageHeader, Section, Sheet, TextArea, TextField, Toggle } from "@/components/ui";
 import { SortableList } from "@/components/SortableList";
 import { IconChevron, IconPlus, IconTrash } from "@/components/icons";
 import type { Store, StoreSection } from "@/lib/types";
@@ -67,11 +67,16 @@ function StoreSheet({ store, sections: initial, onClose }: { store: Store; secti
   const [name, setName] = useState(store.name);
   const [location, setLocation] = useState(store.location ?? "");
   const [bulk, setBulk] = useState(store.is_bulk);
+  const [notes, setNotes] = useState(store.notes ?? "");
   const [sections, setSections] = useState(initial);
   const [newSection, setNewSection] = useState("");
 
   async function save() {
     await db.from("stores").update({ name: name.trim() || store.name, location: location.trim() || null, is_bulk: bulk }).eq("id", store.id);
+    if ((notes.trim() || null) !== (store.notes ?? null)) {
+      // Separate update so an older database without the column still saves the rest.
+      await db.from("stores").update({ notes: notes.trim() || null }).eq("id", store.id);
+    }
     onClose();
   }
   async function reorder(next: StoreSection[]) {
@@ -106,6 +111,17 @@ function StoreSheet({ store, sections: initial, onClose }: { store: Store; secti
           </span>
           <Toggle checked={bulk} onChange={setBulk} label="Bulk store" />
         </div>
+        <label className="block">
+          <span className="mb-1 block px-1 text-[13px] text-muted">What we buy here</span>
+          <TextArea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            rows={3}
+            placeholder="e.g. Soyaki, Mandarin orange chicken, frozen dumplings, cheap flowers"
+            aria-label="What we buy here"
+          />
+          <span className="mt-1 block px-1 text-[12px] text-muted">Used by Discover to find recipes that suit this store.</span>
+        </label>
         <Section title="Aisle order (the way we walk the store)">
           <SortableList
             items={sections}

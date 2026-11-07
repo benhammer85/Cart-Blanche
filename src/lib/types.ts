@@ -77,6 +77,8 @@ export interface Store {
   sort_order: number;
   is_bulk: boolean;
   archived: boolean;
+  /** what we buy there, in our own words (used by Discover) */
+  notes?: string | null;
 }
 
 export interface StoreSection {
@@ -108,6 +110,8 @@ export interface IngredientInfo {
   pack_size: string | null;
   learned_store_id: string | null;
   learned_section_id: string | null;
+  /** only sold at learned_store_id (e.g. Trader Joe's Soyaki) */
+  only_at?: boolean;
 }
 
 export interface Person {

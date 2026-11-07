@@ -5,8 +5,8 @@ import { StoreBadge, storeBadgeStyle } from "@/components/StoreBadge";
 import { TonightCard } from "@/components/TonightCard";
 import { useMembership } from "@/components/AppShell";
 import { useSharedList } from "@/lib/offline/useSharedList";
-import { Button, Chip, Empty, Select, Sheet, TextArea, TextField, Toast, cx } from "@/components/ui";
-import { IconCart, IconCheck, IconCopy, IconPlus, IconTrash, IconWifiOff, IconChevron, IconUpload, IconPencil, IconLeaf } from "@/components/icons";
+import { Button, Chip, Empty, Select, Sheet, TextArea, TextField, Toast, Toggle, cx } from "@/components/ui";
+import { IconCart, IconCheck, IconCopy, IconPlus, IconTrash, IconWifiOff, IconChevron, IconUpload, IconPencil, IconLeaf, IconSnow } from "@/components/icons";
 import { resizeImage } from "@/lib/data/recipes";
 import { parseIngredientLine } from "@/lib/ingredientParser";
 import { buildVocabulary, correctSpelling } from "@/lib/spell";
@@ -468,6 +468,9 @@ export function ListClient() {
           <Link href="/settings/pantry" className="flex h-14 w-full items-center gap-3 px-4 text-left text-[17px]" onClick={() => setMenu(false)}>
             <IconLeaf className="text-muted" /> Pantry staples we’re out of
           </Link>
+          <Link href="/settings/stock" className="flex h-14 w-full items-center gap-3 px-4 text-left text-[17px]" onClick={() => setMenu(false)}>
+            <IconSnow className="text-muted" /> Freezer & bulk stock
+          </Link>
         </div>
         <div className="card divide-y divide-line overflow-hidden">
           <button className="flex h-14 w-full items-center gap-3 px-4 text-left text-[17px]" onClick={() => { copy(groups.map(storeText).join("\n\n"), "Whole list"); setMenu(false); }}>
@@ -519,10 +522,17 @@ export function ListClient() {
           onClose={() => setEditing(null)}
           stores={stores}
           sections={sections}
-          onSave={async (next, learn) => {
+          onlyAt={!!household.ingredients.find((i) => i.name_norm === editing.name_norm)?.only_at}
+          onSave={async (next, learn, onlyAt) => {
             write([next]);
             setEditing(null);
-            if (learn && next.name_norm) {
+            if (onlyAt !== undefined && next.name_norm) {
+              const db = supabaseBrowser();
+              await db.from("ingredients").upsert(
+                { household_id: me.householdId, name_norm: next.name_norm, learned_store_id: next.store_id, learned_section_id: next.section_id, only_at: onlyAt },
+                { onConflict: "household_id,name_norm" },
+              );
+            } else if (learn && next.name_norm) {
               // Remember this store/section for next time.
               const db = supabaseBrowser();
               await db.from("ingredients").upsert(
@@ -619,6 +629,7 @@ function EditItemSheet({
   item,
   stores,
   sections,
+  onlyAt: onlyAtInitial,
   onClose,
   onSave,
   onDelete,
@@ -626,8 +637,9 @@ function EditItemSheet({
   item: ListItem;
   stores: { id: string; name: string }[];
   sections: { id: string; store_id: string; name: string }[];
+  onlyAt: boolean;
   onClose: () => void;
-  onSave: (next: ListItem, learn: boolean) => void;
+  onSave: (next: ListItem, learn: boolean, onlyAt?: boolean) => void;
   onDelete: () => void;
 }) {
   const [name, setName] = useState(item.name);
@@ -638,6 +650,7 @@ function EditItemSheet({
   const sectionOk = storeSections.some((s) => s.id === sectionId);
   const effectiveSection = sectionOk ? sectionId : storeSections.find((s) => s.name === "Other")?.id ?? storeSections[0]?.id ?? null;
   const moved = storeId !== item.store_id || effectiveSection !== item.section_id;
+  const [onlyAt, setOnlyAt] = useState(onlyAtInitial);
 
   return (
     <Sheet open onClose={onClose} title="Edit item">
@@ -664,6 +677,15 @@ function EditItemSheet({
         {item.source_meals?.length > 0 && (
           <p className="px-1 text-[14px] text-muted">Needed for: {item.source_meals.map((m) => m.title).join(", ")}</p>
         )}
+        {item.name_norm && storeId && (
+          <div className="card flex items-center justify-between px-4 py-3">
+            <span>
+              <span className="block text-[17px]">Only sold at {stores.find((s) => s.id === storeId)?.name}</span>
+              <span className="block text-[13px] text-muted">Always goes here, even when we aren’t planning a trip</span>
+            </span>
+            <Toggle checked={onlyAt} onChange={setOnlyAt} label="Only sold at this store" />
+          </div>
+        )}
         {moved && <p className="px-1 text-[13px] text-muted">We’ll remember this store for “{item.name_norm ?? name}” next time.</p>}
         <div className="flex gap-2 pt-2">
           <Button variant="danger" onClick={onDelete} aria-label="Delete item">
@@ -672,7 +694,7 @@ function EditItemSheet({
           <Button
             className="flex-1"
             onClick={() =>
-              onSave({ ...item, name: name.trim() || item.name, display_qty: qty.trim() || null, store_id: storeId, section_id: effectiveSection }, moved)
+              onSave({ ...item, name: name.trim() || item.name, display_qty: qty.trim() || null, store_id: storeId, section_id: effectiveSection }, moved, onlyAt !== onlyAtInitial || (onlyAt && moved) ? onlyAt : undefined)
             }
           >
             Save

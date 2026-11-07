@@ -18,6 +18,7 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import { saveRecipe } from "@/lib/data/recipes";
 import { PLAN_INBOX_KEY } from "@/lib/planInbox";
 import { addQty, formatAmount, round } from "@/lib/units";
+import { addStock, useStock as takeFromStock, type Amount } from "@/lib/list/bulk";
 import type { HouseholdData } from "@/lib/data/household";
 import type { IngredientInfo, ListItem, MealType, PlannerDefaults, RecipeDraft, RecipeIngredient } from "@/lib/types";
 
@@ -81,6 +82,7 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
   const [toast, setToast] = useState<string | null>(null);
   const [seed, setSeed] = useState(() => Date.now());
   const [addingStore, setAddingStore] = useState(false);
+  const [stock, setStock] = useState<Map<string, Amount>>(new Map());
 
   const byId = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
   const plannerRecipes: PlannerRecipe[] = useMemo(
@@ -94,6 +96,22 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
 
   useEffect(() => {
     fetch("/api/ai/plan").then((r) => r.json()).then(setAi).catch(() => {});
+  }, []);
+
+  // What's left from bulk packs / in the freezer: plan around it and use it first.
+  useEffect(() => {
+    db.from("bulk_stock")
+      .select("name_norm, qty, unit")
+      .then(({ data, error }) => {
+        if (error || !data) return;
+        const m = new Map<string, Amount>();
+        for (const r of data as { name_norm: string; qty: number; unit: string | null }[]) {
+          if (Number(r.qty) > 0) m.set(r.name_norm, { qty: Number(r.qty), unit: r.unit ?? "each" });
+        }
+        setStock(m);
+        if (m.size) setUseUp((cur) => (cur.length ? cur : [...m.keys()].slice(0, 6)));
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Seed slots from "Repeat this week" or the Claude bridge inbox.
@@ -312,8 +330,9 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
       sections: household.sections,
       ingredients,
       synonyms: household.synonyms,
+      stock,
     });
-    setPreview(items.map((i) => ({ ...i, have: false, moved: false })));
+    setPreview(items.map((i) => ({ ...i, have: !!i.coveredByStock, moved: false })));
     setStep("list");
   }
 
@@ -402,6 +421,38 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
       }
       const outStaples = preview.filter((x) => x.wasOut && !x.have).map((x) => x.nameNorm);
       if (outStaples.length) await db.from("ingredients").update({ is_out: false }).in("name_norm", outStaples);
+
+      // 5. Stock: take out what the plan uses, add what new bulk packs leave over.
+      try {
+        const next = new Map(stock);
+        const touched = new Set<string>();
+        for (const it of preview) {
+          const cur = next.get(it.nameNorm);
+          if (it.fromStock && cur && (!it.coveredByStock || it.have)) {
+            const use = takeFromStock(it.fromStock, cur);
+            if (use) {
+              if (use.remaining) next.set(it.nameNorm, use.remaining);
+              else next.delete(it.nameNorm);
+              touched.add(it.nameNorm);
+            }
+          }
+          if (!it.have && it.leftover) {
+            next.set(it.nameNorm, addStock(next.get(it.nameNorm) ?? null, it.leftover));
+            touched.add(it.nameNorm);
+          }
+        }
+        const keep = [...touched].filter((n) => next.has(n));
+        const gone = [...touched].filter((n) => !next.has(n));
+        if (keep.length) {
+          await db.from("bulk_stock").upsert(
+            keep.map((n) => ({ household_id: me.householdId, name_norm: n, qty: next.get(n)!.qty, unit: next.get(n)!.unit, updated_at: now })),
+            { onConflict: "household_id,name_norm" },
+          );
+        }
+        if (gone.length) await db.from("bulk_stock").delete().in("name_norm", gone);
+      } catch {
+        /* stock is a convenience; never block the list */
+      }
 
       router.push("/list");
     } catch (e) {
@@ -677,7 +728,7 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
 
         {step === "list" && (
           <>
-            {orderedStoreIds.map((sid) => {
+            {[...orderedStoreIds, ...new Set(preview.map((x) => x.storeId).filter((id): id is string => !!id && !orderedStoreIds.includes(id)))].map((sid) => {
               const items = preview.filter((x) => x.storeId === sid);
               if (!items.length) return null;
               return (
@@ -691,7 +742,7 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
                 </section>
               );
             })}
-            <p className="mt-3 px-1 text-[13px] text-muted">Tick anything we already have. Use Move to switch stores and it will stick next time.</p>
+            <p className="mt-3 px-1 text-[13px] text-muted">Tick anything we already have. Items the freezer already covers are ticked for you. Use Move to switch stores and it will stick next time.</p>
             <Button size="lg" className="mt-4 w-full" onClick={sendToList} disabled={!!busy}>{busy ?? `Send ${preview.filter((i) => !i.have).length} items to the list`}</Button>
           </>
         )}
