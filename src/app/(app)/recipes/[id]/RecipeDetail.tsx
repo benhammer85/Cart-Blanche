@@ -130,6 +130,11 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
           </a>
         )}
 
+        {(r.steps ?? []).some((x) => !x.isSection) && (
+          <Link href={`/recipes/${r.id}/cook`} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-accent text-[16px] font-semibold text-accent-ink shadow-sm">
+            Start cooking
+          </Link>
+        )}
         <div className="mt-5 flex rounded-xl bg-soft p-1">
           {(["ingredients", "steps"] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)} className={cx("h-9 flex-1 rounded-lg text-[15px] font-semibold capitalize", tab === t ? "bg-card shadow-sm" : "text-muted")}>

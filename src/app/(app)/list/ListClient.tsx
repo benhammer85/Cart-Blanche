@@ -1,6 +1,7 @@
 "use client";
-import { useMemo, useState } from "react";
-import { StoreBadge } from "@/components/StoreBadge";
+import { useMemo, useRef, useState } from "react";
+import { StoreBadge, storeBadgeStyle } from "@/components/StoreBadge";
+import { TonightCard } from "@/components/TonightCard";
 import { useMembership } from "@/components/AppShell";
 import { useSharedList } from "@/lib/offline/useSharedList";
 import { Button, Chip, Empty, Select, Sheet, TextArea, TextField, Toast, cx } from "@/components/ui";
@@ -134,6 +135,15 @@ export function ListClient() {
   function toggle(item: ListItem) {
     if (navigator.vibrate) navigator.vibrate(8);
     write([{ ...item, checked: !item.checked, checked_by: !item.checked ? me.initials : null }]);
+    // Last thing at this store? Say so.
+    if (!item.checked && item.store_id) {
+      const left = items.filter((i) => i.store_id === item.store_id && !i.checked && !i.deleted_at && i.id !== item.id).length;
+      const store = stores.find((s) => s.id === item.store_id);
+      if (!left && store) {
+        setToast(`All done at ${store.name} ✓`);
+        if (navigator.vibrate) navigator.vibrate([10, 60, 20]);
+      }
+    }
   }
 
   // Group: store → section (in each store's walk order) → items
@@ -217,6 +227,7 @@ export function ListClient() {
       </header>
 
       <div className="px-4">
+        <TonightCard />
         {loaded && !groups.length && (
           <Empty icon={<IconCart />} title="Your list is empty">
             Add something below, or plan this week’s meals.
@@ -224,7 +235,7 @@ export function ListClient() {
         )}
 
         {groups.map((g) => (
-          <section key={g.storeId} className="card mt-4 overflow-hidden">
+          <section key={g.storeId} className="card mt-4 overflow-hidden" style={{ borderTop: `4px solid ${storeBadgeStyle(g.name).bg}` }}>
             <div className="flex items-center justify-between px-4 pt-4 pb-1">
               <div className="flex items-center gap-3">
                 <StoreBadge name={g.name} size={36} />
@@ -411,33 +422,73 @@ export function ListClient() {
 
 function ItemRow({ item, onToggle, onEdit }: { item: ListItem; onToggle: () => void; onEdit: () => void }) {
   const meals = item.source_meals?.map((m) => m.title).join(", ");
+  // Swipe right to check off (or un-check). Taps still work as before.
+  const [dx, setDxState] = useState(0);
+  const dxRef = useRef(0); // latest distance, readable even before React re-renders
+  const setDx = (v: number) => {
+    dxRef.current = v;
+    setDxState(v);
+  };
+  const start = useRef<{ x: number; y: number; swiping: boolean } | null>(null);
+  const SWIPE = 72;
   return (
-    <li className="flex items-stretch">
-      <button onClick={onToggle} className="flex min-h-[60px] min-w-0 flex-1 items-center gap-3.5 pl-4 text-left active:bg-soft" aria-pressed={item.checked}>
-        <span
-          className={cx(
-            "grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 transition",
-            item.checked ? "check-pop border-ok bg-ok text-white" : "border-line",
-          )}
+    <li className="relative overflow-hidden">
+      <div className={cx("absolute inset-y-0 left-0 flex items-center pl-5 text-white transition-colors", dx > SWIPE ? "bg-ok" : "bg-ok/60")} style={{ width: Math.max(dx, 0) }} aria-hidden>
+        {dx > 24 && <IconCheck strokeWidth={3} className="text-xl" />}
+      </div>
+      <div
+        className="relative flex items-stretch bg-card"
+        style={{ transform: `translateX(${dx}px)`, transition: start.current?.swiping ? "none" : "transform 0.2s ease" }}
+        onTouchStart={(e) => {
+          start.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, swiping: false };
+        }}
+        onTouchMove={(e) => {
+          const st = start.current;
+          if (!st) return;
+          const mx = e.touches[0].clientX - st.x;
+          const my = e.touches[0].clientY - st.y;
+          if (!st.swiping && Math.abs(mx) > 12 && Math.abs(mx) > Math.abs(my) * 1.5) st.swiping = true;
+          if (st.swiping) setDx(Math.max(0, Math.min(mx, 140)));
+        }}
+        onTouchEnd={() => {
+          const swiped = start.current?.swiping && dxRef.current > SWIPE;
+          start.current = null;
+          setDx(0);
+          if (swiped) onToggle();
+        }}
+      >
+        <button
+          onClick={() => {
+            if (dxRef.current === 0) onToggle();
+          }}
+          className="flex min-h-[60px] min-w-0 flex-1 items-center gap-3.5 pl-4 text-left active:bg-soft"
+          aria-pressed={item.checked}
         >
-          {item.checked && <IconCheck className="text-[16px]" strokeWidth={3} />}
-        </span>
-        <span className="min-w-0 flex-1 py-2">
-          <span className={cx("block text-[17px] leading-snug", item.checked && "text-muted line-through decoration-1")}>
-            {item.name}
-            {item.display_qty && <span className="ml-1.5 text-[15px] text-muted">{item.display_qty}</span>}
+          <span
+            className={cx(
+              "grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 transition",
+              item.checked ? "check-pop border-ok bg-ok text-white" : "border-line",
+            )}
+          >
+            {item.checked && <IconCheck className="text-[16px]" strokeWidth={3} />}
           </span>
-          {(meals || item.note) && (
-            <span className="block truncate text-[13px] text-muted">{[item.note, meals && `for ${meals}`].filter(Boolean).join(" · ")}</span>
+          <span className="min-w-0 flex-1 py-2">
+            <span className={cx("block text-[17px] leading-snug", item.checked && "text-muted line-through decoration-1")}>
+              {item.name}
+              {item.display_qty && <span className="ml-1.5 text-[15px] text-muted">{item.display_qty}</span>}
+            </span>
+            {(meals || item.note) && (
+              <span className="block truncate text-[13px] text-muted">{[item.note, meals && `for ${meals}`].filter(Boolean).join(" · ")}</span>
+            )}
+          </span>
+        </button>
+        <button onClick={onEdit} className="flex shrink-0 items-center gap-2 pr-4 pl-2 text-muted" aria-label={`Edit ${item.name}`}>
+          {item.is_manual && item.added_by && (
+            <span className="grid h-6 min-w-6 place-items-center rounded-full bg-soft px-1.5 text-[11px] font-semibold">{item.added_by}</span>
           )}
-        </span>
-      </button>
-      <button onClick={onEdit} className="flex shrink-0 items-center gap-2 pr-4 pl-2 text-muted" aria-label={`Edit ${item.name}`}>
-        {item.is_manual && item.added_by && (
-          <span className="grid h-6 min-w-6 place-items-center rounded-full bg-soft px-1.5 text-[11px] font-semibold">{item.added_by}</span>
-        )}
-        <span className="text-[20px] leading-none">⋯</span>
-      </button>
+          <span className="text-[20px] leading-none">⋯</span>
+        </button>
+      </div>
     </li>
   );
 }
