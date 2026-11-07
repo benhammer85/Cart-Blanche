@@ -23,6 +23,21 @@ export default function ShareSetupPage() {
             </li>
           ))}
         </ol>
+        <h2 className="mt-8 px-1 text-[20px] font-bold">For sites that block apps (Trader Joe’s)</h2>
+        <ol className="card mt-3 divide-y divide-line overflow-hidden">
+          {[
+            "Make a second shortcut named “Copy recipe to Cart Blanche” with Show in Share Sheet on, receiving Safari web pages.",
+            "Add the action Get Details of Safari Web Page and choose Page Contents.",
+            "Add Copy to Clipboard.",
+            "Add Open URLs with https://cart-blanche-eight.vercel.app/recipes/new?mode=paste, then tap Done.",
+            "On a traderjoes.com recipe, tap Share → Copy recipe to Cart Blanche, then tap Paste from clipboard and read.",
+          ].map((t, i) => (
+            <li key={i} className="flex gap-3 px-4 py-3.5 text-[16px] leading-relaxed">
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-accent text-[13px] font-bold text-accent-ink">{i + 1}</span>
+              <span>{t}</span>
+            </li>
+          ))}
+        </ol>
         <p className="mt-4 px-1 text-[14px] leading-relaxed text-muted">
           Then, on any recipe page, tap Share and choose Add to Cart Blanche. The recipe opens ready to review and save. It opens in Safari, so sign in there once.
         </p>

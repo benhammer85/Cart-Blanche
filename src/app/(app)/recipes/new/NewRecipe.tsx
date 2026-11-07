@@ -155,6 +155,24 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
             {mode === "paste" && (
               <div className="mt-4 space-y-3">
                 <p className="px-1 text-[14px] text-muted">Paste a whole recipe page (select all, copy) or type one out. Works for sites that block links, like traderjoes.com.</p>
+                <button
+                  type="button"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-accent-soft text-[15px] font-semibold text-accent"
+                  onClick={async () => {
+                    try {
+                      const t = await navigator.clipboard.readText();
+                      if (t.trim()) {
+                        setPaste(t);
+                        const err = await readWithAi({ text: t });
+                        if (err) setError(err);
+                      } else setError("The clipboard is empty.");
+                    } catch {
+                      setError("Couldn’t read the clipboard. Long-press the box below and choose Paste.");
+                    }
+                  }}
+                >
+                  Paste from clipboard and read
+                </button>
                 <TextArea rows={12} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder={"Paste the recipe page here"} />
                 <Button size="lg" className="w-full" onClick={readPaste} disabled={!paste.trim() || busy}>{busy ? "Reading…" : "Read recipe"}</Button>
                 <label className="flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-soft text-[15px] font-semibold">
