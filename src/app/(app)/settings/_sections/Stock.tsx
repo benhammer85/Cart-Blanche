@@ -15,7 +15,7 @@ interface StockRow {
 }
 
 /** What's left from bulk packs, in the freezer or pantry. The planner uses it first. */
-export function StockSettings() {
+export function StockSettings({ embedded = false }: { embedded?: boolean }) {
   const { data, db, householdId } = useHousehold();
   const [rows, setRows] = useState<StockRow[] | null>(null);
   const [missing, setMissing] = useState(false);
@@ -60,39 +60,36 @@ export function StockSettings() {
     load();
   }
 
+  const content = missing ? (
+    <p className="card mt-4 p-4 text-[15px]">
+      This needs a one-time database update. Run the file <b>20261107000002_store_details.sql</b> in the Supabase SQL Editor, then come back.
+    </p>
+  ) : (
+    <>
+      <Section title="Freezer">
+        <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); add(); }}>
+          <TextField value={name} onChange={(e) => setName(e.target.value)} placeholder="Chicken thighs" aria-label="Item" />
+          <TextField value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="4 lb" aria-label="Amount" className="max-w-[110px]" />
+          <Button aria-label="Add to freezer"><IconPlus /></Button>
+        </form>
+        {error && <p className="mt-2 px-1 text-[13px] text-[#d23c3c]">{error}</p>}
+      </Section>
+      {!!rows?.length && (
+        <div className="mt-3">
+          <ul className="card divide-y divide-line overflow-hidden">
+            {rows.map((r) => (
+              <StockLine key={r.name_norm} row={r} onSave={(t) => save(r.name_norm, t)} onRemove={() => remove(r.name_norm)} />
+            ))}
+          </ul>
+        </div>
+      )}
+    </>
+  );
+  if (embedded) return content;
   return (
     <div>
-      <PageHeader
-        title="Freezer"
-        back="/settings"
-      />
-      <div className="px-4">
-        {missing ? (
-          <p className="card mt-4 p-4 text-[15px]">
-            This needs a one-time database update. Run the file <b>20261107000002_store_details.sql</b> in the Supabase SQL Editor, then come back.
-          </p>
-        ) : (
-          <>
-            <Section title="Add">
-              <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); add(); }}>
-                <TextField value={name} onChange={(e) => setName(e.target.value)} placeholder="Chicken thighs" aria-label="Item" />
-                <TextField value={amount} onChange={(e) => setAmount(e.target.value)} placeholder="4 lb" aria-label="Amount" className="max-w-[110px]" />
-                <Button aria-label="Add to stock"><IconPlus /></Button>
-              </form>
-              {error && <p className="mt-2 px-1 text-[13px] text-[#d23c3c]">{error}</p>}
-            </Section>
-            <Section title={rows ? (rows.length ? `${rows.length} items` : "Nothing in stock") : "Loading"}>
-              {!!rows?.length && (
-                <ul className="card divide-y divide-line overflow-hidden">
-                  {rows.map((r) => (
-                    <StockLine key={r.name_norm} row={r} onSave={(t) => save(r.name_norm, t)} onRemove={() => remove(r.name_norm)} />
-                  ))}
-                </ul>
-              )}
-            </Section>
-          </>
-        )}
-      </div>
+      <PageHeader title="Freezer" back="/settings" />
+      <div className="px-4">{content}</div>
     </div>
   );
 }

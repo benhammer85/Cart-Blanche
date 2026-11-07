@@ -5,9 +5,8 @@ import { useEffect, useState } from "react";
 import { PhotoSheet } from "@/components/PhotoSheet";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { IconBack, IconCamera, IconCart, IconClock, IconPencil, IconUsers, IconLink, IconHeart, IconCopy } from "@/components/icons";
-import { formatAmount as fmt } from "@/lib/units";
-import { Button, Chip, cx } from "@/components/ui";
+import { IconBack, IconCamera, IconCart, IconClock, IconPencil, IconUsers, IconLink, IconHeart } from "@/components/icons";
+import { Chip, cx } from "@/components/ui";
 import { RecipeImage } from "@/components/RecipeImage";
 import { formatAmount, usEquivalent } from "@/lib/units";
 import { AddToListSheet } from "@/components/AddToListSheet";
@@ -24,7 +23,6 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
   let stepNo = 0;
 
   const [tags, setTags] = useState(r.tags);
-  const [msg, setMsg] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
   // Imported photos are sometimes tiny; offer a sharper one.
@@ -32,7 +30,7 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
   useEffect(() => {
     if (!r.image_path) return;
     const img = new Image();
-    img.onload = () => setLowRes(img.naturalWidth > 0 && img.naturalWidth < 700);
+    img.onload = () => setLowRes(img.naturalWidth > 0 && img.naturalWidth < 400);
     img.src = r.image_path;
   }, [r.image_path]);
   const loved = tags.includes("Loved");
@@ -40,34 +38,6 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
     const next = loved ? tags.filter((t) => t !== "Loved") : [...tags, "Loved"];
     setTags(next);
     await supabaseBrowser().from("recipes").update({ tags: next }).eq("id", r.id);
-    router.refresh();
-  }
-
-  async function copyAsText() {
-    const lines = [
-      r.title,
-      "",
-      `Serves ${Number(r.servings)}${r.prep_min ? `, ${r.prep_min} min prep` : ""}`,
-      "",
-      "Ingredients",
-      ...ingredients.map((i) => `${fmt(i.qty == null ? null : Number(i.qty), i.unit, i.qty_max == null ? null : Number(i.qty_max))} ${i.name}${i.note ? `, ${i.note}` : ""}`.trim()),
-      "",
-      "Steps",
-      ...steps.filter((s) => !s.isSection).map((s, n) => `${n + 1}. ${s.text.replace(/^\d+\.\s*/, "")}`),
-      ...(r.source_url ? ["", r.source_url] : []),
-    ];
-    try {
-      await navigator.clipboard.writeText(lines.join("\n"));
-      setMsg("Copied. Paste it into a message or note.");
-    } catch {
-      setMsg("Couldn’t copy on this device.");
-    }
-  }
-
-  async function archive() {
-    if (!confirm(`Delete “${r.title}”? Past plans keep their history.`)) return;
-    await supabaseBrowser().from("recipes").update({ archived: true }).eq("id", r.id);
-    router.push("/recipes");
     router.refresh();
   }
 
@@ -90,9 +60,11 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
             <button onClick={toggleLoved} className={cx("grid h-10 w-10 place-items-center rounded-full text-xl backdrop-blur", loved ? "bg-white text-accent" : "bg-black/35 text-white")} aria-label={loved ? "Remove from Loved" : "Mark as Loved"} aria-pressed={loved}>
               <IconHeart filled={loved} />
             </button>
-            <button onClick={() => setPhotoOpen(true)} className="grid h-10 w-10 place-items-center rounded-full bg-black/35 text-xl text-white backdrop-blur" aria-label="Change photo">
-              <IconCamera />
-            </button>
+            {r.image_path && (
+              <button onClick={() => setPhotoOpen(true)} className="grid h-10 w-10 place-items-center rounded-full bg-black/35 text-xl text-white backdrop-blur" aria-label="Change photo">
+                <IconCamera />
+              </button>
+            )}
             <Link href={`/recipes/${r.id}/edit`} className="grid h-10 w-10 place-items-center rounded-full bg-black/35 text-xl text-white backdrop-blur" aria-label="Edit">
               <IconPencil />
             </Link>
@@ -108,7 +80,7 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
           <span>{historyLine(r.times_made, r.last_made_at)}</span>
         </div>
         {lowRes && (
-          <button onClick={() => setPhotoOpen(true)} className="mt-2 text-[14px] text-accent">The photo is low resolution · Find a sharper one</button>
+          <button onClick={() => setPhotoOpen(true)} className="mt-2 text-[14px] text-accent">Find a sharper photo</button>
         )}
         <PhotoSheet recipe={r} open={photoOpen} onClose={() => setPhotoOpen(false)} />
         {(tags.length > 0 || r.kid_friendly) && (
@@ -193,9 +165,6 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
             <p className="text-[15px] leading-relaxed whitespace-pre-line">{r.notes}</p>
           </div>
         )}
-        <Button variant="secondary" className="mt-8 w-full" onClick={copyAsText}><IconCopy /> Copy recipe as text</Button>
-        {msg && <p className="mt-2 px-1 text-[13px] text-muted">{msg}</p>}
-        <Button variant="danger" className="mt-3 w-full" onClick={archive}>Delete recipe</Button>
       </div>
     </article>
   );

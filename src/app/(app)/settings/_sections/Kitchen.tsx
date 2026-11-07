@@ -1,6 +1,8 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useHousehold } from "@/lib/data/useHousehold";
+import { PantrySettings } from "./Pantry";
+import { StockSettings } from "./Stock";
 import { PageHeader, Section, Stepper, Toggle } from "@/components/ui";
 import { IconCheck } from "@/components/icons";
 import { KITCHEN } from "@/lib/kitchen";
@@ -46,10 +48,7 @@ export function KitchenSettings() {
               <Stepper value={meals} min={1} max={7} onChange={(v) => { setMeals(v); setFamily(Math.min(family, v)); save({ mealCount: v, familyNights: Math.min(family, v) }); }} label="Dinners a week" />
             </div>
             <div className="flex items-center justify-between px-4 py-3">
-              <span>
-                <span className="block text-[17px]">Family dinners</span>
-                
-              </span>
+              <span className="text-[17px]">Family dinners</span>
               <Stepper value={family} min={0} max={meals} onChange={(v) => { setFamily(v); save({ familyNights: v }); }} label="Family dinners" />
             </div>
             <label className="flex items-center justify-between px-4 py-3">
@@ -57,14 +56,13 @@ export function KitchenSettings() {
               <Toggle checked={extra} onChange={(v) => { setExtra(v); save({ makeExtra: v }); }} label="Make extra for leftovers" />
             </label>
             <label className="flex items-center justify-between px-4 py-3">
-              <span>
-                <span className="block text-[17px]">Kids’ menu</span>
-                
-              </span>
+              <span className="text-[17px]">Kids’ menu</span>
               <Toggle checked={kidsMenu} onChange={(v) => { setKidsMenu(v); save({ kidMeals: v }); }} label="Kids’ menu" />
             </label>
           </div>
         </Section>
+        <StockSettings embedded />
+        <PantrySettings embedded />
         <Section title="Equipment">
           {!have ? (
             <div className="space-y-2">{[0, 1, 2].map((n) => <div key={n} className="skeleton h-12" />)}</div>

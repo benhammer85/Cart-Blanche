@@ -11,7 +11,7 @@ import { fitShare, makeFitContext, onlyAtStores, storeFit, type StoreFit } from 
 import { CardBadge } from "@/components/CardBadge";
 import type { HouseholdData } from "@/lib/data/household";
 import type { IngredientInfo } from "@/lib/types";
-import { IconBook, IconClock, IconLink, IconPencil, IconPlus, IconSearch, IconShare, IconUpload, IconSliders, IconCamera } from "@/components/icons";
+import { IconBook, IconClock, IconPlus, IconSearch, IconSliders } from "@/components/icons";
 
 export interface RecipeCard {
   id: string;
@@ -32,14 +32,6 @@ export interface RecipeCard {
   recipe_ingredients?: { name_norm: string }[];
 }
 
-type Sort = "az" | "stale" | "new" | "most";
-const SORTS: { value: Sort; label: string }[] = [
-  { value: "az", label: "A to Z" },
-  { value: "stale", label: "Not made lately" },
-  { value: "most", label: "Most made" },
-  { value: "new", label: "Newest" },
-];
-
 /** "coconut milk" or "thighs" → the ingredient a recipe uses that matches, if any (whole words). */
 function usesIngredient(r: RecipeCard, needle: string): string | null {
   if (needle.length < 3) return null;
@@ -52,14 +44,11 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
   const [q, setQ] = useState("");
   const [tag, setTag] = useState<string | null>(null);
   const [maxPrep, setMaxPrep] = useState<number | null>(null);
-  const [sort, setSort] = useState<Sort>("az");
-  const [adding, setAdding] = useState(false);
   const [filtering, setFiltering] = useState(false);
-  const [noPhoto, setNoPhoto] = useState(false);
   // "Best at <store>": sort by how much of each recipe that store usually carries.
   const [storeFocus, setStoreFocus] = useState<string | null>(null);
   const stores = household.stores.filter((s) => !s.archived);
-  const filterCount = (storeFocus ? 1 : 0) + (maxPrep ? 1 : 0) + (sort !== "az" ? 1 : 0) + (noPhoto ? 1 : 0);
+  const filterCount = (storeFocus ? 1 : 0) + (maxPrep ? 1 : 0);
   const fitCtx = useMemo(
     () => makeFitContext({ categories: household.categories, rules: household.rules, ingredients: new Map<string, IngredientInfo>(household.ingredients.map((i) => [i.name_norm, i])), synonyms: household.synonyms }),
     [household],
@@ -84,7 +73,6 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
       if (r.is_kid_meal && tag !== "kids") return false;
       if (tag && !r.tags.includes(tag)) return false;
       if (maxPrep && r.prep_min != null && r.prep_min > maxPrep) return false;
-      if (noPhoto && r.image_path) return false;
       return !needle || r.title.toLowerCase().includes(needle) || r.tags.some((t) => t.toLowerCase().includes(needle)) || !!usesIngredient(r, needle);
     });
     if (fits) {
@@ -95,14 +83,9 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
         .filter((r) => !r.is_kid_meal && r.meal_types.some((t) => t === "dinner" || t === "lunch"))
         .sort((a, b) => fitRank(b) - fitRank(a) || a.title.localeCompare(b.title));
     }
-    list = [...list].sort((a, b) => {
-      if (sort === "stale") return (a.last_made_at ?? "0000").localeCompare(b.last_made_at ?? "0000");
-      if (sort === "most") return b.times_made - a.times_made;
-      if (sort === "new") return b.created_at.localeCompare(a.created_at);
-      return a.title.localeCompare(b.title);
-    });
+    list = [...list].sort((a, b) => b.times_made - a.times_made || a.title.localeCompare(b.title));
     return list;
-  }, [recipes, q, tag, maxPrep, sort, fits, special, storeFocus, noPhoto]);
+  }, [recipes, q, tag, maxPrep, fits, special, storeFocus]);
 
   return (
     <div>
@@ -118,9 +101,9 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
           >
             Pick one
           </button>
-          <button onClick={() => setAdding(true)} className="grid h-9 w-9 place-items-center rounded-full text-[22px] text-accent" aria-label="Add recipe">
+          <Link href="/recipes/new" className="grid h-9 w-9 place-items-center rounded-full text-[22px] text-accent" aria-label="Add recipe">
             <IconPlus />
-          </button>
+          </Link>
         </div>
         <h1 className="large-title">Recipes</h1>
         <div className="relative mt-3">
@@ -129,15 +112,6 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
         </div>
       </header>
 
-      {recipes.length > 0 && recipes.filter((r) => !r.is_kid_meal).length < 10 && (
-        <Link href="/recipes/import" className="card mx-4 mt-3 flex items-center gap-3 p-4">
-          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent-soft text-2xl text-accent"><IconUpload /></span>
-          <span className="flex-1">
-            <span className="block text-[17px] font-semibold">Import your Crouton library</span>
-            
-          </span>
-        </Link>
-      )}
       <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto px-5 pb-1">
         <Chip active={filterCount > 0} onClick={() => setFiltering(true)}>
           <span className="flex items-center gap-1.5"><IconSliders /> {filterCount ? `Filter · ${filterCount}` : "Filter"}</span>
@@ -152,16 +126,15 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
       </div>
       {filterCount > 0 && (
         <p className="mt-1.5 px-6 text-[13px] text-muted">
-          {[storeFocus && `Best at ${stores.find((st) => st.id === storeFocus)?.name}`, maxPrep && `${maxPrep} min or less`, sort !== "az" && SORTS.find((x) => x.value === sort)?.label, noPhoto && "Needs a photo"].filter(Boolean).join(" · ")}
-          <button className="ml-2 font-semibold text-accent" onClick={() => { setStoreFocus(null); setMaxPrep(null); setSort("az"); setNoPhoto(false); }}>Clear</button>
+          {[storeFocus && `Best at ${stores.find((st) => st.id === storeFocus)?.name}`, maxPrep && `${maxPrep} min or less`].filter(Boolean).join(" · ")}
+          <button className="ml-2 font-semibold text-accent" onClick={() => { setStoreFocus(null); setMaxPrep(null); }}>Clear</button>
         </p>
       )}
 
       {!recipes.length ? (
         <Empty icon={<IconBook />} title="No recipes yet">
-          Import your Crouton favorites to get started.
           <div className="mt-4">
-            <Link href="/recipes/import" className="inline-flex h-11 items-center rounded-xl bg-ink px-5 font-semibold text-bg">Import from Crouton</Link>
+            <Link href="/recipes/new" className="inline-flex h-11 items-center rounded-xl bg-ink px-5 font-semibold text-bg">Add a recipe</Link>
           </div>
         </Empty>
       ) : (
@@ -207,35 +180,9 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
         <Section title="Hands-on time">
           <Segmented value={maxPrep} onChange={setMaxPrep} options={[{ value: null, label: "Any" }, { value: 15, label: "15 min" }, { value: 30, label: "30 min" }, { value: 45, label: "45 min" }]} />
         </Section>
-        <Section title="Photos">
-          <Chip active={noPhoto} onClick={() => setNoPhoto(!noPhoto)}>Needs a photo</Chip>
-        </Section>
-        <Section title="Sort">
-          <Segmented value={sort} onChange={setSort} options={SORTS} />
-        </Section>
         <Button size="lg" className="mt-6 w-full" onClick={() => setFiltering(false)}>Show {shown.length} recipes</Button>
       </Sheet>
 
-      <Sheet open={adding} onClose={() => setAdding(false)} title="Add recipes">
-        <div className="card divide-y divide-line overflow-hidden">
-          {[
-            { href: "/recipes/new?mode=url", icon: <IconLink />, label: "From a link", detail: "Paste a recipe website address" },
-            { href: "/recipes/new?mode=scan", icon: <IconCamera />, label: "Scan a cookbook page", detail: "A photo of a page, or a screenshot" },
-            { href: "/recipes/new?mode=paste", icon: <IconPencil />, label: "Type or paste", detail: "A recipe page you copied, or your own" },
-            { href: "/recipes/browse", icon: <IconSearch />, label: "Browse recipe sites", detail: "Trusted sites and Reddit, tick what you want" },
-            { href: "/recipes/import", icon: <IconUpload />, label: "Import from Crouton", detail: ".crumb files or a .zip" },
-            { href: "/recipes/share-setup", icon: <IconShare />, label: "Share button setup", detail: "Save from any site in Safari, in one tap" },
-          ].map((o) => (
-            <Link key={o.href} href={o.href} className="flex min-h-[64px] items-center gap-3 px-4 py-2 active:bg-soft" onClick={() => setAdding(false)}>
-              <span className="grid h-9 w-9 place-items-center rounded-full bg-accent-soft text-[18px] text-accent">{o.icon}</span>
-              <span>
-                <span className="block text-[17px]">{o.label}</span>
-                <span className="block text-[13px] text-muted">{o.detail}</span>
-              </span>
-            </Link>
-          ))}
-        </div>
-      </Sheet>
     </div>
   );
 }

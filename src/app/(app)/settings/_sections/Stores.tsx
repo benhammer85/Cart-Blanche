@@ -70,14 +70,13 @@ export function StoresSettings() {
 function StoreSheet({ store, sections: initial, onClose }: { store: Store; sections: StoreSection[]; onClose: () => void }) {
   const { db, householdId } = useHousehold();
   const [name, setName] = useState(store.name);
-  const [location, setLocation] = useState(store.location ?? "");
   const [bulk, setBulk] = useState(store.is_bulk);
   const [notes, setNotes] = useState(store.notes ?? "");
   const [sections, setSections] = useState(initial);
   const [newSection, setNewSection] = useState("");
 
   async function save() {
-    await db.from("stores").update({ name: name.trim() || store.name, location: location.trim() || null, is_bulk: bulk }).eq("id", store.id);
+    await db.from("stores").update({ name: name.trim() || store.name, is_bulk: bulk }).eq("id", store.id);
     if ((notes.trim() || null) !== (store.notes ?? null)) {
       // Separate update so an older database without the column still saves the rest.
       await db.from("stores").update({ notes: notes.trim() || null }).eq("id", store.id);

@@ -2,8 +2,9 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { RecipeEditor, emptyDraft } from "@/components/RecipeEditor";
-import { Button, PageHeader, Segmented, TextArea, TextField, cx } from "@/components/ui";
-import { IconCamera } from "@/components/icons";
+import { Button, PageHeader, TextArea, cx } from "@/components/ui";
+import Link from "next/link";
+import { IconCamera, IconSearch } from "@/components/icons";
 import { parseIngredientLine, parsePlainTextRecipe } from "@/lib/ingredientParser";
 import { inferMainProtein, inferMealTypes } from "@/lib/infer";
 import { isDuplicate, loadExistingKeys, resizeImage, saveRecipe } from "@/lib/data/recipes";
@@ -13,6 +14,8 @@ import type { RecipeDraft } from "@/lib/types";
 import { PickRecipes, type PageResult } from "./PickRecipes";
 
 type Mode = "url" | "paste" | "manual";
+
+const isLink = (t: string) => /^https?:\/\/\S+$/i.test(t.trim());
 
 export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mode; initialUrl?: string | null }) {
   const router = useRouter();
@@ -163,33 +166,27 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
         {page && !draft && <PickRecipes page={page} onCancel={() => { setPage(null); setUrl(""); }} />}
         {!draft && !page && (
           <>
-            <div className="mt-4">
-              <Segmented value={mode} onChange={(m) => { setMode(m); setError(null); if (m === "manual") setDraft(emptyDraft()); }} options={[{ value: "url", label: "Link" }, { value: "paste", label: "Scan or paste" }, { value: "manual", label: "Blank" }]} />
-            </div>
-            {mode === "url" && (
-              <form className="mt-4 space-y-3" onSubmit={(e) => { e.preventDefault(); fetchUrl(); }}>
-                <TextField value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Recipe or roundup link" inputMode="url" autoFocus />
-                <Button size="lg" className="w-full" disabled={busy || !url.trim()}>{busy ? "Reading the page…" : "Get recipes"}</Button>
-              </form>
-            )}
-            {mode === "paste" && (
+            {mode !== "manual" && (
               <div className="mt-4 space-y-3">
                 <label className={cx("card flex min-h-[72px] cursor-pointer items-center gap-4 px-4 py-3 active:bg-soft", busy && "pointer-events-none opacity-60")}>
                   <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-ink text-[22px] text-bg"><IconCamera /></span>
-                  <span className="flex-1">
-                    <span className="block text-[17px] font-semibold">{busy ? "Reading…" : "Scan a cookbook page"}</span>
-                    <span className="block text-[13px] text-muted">Take a photo, or choose a screenshot</span>
-                  </span>
+                  <span className="flex-1 text-[17px] font-semibold">{busy ? "Reading…" : "Scan a cookbook page"}</span>
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) readScreenshot(f); }} />
                 </label>
-                
+                <Link href="/recipes/browse" className="card flex min-h-[64px] items-center gap-4 px-4 py-3 active:bg-soft">
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent-soft text-[20px] text-accent"><IconSearch /></span>
+                  <span className="flex-1 text-[17px] font-semibold">Browse recipe sites</span>
+                </Link>
                 <button
                   type="button"
                   className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-soft text-[15px] font-semibold"
                   onClick={async () => {
                     try {
                       const t = await navigator.clipboard.readText();
-                      if (looksLikeHtml(t)) {
+                      if (isLink(t)) {
+                        setUrl(t.trim());
+                        await fetchUrl(t.trim());
+                      } else if (looksLikeHtml(t)) {
                         await fetchUrl("", t);
                       } else if (t.trim()) {
                         setPaste(t);
@@ -201,10 +198,11 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
                     }
                   }}
                 >
-                  Paste from clipboard and read
+                  Paste from clipboard
                 </button>
-                <TextArea rows={12} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder={"Paste the recipe page here"} />
-                <Button size="lg" className="w-full" onClick={readPaste} disabled={!paste.trim() || busy}>{busy ? "Reading…" : "Read recipe"}</Button>
+                <TextArea rows={12} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder="Paste a link or a recipe" />
+                <Button size="lg" className="w-full" onClick={() => { if (isLink(paste)) { setUrl(paste.trim()); setPaste(""); fetchUrl(paste.trim()); } else readPaste(); }} disabled={!paste.trim() || busy}>{busy ? "Reading…" : "Get recipe"}</Button>
+                <button type="button" className="w-full py-2 text-[15px] text-accent" onClick={() => { setMode("manual"); setDraft(emptyDraft()); }}>Start from blank</button>
               </div>
             )}
             {error && (

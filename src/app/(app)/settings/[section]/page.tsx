@@ -2,10 +2,8 @@ import { notFound } from "next/navigation";
 import { PeopleSettings } from "../_sections/People";
 import { StoresSettings } from "../_sections/Stores";
 import { RulesSettings } from "../_sections/Rules";
-import { PantrySettings } from "../_sections/Pantry";
 import { IngredientsSettings } from "../_sections/Ingredients";
 import { AvoidSettings } from "../_sections/Avoid";
-import { StockSettings } from "../_sections/Stock";
 import { KitchenSettings } from "../_sections/Kitchen";
 import { ReceiptsSettings } from "../_sections/Receipts";
 
@@ -13,10 +11,10 @@ const SECTIONS = {
   people: PeopleSettings,
   stores: StoresSettings,
   rules: RulesSettings,
-  pantry: PantrySettings,
+  pantry: KitchenSettings,
   ingredients: IngredientsSettings,
   avoid: AvoidSettings,
-  stock: StockSettings,
+  stock: KitchenSettings,
   kitchen: KitchenSettings,
   receipts: ReceiptsSettings,
 };

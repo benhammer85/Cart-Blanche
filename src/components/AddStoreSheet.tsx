@@ -10,7 +10,6 @@ import { supabaseBrowser } from "@/lib/supabase/client";
  */
 export function AddStoreSheet({ householdId, onClose, onAdded }: { householdId: string; onClose: () => void; onAdded: (id: string) => void }) {
   const [name, setName] = useState("");
-  const [location, setLocation] = useState("");
   const [full, setFull] = useState(true);
   const [busy, setBusy] = useState(false);
 
@@ -25,7 +24,7 @@ export function AddStoreSheet({ householdId, onClose, onAdded }: { householdId: 
     ]);
     const { data: store } = await db
       .from("stores")
-      .insert({ household_id: householdId, name: name.trim(), location: location.trim() || null, sort_order: (stores ?? []).length })
+      .insert({ household_id: householdId, name: name.trim(), sort_order: (stores ?? []).length })
       .select("id")
       .single();
     if (!store) {

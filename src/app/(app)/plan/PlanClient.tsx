@@ -2,20 +2,23 @@
 import { familyFriendly } from "@/lib/infer";
 import { isIdea } from "@/lib/ideas";
 import { useEffect, useMemo, useState } from "react";
-import { DndContext, PointerSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
-import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import { StoreBadge } from "@/components/StoreBadge";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Button, Chip, Section, Segmented, Sheet, Stepper, TextField, Toast, Toggle, cx } from "@/components/ui";
-import { IconGrip, IconChevron, IconCheck, IconLock, IconSwap, IconPlus } from "@/components/icons";
+import { Button, Chip, Segmented, Sheet, Stepper, TextField, Toast, cx } from "@/components/ui";
+import { IconChevron, IconCheck, IconLock, IconSwap, IconPlus } from "@/components/icons";
 import { useMembership } from "@/components/AppShell";
 import { RecipeImage } from "@/components/RecipeImage";
 import { AddStoreSheet } from "@/components/AddStoreSheet";
 import { Recommend } from "./Recommend";
 import { StorePicker } from "./StorePicker";
-import { NewRecipes, QuickIdeas, type PickedDraft } from "./NewPicks";
+import type { PickedDraft } from "./NewPicks";
+import dynamic from "next/dynamic";
+
+// Loaded only when used, so the page opens faster.
+const DayList = dynamic(() => import("./DayList"));
+const NewRecipes = dynamic(() => import("./NewPicks").then((m) => m.NewRecipes));
+const QuickIdeas = dynamic(() => import("./NewPicks").then((m) => m.QuickIdeas));
 import { planMeals, pickKidMeals, rng, swapMeal, type PlannerRecipe, type PlanParams } from "@/lib/planner/planner";
 import { buildShoppingList, portionsFor, type DraftListItem, type PlannedMealForList } from "@/lib/list/buildList";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -82,6 +85,7 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
   const [moreKey, setMoreKey] = useState<string | null>(null);
   const [showNew, setShowNew] = useState(false);
   const [showIdeas, setShowIdeas] = useState(false);
+  const [optionsOpen, setOptionsOpen] = useState(false);
   // New recipes from sites and quick ideas picked on this trip (not in our library yet).
   const [pickedDrafts, setPickedDrafts] = useState<PickedDraft[]>([]);
   const chosenCount = pinnedIds.length + pickedDrafts.length;
@@ -89,8 +93,6 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
   const unpickDraft = (key: string) => setPickedDrafts((cur) => cur.filter((x) => x.key !== key));
   const draftSlots = (): Slot[] =>
     pickedDrafts.map((d) => ({ key: uid(), recipeId: null, draft: d.draft, title: d.title, locked: true, reason: d.kind === "idea" ? "not cooked yet" : "new recipe", kid: null, skipIds: [] }));
-  const [servingsOverride, setServingsOverride] = useState<number | null>(null);
-  const [useAi, setUseAi] = useState(false);
   const [ai, setAi] = useState<{ enabled: boolean; requestsToday: number }>({ enabled: false, requestsToday: 0 });
   const [slots, setSlots] = useState<Slot[]>([]);
   const [step, setStep] = useState<Step>("params");
@@ -109,9 +111,8 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
     () => recipes.map((r) => ({ ...r, ingredientNames: r.recipe_ingredients.map((i) => i.name_norm) })),
     [recipes],
   );
-  const allTags = useMemo(() => [...new Set(recipes.filter((r) => !r.is_kid_meal).flatMap((r) => r.tags))].sort(), [recipes]);
   const portions = useMemo(() => portionsFor(household.people), [household.people]);
-  const everyone = servingsOverride ?? portions.everyone;
+  const everyone = portions.everyone;
   const extra = p.makeExtra ? 1.5 : 1;
 
   useEffect(() => {
@@ -221,40 +222,6 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
     const drafts = draftSlots();
     const locked = [...slots.filter((s) => s.locked && !drafts.some((d) => d.title === s.title)), ...drafts];
     const lockedIds = locked.map((s) => s.recipeId).filter(Boolean) as string[];
-    const freeCount = Math.max(0, p.mealCount - locked.length);
-
-    if (useAi && ai.enabled && freeCount > 0) {
-      setBusy("Finding ideas…");
-      try {
-        const res = await fetch("/api/ai/plan", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            mealCount: freeCount, favoritesPct: p.aiFavoritesPct, mealTypes: p.mealTypes, maxPrep: p.maxPrep, includeTags: p.includeTags,
-            excludeTags: p.excludeTags, excludeIngredients: p.excludeIngredients, useUp, variety: p.variety, storeIds: p.storeIds, pinnedIds,
-          }),
-        }).then((r) => r.json());
-        if (res.requestsToday) setAi((a) => ({ ...a, requestsToday: res.requestsToday }));
-        if (res.ok) {
-          const fresh: Slot[] = res.meals
-            .filter((m: { recipeId?: string }) => !m.recipeId || !lockedIds.includes(m.recipeId))
-            .map((m: { recipeId?: string; draft?: RecipeDraft; title: string }) => ({
-              key: uid(), recipeId: m.recipeId ?? null, draft: m.draft ?? null, title: m.title, locked: false, kid: null, skipIds: [],
-              reason: m.draft ? "not cooked yet" : "favorite",
-            }));
-          setSlots(assignKids([...locked, ...fresh]));
-          setStep("plan");
-          setBusy(null);
-          return;
-        }
-        setNote("New ideas aren’t available right now, so this week is all favorites.");
-      } catch {
-        setNote("New ideas aren’t available right now, so this week is all favorites.");
-      }
-      setBusy(null);
-    } else if (useAi && !ai.enabled) {
-      setNote("New ideas aren’t set up yet, so this week is all favorites.");
-    }
 
     const res = planMeals(plannerRecipes, params({ seed: newSeed, mealCount: p.mealCount - locked.filter((s) => !s.recipeId).length, lockedIds }));
     const lockedById = new Map(locked.filter((s) => s.recipeId).map((s) => [s.recipeId!, s]));
@@ -270,29 +237,6 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
   async function swap(i: number) {
     const s = slots[i];
     const ids = slots.map((x) => x.recipeId ?? `draft-${x.key}`);
-    if (useAi && ai.enabled) {
-      setBusy("Finding another idea…");
-      try {
-        const res = await fetch("/api/ai/swap", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({
-            mealCount: 1, favoritesPct: p.aiFavoritesPct, mealTypes: p.mealTypes, maxPrep: p.maxPrep, includeTags: [], excludeTags: p.excludeTags,
-            excludeIngredients: p.excludeIngredients, useUp, variety: p.variety, storeIds: p.storeIds, pinnedIds: [],
-            keepTitles: slots.filter((_, j) => j !== i).map((x) => x.title), replacing: s.title,
-          }),
-        }).then((r) => r.json());
-        if (res.requestsToday) setAi((a) => ({ ...a, requestsToday: res.requestsToday }));
-        setBusy(null);
-        if (res.ok) {
-          replaceSlot(i, { recipeId: res.meal.recipeId ?? null, draft: res.meal.draft ?? null, title: res.meal.title, reason: res.meal.draft ? "not cooked yet" : "favorite" });
-          return;
-        }
-        setToast("Replaced with another favorite");
-      } catch {
-        setBusy(null);
-      }
-    }
     const pick = swapMeal(plannerRecipes, ids, i, params(), s.skipIds);
     if (!pick) {
       setToast("No other recipes match. Try adjusting the filters.");
@@ -409,7 +353,7 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
       // 1. Save the plan (history)
       const { data: plan, error: pe } = await db
         .from("meal_plans")
-        .insert({ household_id: me.householdId, params: { ...p, useUp, everyone, ai: useAi }, store_ids: orderedStoreIds, status: "final" })
+        .insert({ household_id: me.householdId, params: { ...p, useUp, everyone }, store_ids: orderedStoreIds, status: "final" })
         .select("id")
         .single();
       if (pe) throw pe;
@@ -509,23 +453,14 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
     }
   }
 
-  async function saveDefaults() {
-    await db.from("household_settings").upsert({ household_id: me.householdId, planner_defaults: p }, { onConflict: "household_id" });
-    setToast("Saved as default");
+  /** Dinners and hands-on time carry over to next time. */
+  async function rememberUsual() {
+    const { data } = await db.from("household_settings").select("planner_defaults").eq("household_id", me.householdId).maybeSingle();
+    const cur = (data?.planner_defaults ?? {}) as Record<string, unknown>;
+    if (cur.mealCount === p.mealCount && cur.maxPrep === p.maxPrep) return;
+    await db.from("household_settings").upsert({ household_id: me.householdId, planner_defaults: { ...cur, mealCount: p.mealCount, maxPrep: p.maxPrep } }, { onConflict: "household_id" });
   }
 
-  async function saveDraftToFavorites(i: number) {
-    const s = slots[i];
-    if (!s.draft) return;
-    try {
-      const id = await saveRecipe(db, me.householdId, s.draft);
-      setSlots((cur) => cur.map((x, j) => (j === i ? { ...x, recipeId: id, reason: "saved to recipes" } : x)));
-      setToast(`Saved “${s.title}” to recipes`);
-      router.refresh();
-    } catch (e) {
-      setToast(e instanceof Error ? e.message : "Couldn’t save");
-    }
-  }
 
   const toggleIn = <T,>(arr: T[], v: T) => (arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v]);
 
@@ -541,9 +476,7 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
           )}
           {step === "params" ? (
             <Link href="/history" className="text-[15px] text-accent">Past weeks</Link>
-          ) : (
-            ai.enabled && <span className="text-[12px] text-muted">{ai.requestsToday} idea lookups today</span>
-          )}
+          ) : null}
         </div>
         <h1 className="large-title">{step === "params" ? (current?.items.length ? "This week" : "What’s for dinner?") : step === "plan" ? "Your week" : "Shopping list"}</h1>
         <p className="mt-1 text-[15px] text-muted">
@@ -563,11 +496,12 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
             {p.storeIds.length > 0 && (
             <>
             <h2 className="menu-label mt-8 mb-2 px-1 text-muted">2 · Pick your dinners</h2>
-            <div className="card px-4 py-3">
-              <p className="text-[15px] font-semibold">I have…</p>
-              
-              <FreeChips values={useUp} onChange={setUseUp} placeholder="Ingredient" />
-            </div>
+            <button onClick={() => setOptionsOpen(true)} className="card flex min-h-[52px] w-full items-center gap-2 px-4 py-2 text-left active:bg-soft">
+              <span className="min-w-0 flex-1 truncate text-[15px]">
+                {[`${p.mealCount} dinners`, p.maxPrep ? `${p.maxPrep} min` : "Any time", useUp.length ? `Have ${useUp.join(", ")}` : null].filter(Boolean).join(" · ")}
+              </span>
+              <span className="text-[15px] text-accent">Change</span>
+            </button>
 
             <Recommend
               have={useUp}
@@ -580,11 +514,9 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
               onToggle={(id) => setPinnedIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))}
             />
 
-            <section className="mt-8">
-              <h3 className="recipe-title px-1 text-[22px] font-semibold">Something new</h3>
-              
-              <div className="mt-3 grid grid-cols-2 gap-2">
-                <button onClick={() => setShowNew(true)} className={cx("card h-14 text-[16px] font-semibold", showNew ? "text-muted" : "text-accent")} disabled={showNew}>New recipes</button>
+            <section className="mt-6">
+              <div className="grid grid-cols-2 gap-2">
+                <button onClick={() => setShowNew(true)} className={cx("card h-14 text-[16px] font-semibold", showNew ? "text-muted" : "text-accent")} disabled={showNew}>Find new recipes</button>
                 {ai.enabled && <button onClick={() => setShowIdeas(true)} className={cx("card h-14 text-[16px] font-semibold", showIdeas ? "text-muted" : "text-accent")} disabled={showIdeas}>Quick ideas</button>}
               </div>
               {showNew && <NewRecipes bare storeNames={orderedStoreIds.map((id) => stores.find((x) => x.id === id)?.name ?? "")} maxPrep={p.maxPrep} picked={pickedDrafts.map((d) => d.key)} onPick={pickDraft} onUnpick={unpickDraft} />}
@@ -608,23 +540,6 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
               </Button>
             )}
 
-            <details className="group mt-6">
-              <summary className="flex cursor-pointer list-none items-center justify-between px-1 py-2 text-[15px] font-semibold text-muted">
-                More options
-                <IconChevron className="transition group-open:rotate-90" />
-              </summary>
-              <div className="card mt-2 divide-y divide-line">
-              <div className="flex items-center justify-between px-4 py-3">
-                <span className="text-[17px]">Dinners</span>
-                <Stepper value={p.mealCount} min={1} max={14} onChange={(v) => setP({ ...p, mealCount: v })} label="Number of dinners" />
-              </div>
-              <div className="px-4 py-3">
-                <span className="mb-2 block text-[15px] text-muted">Hands-on time</span>
-                <Segmented value={p.maxPrep} onChange={(v) => setP({ ...p, maxPrep: v })} options={[{ value: 15, label: "15 min" }, { value: 30, label: "30 min" }, { value: 45, label: "45 min" }, { value: null, label: "Any" }]} />
-              </div>
-              </div>
-              <Button variant="secondary" className="mt-3 w-full" onClick={saveDefaults}>Save as our usual</Button>
-            </details>
             {!p.storeIds.length && <p className="mt-2 text-center text-[13px] text-muted">Pick at least one store.</p>}
             {chosenCount > 0 && (
               <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+64px)] z-30 px-4">
@@ -782,6 +697,23 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
           }}
         />
       )}
+      <Sheet open={optionsOpen} onClose={() => { setOptionsOpen(false); rememberUsual(); }} title="Options">
+        <div className="card divide-y divide-line">
+          <div className="flex items-center justify-between px-4 py-3">
+            <span className="text-[17px]">Dinners</span>
+            <Stepper value={p.mealCount} min={1} max={14} onChange={(v) => setP({ ...p, mealCount: v })} label="Number of dinners" />
+          </div>
+          <div className="px-4 py-3">
+            <span className="mb-2 block text-[15px] text-muted">Hands-on time</span>
+            <Segmented value={p.maxPrep} onChange={(v) => setP({ ...p, maxPrep: v })} options={[{ value: 15, label: "15 min" }, { value: 30, label: "30 min" }, { value: 45, label: "45 min" }, { value: null, label: "Any" }]} />
+          </div>
+          <div className="px-4 py-3">
+            <span className="block text-[15px] text-muted">I have</span>
+            <FreeChips values={useUp} onChange={setUseUp} placeholder="Ingredient" />
+          </div>
+        </div>
+        <Button size="lg" className="mt-4 w-full" onClick={() => { setOptionsOpen(false); rememberUsual(); }}>Done</Button>
+      </Sheet>
       <Toast message={toast} onDone={() => setToast(null)} />
     </div>
   );
@@ -814,21 +746,6 @@ function PreviewRow({ item, storeIds, stores, onHave, onMove }: { item: PreviewI
         </div>
       )}
     </li>
-  );
-}
-
-function TagPicker({ tags, selected, onChange }: { tags: string[]; selected: string[]; onChange: (v: string[]) => void }) {
-  const [extra, setExtra] = useState("");
-  const all = [...new Set([...selected, ...tags, "soup", "vegetarian"])];
-  return (
-    <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
-      {all.map((t) => (
-        <Chip key={t} active={selected.includes(t)} onClick={() => onChange(selected.includes(t) ? selected.filter((x) => x !== t) : [...selected, t])}>{t}</Chip>
-      ))}
-      <form onSubmit={(e) => { e.preventDefault(); if (extra.trim()) onChange([...new Set([...selected, extra.trim()])]); setExtra(""); }}>
-        <input value={extra} onChange={(e) => setExtra(e.target.value)} placeholder="+ tag" className="h-9 w-24 rounded-full bg-card px-3.5 text-[14px] ring-1 ring-line outline-none" />
-      </form>
-    </div>
   );
 }
 
@@ -876,48 +793,6 @@ function dayLabel(i: number): string {
   const d = new Date();
   d.setDate(d.getDate() + i);
   return d.toLocaleDateString(undefined, { weekday: "long" });
-}
-
-/** Vertical drag-to-reorder list of cards (grip handle in each card's header). */
-function DayList({ ids, onReorder, render }: { ids: string[]; onReorder: (ids: string[]) => void; render: (id: string, index: number, handle: React.ReactNode) => React.ReactNode }) {
-  const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
-  );
-  return (
-    <DndContext
-      sensors={sensors}
-      collisionDetection={closestCenter}
-      onDragEnd={(e: DragEndEvent) => {
-        if (!e.over || e.active.id === e.over.id) return;
-        onReorder(arrayMove(ids, ids.indexOf(String(e.active.id)), ids.indexOf(String(e.over.id))));
-      }}
-    >
-      <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-        <ul className="mt-4 space-y-4">
-          {ids.map((id, i) => (
-            <DayItem key={id} id={id}>
-              {(handle) => render(id, i, handle)}
-            </DayItem>
-          ))}
-        </ul>
-      </SortableContext>
-    </DndContext>
-  );
-}
-
-function DayItem({ id, children }: { id: string; children: (handle: React.ReactNode) => React.ReactNode }) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
-  const handle = (
-    <button {...attributes} {...listeners} className="touch-none px-1 text-lg text-muted" aria-label="Drag to change the day">
-      <IconGrip />
-    </button>
-  );
-  return (
-    <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={cx("relative", isDragging && "z-10 opacity-90 shadow-xl")}>
-      {children(handle)}
-    </li>
-  );
 }
 
 /** The week we already planned: dinners in order, with what's been made. */

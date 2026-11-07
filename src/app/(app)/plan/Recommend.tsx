@@ -6,7 +6,6 @@ import Link from "next/link";
 import { Button, Chip, Sheet, cx } from "@/components/ui";
 import { IconCheck, IconClock, IconSliders, IconUpload } from "@/components/icons";
 import { RecipeImage } from "@/components/RecipeImage";
-import { StoreBadge } from "@/components/StoreBadge";
 import { fitShare, makeFitContext, onlyAtStores, tripFit, type StoreFit } from "@/lib/trip";
 import { CardBadge } from "@/components/CardBadge";
 import { FlipThrough } from "@/components/FlipThrough";
@@ -48,9 +47,7 @@ export function Recommend({
   // Ranking has a little randomness, so build it on the phone only (no server/phone mismatch).
   const [seed, setSeed] = useState<number | null>(null);
   useEffect(() => setSeed(Date.now()), []);
-  // Which store's suggestions to show: the trip's stores, or one store you tap.
-  const [focus, setFocus] = useState<string | null>(null);
-  const shownIds = focus ? [focus] : storeIds;
+  const shownIds = storeIds;
   const storeNames = household.stores.filter((s) => shownIds.includes(s.id)).map((s) => s.name);
   const allStores = household.stores.filter((s) => !s.archived);
 
@@ -92,7 +89,7 @@ export function Recommend({
       .filter((x) => !haveTerms.length || x.uses.length > 0)
       .sort((a, b) => b.rank - a.rank);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recipes, focus, storeIds, mealTypes, maxPrep, kidsOnly, lovedOnly, styles, ctx, household, seed, stylesOf, special, haveTerms.join("|")]);
+  }, [recipes, storeIds, mealTypes, maxPrep, kidsOnly, lovedOnly, styles, ctx, household, seed, stylesOf, special, haveTerms.join("|")]);
 
   /** Pick a random dinner from the best matches that isn't picked yet. */
   function surprise() {

@@ -2,14 +2,14 @@
 import { useMemo, useState } from "react";
 import { useHousehold } from "@/lib/data/useHousehold";
 import { Button, PageHeader, Section, TextField, Toggle } from "@/components/ui";
-import { IconPlus, IconTrash } from "@/components/icons";
+import { IconChevron, IconPlus, IconTrash } from "@/components/icons";
 import { normalizeName } from "@/lib/normalize";
 
-export function PantrySettings() {
+export function PantrySettings({ embedded = false }: { embedded?: boolean }) {
   const { data, reload, db, householdId } = useHousehold();
   const [name, setName] = useState("");
   const staples = useMemo(() => (data?.ingredients ?? []).filter((i) => i.is_staple), [data]);
-  if (!data) return <PageHeader title="Pantry staples" back="/settings" />;
+  if (!data) return embedded ? null : <PageHeader title="Pantry" back="/settings" />;
 
   async function add() {
     const n = normalizeName(name, data!.synonyms);
@@ -18,17 +18,19 @@ export function PantrySettings() {
     setName("");
     reload();
   }
-  return (
-    <div>
-      <PageHeader title="Pantry" back="/settings" subtitle="Kept off the list until you’re out." />
-      <div className="px-4">
-        <Section>
+  const content = (
+    <>
+        <Section title="Pantry">
           <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); add(); }}>
             <TextField value={name} onChange={(e) => setName(e.target.value)} placeholder="Add a staple" />
             <Button aria-label="Add staple"><IconPlus /></Button>
           </form>
         </Section>
-        <Section title={`${staples.length} staples`}>
+        <details className="group mt-3" open={!embedded}>
+          <summary className="flex cursor-pointer list-none items-center justify-between px-1 py-2 text-[15px] text-muted">
+            {staples.length} staples{staples.some((x) => x.is_out) ? ` · out of ${staples.filter((x) => x.is_out).map((x) => x.name_norm).join(", ")}` : ""}
+            <IconChevron className="shrink-0 transition group-open:rotate-90" />
+          </summary>
           <ul className="card divide-y divide-line overflow-hidden">
             {staples.map((s) => (
               <li key={s.id} className="flex min-h-[56px] items-center gap-3 px-4">
@@ -41,8 +43,14 @@ export function PantrySettings() {
               </li>
             ))}
           </ul>
-        </Section>
-      </div>
+        </details>
+    </>
+  );
+  if (embedded) return content;
+  return (
+    <div>
+      <PageHeader title="Pantry" back="/settings" />
+      <div className="px-4">{content}</div>
     </div>
   );
 }
