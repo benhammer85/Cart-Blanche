@@ -91,7 +91,7 @@ export function RecipeEditor({ draft, onChange, synonyms = {} }: { draft: Recipe
         </div>
       </Section>
 
-      <Section title="Ingredients — one per line">
+      <Section title="Ingredients, one per line">
         <TextArea
           rows={Math.max(6, ingText.split("\n").length + 1)}
           value={ingText}
@@ -103,24 +103,24 @@ export function RecipeEditor({ draft, onChange, synonyms = {} }: { draft: Recipe
         />
         {parsed.length > 0 && (
           <div className="card mt-2 overflow-hidden">
-            <p className="px-4 pt-3 text-[12px] font-semibold uppercase tracking-wide text-muted">How we read it</p>
+            <p className="px-4 pt-3 text-[12px] font-semibold uppercase tracking-wide text-muted">How it reads</p>
             <ul className="px-4 pb-3 text-[14px]">
               {parsed.map((p, i) => (
                 <li key={i} className={cx("flex gap-2 py-1", !p.ok && "text-[#d23c3c]")}>
-                  <span className="w-20 shrink-0 text-muted tabular-nums">{formatAmount(p.qty, p.unit, p.qtyMax) || "—"}</span>
+                  <span className="w-20 shrink-0 text-muted tabular-nums">{formatAmount(p.qty, p.unit, p.qtyMax) || ""}</span>
                   <span className="flex-1">
                     {p.nameNorm}
-                    {!p.ok && " · check this line"}
+                    {!p.ok && " (check this one)"}
                   </span>
                 </li>
               ))}
             </ul>
           </div>
         )}
-        {bad.length > 0 && <p className="mt-2 px-1 text-[13px] text-[#d23c3c]">{bad.length} line(s) look garbled — edit them above.</p>}
+        {bad.length > 0 && <p className="mt-2 px-1 text-[13px] text-[#d23c3c]">{bad.length === 1 ? "One line needs" : `${bad.length} lines need`} a quick fix above.</p>}
       </Section>
 
-      <Section title="Steps — blank line between steps (# for a heading)">
+      <Section title="Steps (leave a blank line between them)">
         <TextArea
           rows={8}
           value={stepText}
@@ -160,7 +160,7 @@ function NumberField({ label, value, onChange }: { label: string; value: number 
           onChange(Number.isFinite(n) ? n : null);
         }}
         className="w-full bg-transparent text-[20px] font-semibold outline-none"
-        placeholder="—"
+        placeholder=""
       />
     </label>
   );

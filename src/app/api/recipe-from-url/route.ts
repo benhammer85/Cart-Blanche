@@ -42,7 +42,7 @@ export async function POST(request: NextRequest) {
   const recipe = recipeFromHtml(html, target.toString(), synonyms);
   if (!recipe) {
     return NextResponse.json(
-      { error: "This page doesn’t include recipe data we can read. Paste the recipe as text, or ask Claude to turn it into JSON with the Claude bridge." },
+      { error: "We couldn’t pull a recipe from that page. Try pasting the recipe text instead." },
       { status: 422 },
     );
   }

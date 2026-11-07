@@ -83,7 +83,7 @@ function RuleSheet({
           const on = enabled.includes(o.id);
           return (
             <button className="flex min-h-[52px] w-full items-center gap-3 pl-4 text-left" onClick={() => setEnabled(on ? enabled.filter((x) => x !== o.id) : [...enabled, o.id])}>
-              <span className={cx("grid h-6 w-6 place-items-center rounded-full text-[12px] font-bold", on ? "bg-accent text-accent-ink" : "bg-soft text-muted")}>{on ? i + 1 : "–"}</span>
+              <span className={cx("grid h-6 w-6 place-items-center rounded-full text-[12px] font-bold", on ? "bg-accent text-accent-ink" : "bg-soft text-muted")}>{on ? i + 1 : ""}</span>
               <span className={cx("text-[17px]", !on && "text-muted line-through")}>{stores.find((s) => s.id === o.id)?.name}</span>
             </button>
           );

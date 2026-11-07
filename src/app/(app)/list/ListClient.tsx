@@ -244,7 +244,7 @@ export function ListClient() {
             <input
               value={text}
               onChange={(e) => setText(e.target.value)}
-              placeholder="Add an item — “2 lb chicken thighs”"
+              placeholder="Add something, like 2 lb chicken thighs"
               className="h-11 flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted"
               enterKeyHint="done"
               autoCapitalize="sentences"
@@ -402,7 +402,7 @@ function SyncBadge({ status, pending }: { status: "synced" | "syncing" | "offlin
   if (status === "offline")
     return (
       <span className="flex h-8 items-center gap-1.5 rounded-full bg-[#fff3d6] px-3 text-[13px] font-medium text-[#8a5a00] dark:bg-[#3a2e10] dark:text-[#f0c060]">
-        <IconWifiOff /> Offline{pending ? ` — ${pending} will sync` : ""}
+        <IconWifiOff /> Offline{pending ? `, ${pending} waiting` : ""}
       </span>
     );
   return (

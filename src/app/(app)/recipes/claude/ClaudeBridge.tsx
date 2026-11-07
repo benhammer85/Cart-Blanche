@@ -48,9 +48,9 @@ export function ClaudeBridge() {
   async function copyPrompt() {
     try {
       await navigator.clipboard.writeText(prompt);
-      setToast("Prompt copied — paste it into Claude");
+      setToast("Copied. Paste it into Claude.");
     } catch {
-      setToast("Couldn’t copy — select the text instead");
+      setToast("Couldn’t copy. Select the text instead.");
     }
   }
 
@@ -73,40 +73,40 @@ export function ClaudeBridge() {
 
   return (
     <div>
-      <PageHeader title="Ideas from Claude" back="/recipes" subtitle="No API needed: copy the prompt into your Claude app, then paste its reply here." />
+      <PageHeader title="Find new recipes" back="/recipes" subtitle="Copy the request into the Claude app, then paste its answer here." />
       <div className="px-4">
-        <Section title="1 · Build the prompt">
+        <Section title="1. What are we looking for?">
           <div className="card flex items-center justify-between px-4 py-3">
             <span className="text-[17px]">How many ideas</span>
             <Stepper value={count} min={1} max={10} onChange={setCount} />
           </div>
           <TextField className="mt-2" value={extra} onChange={(e) => setExtra(e.target.value)} placeholder="Anything else? (e.g. a soup, use up spinach)" />
           <details className="card mt-2 p-4 text-[13px] text-muted">
-            <summary className="cursor-pointer text-[15px] text-ink">Preview prompt</summary>
+            <summary className="cursor-pointer text-[15px] text-ink">See the full request</summary>
             <pre className="mt-2 whitespace-pre-wrap font-sans">{prompt}</pre>
           </details>
           <Button size="lg" className="mt-3 w-full" onClick={copyPrompt} disabled={!prompt}>
-            <IconCopy /> Copy prompt
+            <IconCopy /> Copy request
           </Button>
         </Section>
 
-        <Section title="2 · Paste Claude’s reply">
+        <Section title="2. Paste the answer">
           <TextArea rows={7} value={reply} onChange={(e) => setReply(e.target.value)} placeholder='{ "recipes": [ … ] }' />
           <Button variant="secondary" size="lg" className="mt-2 w-full" disabled={!reply.trim()} onClick={() => { setResult(parseClaudeReply(reply, data?.synonyms ?? {})); setSaved(new Set()); }}>
-            Read reply
+            Show recipes
           </Button>
         </Section>
 
         {result && !result.ok && (
           <div className="card mt-4 p-4">
-            <p className="font-semibold text-[#d23c3c]">That reply didn’t match the format</p>
+            <p className="font-semibold text-[#d23c3c]">That answer didn’t come through right</p>
             <ul className="mt-1 list-disc pl-5 text-[14px] text-muted">{result.errors.map((e) => <li key={e}>{e}</li>)}</ul>
-            <p className="mt-2 text-[13px] text-muted">Tip: ask Claude “Reply with only the JSON, exactly in the schema”.</p>
+            <p className="mt-2 text-[13px] text-muted">Try asking Claude to “send just the JSON, in the same format.”</p>
           </div>
         )}
 
         {result?.ok && (
-          <Section title={`3 · ${result.recipes.length} ideas`}>
+          <Section title={`3. ${result.recipes.length} recipes to try`}>
             <div className="space-y-3">
               {result.recipes.map((r, i) => (
                 <div key={i} className="card p-4">

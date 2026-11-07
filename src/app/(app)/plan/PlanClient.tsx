@@ -108,7 +108,7 @@ export function PlanClient({ household, recipes, repeat }: { household: Househol
     if (initial.length) {
       setSlots(assignKids(initial));
       setStep("plan");
-      if (repeat) setNote("Loaded last time’s meals — swap or send to the list.");
+      if (repeat) setNote("Here’s that week again. Swap anything, then send it to the list.");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -159,7 +159,7 @@ export function PlanClient({ household, recipes, repeat }: { household: Househol
     const freeCount = Math.max(0, p.mealCount - locked.length);
 
     if (useAi && ai.enabled && freeCount > 0) {
-      setBusy("Asking Gemini…");
+      setBusy("Finding ideas…");
       try {
         const res = await fetch("/api/ai/plan", {
           method: "POST",
@@ -175,20 +175,20 @@ export function PlanClient({ household, recipes, repeat }: { household: Househol
             .filter((m: { recipeId?: string }) => !m.recipeId || !lockedIds.includes(m.recipeId))
             .map((m: { recipeId?: string; draft?: RecipeDraft; title: string }) => ({
               key: uid(), recipeId: m.recipeId ?? null, draft: m.draft ?? null, title: m.title, locked: false, kid: null, skipIds: [],
-              reason: m.draft ? "new idea" : "favorite",
+              reason: m.draft ? "something new" : "favorite",
             }));
           setSlots(assignKids([...locked, ...fresh]));
           setStep("plan");
           setBusy(null);
           return;
         }
-        setNote(`${res.error ?? "AI unavailable"} — used the built-in planner instead.`);
+        setNote("New ideas aren’t available right now, so this week is all favorites.");
       } catch {
-        setNote("Couldn’t reach the AI — used the built-in planner instead.");
+        setNote("New ideas aren’t available right now, so this week is all favorites.");
       }
       setBusy(null);
     } else if (useAi && !ai.enabled) {
-      setNote("No AI key is set up — used the built-in planner.");
+      setNote("New ideas aren’t set up yet, so this week is all favorites.");
     }
 
     const res = planMeals(plannerRecipes, params({ seed: newSeed, mealCount: p.mealCount - locked.filter((s) => !s.recipeId).length, lockedIds }));
@@ -206,7 +206,7 @@ export function PlanClient({ household, recipes, repeat }: { household: Househol
     const s = slots[i];
     const ids = slots.map((x) => x.recipeId ?? `draft-${x.key}`);
     if (useAi && ai.enabled) {
-      setBusy("Asking Gemini for another idea…");
+      setBusy("Finding another idea…");
       try {
         const res = await fetch("/api/ai/swap", {
           method: "POST",
@@ -220,17 +220,17 @@ export function PlanClient({ household, recipes, repeat }: { household: Househol
         if (res.requestsToday) setAi((a) => ({ ...a, requestsToday: res.requestsToday }));
         setBusy(null);
         if (res.ok) {
-          replaceSlot(i, { recipeId: res.meal.recipeId ?? null, draft: res.meal.draft ?? null, title: res.meal.title, reason: res.meal.draft ? "new idea" : "favorite" });
+          replaceSlot(i, { recipeId: res.meal.recipeId ?? null, draft: res.meal.draft ?? null, title: res.meal.title, reason: res.meal.draft ? "something new" : "favorite" });
           return;
         }
-        setToast("AI swap failed — picked a favorite instead");
+        setToast("Picked another favorite instead");
       } catch {
         setBusy(null);
       }
     }
     const pick = swapMeal(plannerRecipes, ids, i, params(), s.skipIds);
     if (!pick) {
-      setToast("No other favorites fit — try relaxing a filter");
+      setToast("Nothing else fits. Try loosening a filter.");
       return;
     }
     replaceSlot(i, { recipeId: pick.recipeId, draft: null, title: pick.title, reason: pick.reason });
@@ -414,7 +414,7 @@ export function PlanClient({ household, recipes, repeat }: { household: Househol
           ) : (
             <span />
           )}
-          {ai.enabled && <span className="text-[12px] text-muted">AI requests today: {ai.requestsToday}</span>}
+          {ai.enabled && <span className="text-[12px] text-muted">{ai.requestsToday} idea lookups today</span>}
         </div>
         <h1 className="large-title">{step === "params" ? "Plan a trip" : step === "plan" ? "This week" : "Shopping list"}</h1>
         <p className="mt-1 text-[15px] text-muted">
@@ -505,8 +505,8 @@ export function PlanClient({ household, recipes, repeat }: { household: Househol
               </label>
               <label className="flex items-center justify-between px-4 py-3">
                 <span>
-                  <span className="flex items-center gap-1.5 text-[17px]"><IconSparkle className="text-accent" /> Plan with AI</span>
-                  <span className="block text-[13px] text-muted">{ai.enabled ? "Gemini mixes favorites with new ideas" : "Add a Gemini key to enable"}</span>
+                  <span className="flex items-center gap-1.5 text-[17px]"><IconSparkle className="text-accent" /> Add new ideas</span>
+                  <span className="block text-[13px] text-muted">{ai.enabled ? "Mix in dishes we haven’t tried" : "Not set up yet"}</span>
                 </span>
                 <Toggle checked={useAi} onChange={setUseAi} />
               </label>
@@ -554,7 +554,7 @@ export function PlanClient({ household, recipes, repeat }: { household: Househol
                         <p className="recipe-title text-[17px] leading-snug font-semibold">{s.title}</p>
                         <p className="mt-0.5 flex items-center gap-1 text-[13px] text-muted">
                           {(r?.prep_min ?? s.draft?.prepMin) != null && <><IconClock /> {r?.prep_min ?? s.draft?.prepMin} min · </>}
-                          {s.draft && !s.recipeId ? "new idea" : s.reason}
+                          {s.draft && !s.recipeId ? "something new" : s.reason}
                         </p>
                         {s.kid && (
                           <button onClick={() => cycleKid(i)} className="mt-1.5 rounded-full bg-accent-soft px-2.5 py-0.5 text-[12px] font-semibold text-accent">
@@ -603,7 +603,7 @@ export function PlanClient({ household, recipes, repeat }: { household: Househol
                 </section>
               );
             })}
-            <p className="mt-3 px-1 text-[13px] text-muted">Tap ✓ for things you already have. Tap a store name to move an item — we’ll remember it.</p>
+            <p className="mt-3 px-1 text-[13px] text-muted">Tick anything we already have. Use Move to switch stores and it will stick next time.</p>
             <Button size="lg" className="mt-4 w-full" onClick={sendToList} disabled={!!busy}>{busy ?? `Send ${preview.filter((i) => !i.have).length} items to the list`}</Button>
           </>
         )}

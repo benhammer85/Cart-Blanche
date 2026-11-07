@@ -76,7 +76,7 @@ export function IngredientsSettings() {
           </>
         ) : (
           <>
-            <p className="mt-3 px-1 text-[14px] text-muted">When a recipe says the first, shop for the second. “chicken stock → bone broth”.</p>
+            <p className="mt-3 px-1 text-[14px] text-muted">When a recipe says the first thing, we buy the second. For example, chicken stock becomes bone broth.</p>
             <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); addSynonym(); }}>
               <TextField value={alias} onChange={(e) => setAlias(e.target.value)} placeholder="Recipe says…" />
               <TextField value={canonical} onChange={(e) => setCanonical(e.target.value)} placeholder="We buy…" />

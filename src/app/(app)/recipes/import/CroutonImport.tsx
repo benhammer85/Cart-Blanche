@@ -132,7 +132,7 @@ export function CroutonImport() {
         >
           <span className="grid h-14 w-14 place-items-center rounded-full bg-accent-soft text-3xl text-accent"><IconUpload /></span>
           <p className="text-[17px] font-semibold">{reading ?? "Choose files"}</p>
-          <p className="text-[14px] text-muted">One .zip or several .crumb files — or drop them here</p>
+          <p className="text-[14px] text-muted">A .zip or a few .crumb files. You can drag them here too.</p>
           <input ref={inputRef} type="file" multiple accept=".crumb,.zip,application/zip,application/json" className="hidden" onChange={(e) => e.target.files && handleFiles(e.target.files)} />
         </div>
 

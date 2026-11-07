@@ -104,7 +104,7 @@ function StoreSheet({ store, sections: initial, onClose }: { store: Store; secti
           </span>
           <Toggle checked={bulk} onChange={setBulk} label="Bulk store" />
         </div>
-        <Section title="Aisle order — how you walk the store">
+        <Section title="Aisle order (the way we walk the store)">
           <SortableList
             items={sections}
             onReorder={reorder}

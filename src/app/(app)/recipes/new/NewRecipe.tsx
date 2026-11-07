@@ -102,7 +102,7 @@ export function NewRecipe({ initialMode }: { initialMode: Mode }) {
               <div className="card mt-4 p-4 text-[15px]">
                 <p className="text-[#d23c3c]">{error}</p>
                 {mode === "url" && (
-                  <Link href="/recipes/claude" className="mt-2 inline-block font-semibold text-accent">Use the Claude bridge instead →</Link>
+                  <Link href="/recipes/claude" className="mt-2 inline-block font-semibold text-accent">Find it another way</Link>
                 )}
               </div>
             )}

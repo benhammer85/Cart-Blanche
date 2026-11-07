@@ -20,7 +20,7 @@ export function PantrySettings() {
   }
   return (
     <div>
-      <PageHeader title="Pantry" back="/settings" subtitle="Staples are left off the list — flip “We’re out” to add them next time." />
+      <PageHeader title="Pantry" back="/settings" subtitle="We always have these, so they stay off the list. Flip “We’re out” when we run low." />
       <div className="px-4">
         <Section>
           <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); add(); }}>
@@ -42,7 +42,7 @@ export function PantrySettings() {
             ))}
           </ul>
         </Section>
-        <p className="mt-3 px-2 text-[13px] text-muted">Homemade bone broth is a staple (we keep it frozen — about 2 cups per soup). Recipes calling for chicken broth or stock use it.</p>
+        <p className="mt-3 px-2 text-[13px] text-muted">Our homemade bone broth counts as a staple. We keep it frozen, about 2 cups per soup, and recipes that call for chicken broth or stock use it.</p>
       </div>
     </div>
   );

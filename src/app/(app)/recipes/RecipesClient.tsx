@@ -25,7 +25,7 @@ export interface RecipeCard {
 
 type Sort = "az" | "stale" | "new" | "most";
 const SORTS: { value: Sort; label: string }[] = [
-  { value: "az", label: "A–Z" },
+  { value: "az", label: "A to Z" },
   { value: "stale", label: "Not made lately" },
   { value: "most", label: "Most made" },
   { value: "new", label: "Newest" },
@@ -134,7 +134,7 @@ export function RecipesClient({ recipes }: { recipes: RecipeCard[] }) {
             { href: "/recipes/new?mode=url", icon: <IconLink />, label: "From a link", detail: "Paste a recipe website address" },
             { href: "/recipes/new?mode=paste", icon: <IconPencil />, label: "Type or paste", detail: "Ingredients, a blank line, then steps" },
             { href: "/recipes/import", icon: <IconUpload />, label: "Import from Crouton", detail: ".crumb files or a .zip" },
-            { href: "/recipes/claude", icon: <IconChat />, label: "Ideas from Claude", detail: "Copy a prompt, paste the reply" },
+            { href: "/recipes/claude", icon: <IconChat />, label: "Find new recipes", detail: "Get fresh ideas that fit our week" },
           ].map((o) => (
             <Link key={o.href} href={o.href} className="flex min-h-[64px] items-center gap-3 px-4 py-2 active:bg-soft" onClick={() => setAdding(false)}>
               <span className="grid h-9 w-9 place-items-center rounded-full bg-accent-soft text-[18px] text-accent">{o.icon}</span>

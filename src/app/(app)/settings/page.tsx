@@ -33,7 +33,7 @@ export default function SettingsPage() {
             </li>
           ))}
         </ul>
-        <p className="mt-3 px-2 text-[13px] text-muted">Planning defaults are saved from the Plan screen (“Save as default”).</p>
+        <p className="mt-3 px-2 text-[13px] text-muted">To change the usual plan settings, set them on the Plan screen and tap Save as default.</p>
         <form action="/auth/signout" method="post" className="mt-8">
           <button className="card h-12 w-full text-[17px] text-[#d23c3c]">Sign out</button>
         </form>
