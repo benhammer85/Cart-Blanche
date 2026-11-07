@@ -19,13 +19,13 @@ export const metadata: Metadata = {
         [414, 896, 2], [375, 667, 2], [402, 874, 3], [440, 956, 3],
       ] as const
     ).map(([w, h, d]) => ({
-      url: `/splash/launch-${w * d}x${h * d}.png`,
+      url: `/splash/launch-${w * d}x${h * d}.png?v=3`,
       media: `(device-width: ${w}px) and (device-height: ${h}px) and (-webkit-device-pixel-ratio: ${d}) and (orientation: portrait)`,
     })),
   },
   icons: {
-    icon: [{ url: "/icons/icon-192.png?v=2", sizes: "192x192", type: "image/png" }],
-    apple: [{ url: "/icons/apple-touch-icon.png?v=2", sizes: "180x180" }],
+    icon: [{ url: "/icons/icon-192.png?v=3", sizes: "192x192", type: "image/png" }],
+    apple: [{ url: "/icons/apple-touch-icon.png?v=3", sizes: "180x180" }],
   },
   formatDetection: { telephone: false },
 };
