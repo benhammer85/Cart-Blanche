@@ -141,7 +141,10 @@ export function scoreRecipe(r: PlannerRecipe, p: PlanParams, rand: () => number)
     reasons.push("kids eat it");
   }
   const tags = r.tags.map(lc);
-  if (p.bonusTags.some((t) => tags.includes(lc(t)))) {
+  if (tags.includes("loved")) {
+    score += 1.5;
+    reasons.push("loved");
+  } else if (p.bonusTags.some((t) => tags.includes(lc(t)))) {
     score += 1;
     reasons.push("favorite");
   }

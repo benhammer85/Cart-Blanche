@@ -80,9 +80,10 @@ export function RecipesClient({ recipes }: { recipes: RecipeCard[] }) {
 
       <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto px-5 pb-1">
         <Chip active={!tag} onClick={() => setTag(null)}>All</Chip>
+        <Chip active={tag === "Loved"} onClick={() => setTag(tag === "Loved" ? null : "Loved")}>♥ Loved</Chip>
         <Chip active={tag === "__kf"} onClick={() => setTag(tag === "__kf" ? null : "__kf")}>Kids eat it</Chip>
         <Chip active={tag === "__kids"} onClick={() => setTag(tag === "__kids" ? null : "__kids")}>Kids’ meals</Chip>
-        {tags.filter((t) => t !== "kids").map((t) => (
+        {tags.filter((t) => t !== "kids" && t !== "Loved").map((t) => (
           <Chip key={t} active={tag === t} onClick={() => setTag(tag === t ? null : t)}>{t}</Chip>
         ))}
       </div>

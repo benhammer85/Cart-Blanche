@@ -47,7 +47,7 @@ A private, phone-first web app for our household: plan the week's dinners from o
    | `NEXT_PUBLIC_SITE_URL` | `https://<your-app>.vercel.app` |
    | `ALLOWED_EMAILS` | `ben@…=Ben,molly@…=Molly` |
    | `AI_PROVIDER` | `gemini` (optional) |
-   | `AI_MODEL` | e.g. `gemini-2.5-flash-lite` (pick any Flash/Flash-Lite model AI Studio lists) |
+   | `AI_MODEL` | optional; leave unset and the app picks the newest free Flash-Lite model |
    | `AI_API_KEY` | your Google AI Studio key (optional) |
    | `ALEXA_SKILL_ID` | from step 4 (optional) |
 
@@ -61,7 +61,7 @@ A private, phone-first web app for our household: plan the week's dinners from o
 
 ### 4. Gemini (optional)
 
-Create a free key at <https://aistudio.google.com/apikey> with a personal Google account, set `AI_API_KEY` in Vercel and redeploy. "Plan with AI" then appears in Plan. Each plan or swap is one request, and the Plan screen shows "AI requests today". Only the food profile is sent: portion counts, kids' ages, recipe titles, ingredients, tags and history. Never names or emails. If Gemini fails or is rate-limited, the app falls back to the rule-based planner and says so.
+Create a free key at <https://aistudio.google.com/apikey> with a personal Google account, set `AI_API_KEY` in Vercel and redeploy. It powers "Add new ideas" in Plan and **More → Add from a screenshot** on the list (e.g. a screenshot of an Instacart cart). "Plan with AI" then appears in Plan. Each plan or swap is one request, and the Plan screen shows "AI requests today". Only the food profile is sent: portion counts, kids' ages, recipe titles, ingredients, tags and history. Never names or emails. If Gemini fails or is rate-limited, the app falls back to the rule-based planner and says so.
 
 ### 5. Alexa (optional): "Alexa, tell Cart Blanche to add cookies"
 

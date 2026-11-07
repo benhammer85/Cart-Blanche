@@ -25,10 +25,17 @@ export async function applyUpgrades(db: SupabaseClient, householdId: string): Pr
   if (done.has(householdId)) return;
   try {
     await addHMart(db, householdId);
+    await addLovedBonus(db, householdId);
     done.add(householdId);
   } catch (e) {
     console.error("household upgrade failed", e);
   }
+}
+
+async function addLovedBonus(db: SupabaseClient, household_id: string) {
+  const { data } = await db.from("household_settings").select("bonus_tags").eq("household_id", household_id).maybeSingle();
+  const tags = (data?.bonus_tags as string[] | undefined) ?? [];
+  if (!tags.includes("Loved")) await db.from("household_settings").update({ bonus_tags: ["Loved", ...tags] }).eq("household_id", household_id);
 }
 
 async function addHMart(db: SupabaseClient, household_id: string) {

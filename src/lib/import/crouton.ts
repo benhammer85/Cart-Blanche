@@ -39,6 +39,7 @@ export const crumbSchema = z
     notes: z.string().optional(),
     webLink: z.string().optional(),
     sourceName: z.string().optional(),
+    rating: z.number().optional().nullable(),
     tags: z.array(z.object({ name: z.string() }).passthrough()).optional().default([]),
     images: z.array(z.string()).optional().default([]),
     ingredients: z
@@ -123,6 +124,8 @@ export function crumbIngredient(
   };
 }
 
+export const LOVED = "Loved";
+
 export interface CroutonParseResult {
   recipe: RecipeDraft;
   /** base64 JPEG (no data: prefix) of the best image, to be resized client-side */
@@ -152,6 +155,8 @@ export function parseCrumb(json: unknown, synonyms: Record<string, string> = {})
 
   const title = c.name.replace(/\s{2,}.*$/, "").trim() || c.name.trim(); // "Title  The Splendid Table" → "Title"
   const tags = c.tags.map((t) => t.name.trim()).filter(Boolean);
+  // 4–5 stars in Crouton → "Loved" (the planner gives it a bonus; no star ratings in the app)
+  if ((c.rating ?? 0) >= 4 && !tags.includes(LOVED)) tags.push(LOVED);
   // Prefer the largest image (Crouton stores a thumbnail and the full photo).
   const images = [...c.images].sort((a, b) => b.length - a.length);
   const ingredientNames = ingredients.map((i) => i.nameNorm);

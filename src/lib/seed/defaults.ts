@@ -260,4 +260,4 @@ export const SEED_PEOPLE = [
   { name: "Saul", kind: "kid" as const, birthdate: "2022-03-22" },
 ];
 
-export const SEED_BONUS_TAGS = ["Molly Favorites", "Asa and Saul Favorites"];
+export const SEED_BONUS_TAGS = ["Loved", "Molly Favorites", "Asa and Saul Favorites"];

@@ -3,8 +3,9 @@ import { useMemo, useState } from "react";
 import { StoreBadge } from "@/components/StoreBadge";
 import { useMembership } from "@/components/AppShell";
 import { useSharedList } from "@/lib/offline/useSharedList";
-import { Button, Chip, Empty, Select, Sheet, TextField, Toast, cx } from "@/components/ui";
-import { IconCart, IconCheck, IconCopy, IconPlus, IconTrash, IconWifiOff, IconChevron } from "@/components/icons";
+import { Button, Chip, Empty, Select, Sheet, TextArea, TextField, Toast, cx } from "@/components/ui";
+import { IconCart, IconCheck, IconCopy, IconPlus, IconTrash, IconWifiOff, IconChevron, IconUpload, IconPencil } from "@/components/icons";
+import { resizeImage } from "@/lib/data/recipes";
 import { parseIngredientLine } from "@/lib/ingredientParser";
 import { buildVocabulary, correctSpelling } from "@/lib/spell";
 import { assignStore, buildKeywordIndex } from "@/lib/list/storeAssign";
@@ -51,14 +52,14 @@ export function ListClient() {
   const predicted = useMemo(() => (parsed && assignCtx ? assignStore(parsed.nameNorm, assignCtx) : null), [parsed, assignCtx]);
   const addStoreId = storeOverride ?? predicted?.storeId ?? stores[0]?.id ?? null;
 
-  function add() {
-    if (!parsed || !listId) return;
-    const storeId = addStoreId;
-    const sectionId =
-      storeId && assignCtx ? (storeId === predicted?.storeId ? predicted.sectionId : assignStore(parsed.nameNorm, { ...assignCtx, selectedStoreIds: [storeId] }).sectionId) : null;
+  /** A list row from one parsed line, in the chosen store (or the store our rules pick). */
+  function makeItem(parsed: ReturnType<typeof parseIngredientLine>, storeId: string | null): ListItem | null {
+    if (!listId) return null;
+    const auto = assignCtx ? assignStore(parsed.nameNorm, assignCtx) : null;
+    const store = storeId ?? auto?.storeId ?? stores[0]?.id ?? null;
+    const sectionId = store && assignCtx ? (store === auto?.storeId ? auto.sectionId : assignStore(parsed.nameNorm, { ...assignCtx, selectedStoreIds: [store] }).sectionId) : null;
     const name = parsed.name.charAt(0).toUpperCase() + parsed.name.slice(1);
-    write([
-      {
+    return {
         id: crypto.randomUUID(),
         household_id: me.householdId,
         list_id: listId,
@@ -67,7 +68,7 @@ export function ListClient() {
         qty: parsed.qty,
         unit: parsed.unit,
         display_qty: parsed.qty != null ? formatAmount(parsed.qty, parsed.unit, parsed.qtyMax) : null,
-        store_id: storeId,
+        store_id: store,
         section_id: sectionId,
         checked: false,
         checked_by: null,
@@ -77,11 +78,57 @@ export function ListClient() {
         source_meals: [],
         deleted_at: null,
         client_updated_at: new Date().toISOString(),
-      },
-    ]);
+    };
+  }
+
+  function add() {
+    if (!parsed) return;
+    const item = makeItem(parsed, addStoreId);
+    if (!item) return;
+    write([item]);
     setText("");
     setKeepSpelling(false);
     setStoreOverride(null);
+  }
+
+  // Bulk add: a pasted list or the items read from a screenshot (e.g. Molly's Instacart cart)
+  const [bulk, setBulk] = useState<{ text: string; busy?: string; error?: string } | null>(null);
+  const bulkLines = useMemo(
+    () =>
+      (bulk?.text ?? "")
+        .split(/\n|,(?![^(]*\))/)
+        .map((l) => l.replace(/^\s*(?:[-•*▢☐]\s*|\d+[.)]\s+)/, "").trim())
+        .filter((l) => l.length > 1)
+        .map((l) => {
+          const fixed = correctSpelling(l, vocab).text;
+          const p = parseIngredientLine(fixed, household?.synonyms ?? {});
+          const a = assignCtx ? assignStore(p.nameNorm, assignCtx) : null;
+          return { line: fixed, parsed: p, storeId: a?.storeId ?? stores[0]?.id ?? null };
+        }),
+    [bulk?.text, vocab, household, assignCtx, stores],
+  );
+  function addBulk() {
+    const rows = bulkLines.map((b) => makeItem(b.parsed, b.storeId)).filter(Boolean) as ListItem[];
+    if (rows.length) write(rows);
+    setToast(`Added ${rows.length} item${rows.length === 1 ? "" : "s"}`);
+    setBulk(null);
+  }
+  async function readScreenshot(file: File) {
+    setMenu(false);
+    setBulk({ text: "", busy: "Reading the screenshot…" });
+    try {
+      const small = await resizeImage(file, 1600, 0.85);
+      const b64 = await new Promise<string>((res) => {
+        const fr = new FileReader();
+        fr.onload = () => res(String(fr.result).replace(/^data:[^,]+,/, ""));
+        fr.readAsDataURL(small);
+      });
+      const r = await fetch("/api/ai/screenshot", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ image: b64, mimeType: "image/jpeg" }) }).then((x) => x.json());
+      if (!r.ok) setBulk({ text: "", error: r.error ?? "Couldn’t read that picture." });
+      else setBulk({ text: (r.lines as string[]).join("\n") });
+    } catch {
+      setBulk({ text: "", error: navigator.onLine ? "Couldn’t read that picture." : "You’re offline. Try again with signal." });
+    }
   }
 
   function toggle(item: ListItem) {
@@ -280,6 +327,15 @@ export function ListClient() {
       </div>
 
       <Sheet open={menu} onClose={() => setMenu(false)} title="List">
+        <div className="card mb-3 divide-y divide-line overflow-hidden">
+          <label className="flex h-14 w-full cursor-pointer items-center gap-3 px-4 text-left text-[17px]">
+            <IconUpload className="text-muted" /> Add from a screenshot
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) readScreenshot(f); }} />
+          </label>
+          <button className="flex h-14 w-full items-center gap-3 px-4 text-left text-[17px]" onClick={() => { setMenu(false); setBulk({ text: "" }); }}>
+            <IconPencil className="text-muted" /> Paste a list
+          </button>
+        </div>
         <div className="card divide-y divide-line overflow-hidden">
           <button className="flex h-14 w-full items-center gap-3 px-4 text-left text-[17px]" onClick={() => { copy(groups.map(storeText).join("\n\n"), "Whole list"); setMenu(false); }}>
             <IconCopy className="text-muted" /> Copy whole list as text
@@ -290,6 +346,39 @@ export function ListClient() {
         </div>
         <p className="mt-3 px-1 text-[13px] text-muted">Tip: copy a store’s list to paste into Apple Reminders or AnyList as a backup.</p>
       </Sheet>
+
+      {bulk && (
+        <Sheet open onClose={() => setBulk(null)} title={bulk.busy ? "Reading…" : "Add several items"}>
+          {bulk.busy ? (
+            <p className="py-10 text-center text-[15px] text-muted">{bulk.busy}</p>
+          ) : (
+            <div className="space-y-3">
+              {bulk.error && <p className="text-[14px] text-[#d23c3c]">{bulk.error}</p>}
+              <TextArea
+                rows={6}
+                value={bulk.text}
+                onChange={(e) => setBulk({ text: e.target.value })}
+                placeholder={"One item per line\n2 lb chicken thighs\nbananas\nGreek yogurt"}
+              />
+              {bulkLines.length > 0 && (
+                <ul className="card divide-y divide-line overflow-hidden">
+                  {bulkLines.map((b, i) => (
+                    <li key={i} className="flex items-center gap-2 px-3 py-2 text-[15px]">
+                      <StoreBadge name={stores.find((s) => s.id === b.storeId)?.name ?? "?"} size={22} />
+                      <span className="flex-1">{b.parsed.name.charAt(0).toUpperCase() + b.parsed.name.slice(1)}</span>
+                      <span className="text-[13px] text-muted">{b.parsed.qty != null ? formatAmount(b.parsed.qty, b.parsed.unit, b.parsed.qtyMax) : ""}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <Button size="lg" className="w-full" disabled={!bulkLines.length || !listId} onClick={addBulk}>
+                Add {bulkLines.length || ""} {bulkLines.length === 1 ? "item" : "items"}
+              </Button>
+              <p className="px-1 text-[13px] text-muted">Each item goes to the store our rules pick. You can move any of them afterwards.</p>
+            </div>
+          )}
+        </Sheet>
+      )}
 
       {editing && household && (
         <EditItemSheet

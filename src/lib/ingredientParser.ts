@@ -123,8 +123,15 @@ export function parseIngredientLine(rawLine: string, synonyms: Record<string, st
   // "pinch of salt" with no number
   const finalQty = qty ?? (unit && ["pinch", "dash"].includes(unit) ? 1 : null);
 
+  // "Greek yogurt 32 oz" (package size at the end, as in store carts) → size goes to the note
+  let trailingSize: string | null = null;
+  const tail = rest.match(/^(.*\S)\s+(\d+(?:\.\d+)?\s*(?:fl\.?\s*oz|oz|ounces?|lbs?|pounds?|g|kg|ml|l|ct|count|pk|pack)\.?)$/i);
+  if (tail && qty == null) {
+    rest = tail[1];
+    trailingSize = tail[2];
+  }
   const { name, note } = splitNameAndNote(rest);
-  const notes = [sizeNote, note].filter(Boolean).join("; ") || null;
+  const notes = [sizeNote, trailingSize, note].filter(Boolean).join("; ") || null;
   const cleanName = name.replace(/^of\s+/i, "").trim();
 
   return {

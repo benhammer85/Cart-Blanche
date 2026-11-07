@@ -2,7 +2,10 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { IconBack, IconClock, IconPencil, IconUsers, IconLink } from "@/components/icons";
+import { IconBack, IconClock, IconPencil, IconUsers, IconLink, IconHeart, IconShare, IconCopy } from "@/components/icons";
+import { recipeToDraft } from "@/lib/data/recipes";
+import { crumbFileName, toCrumb } from "@/lib/import/croutonExport";
+import { formatAmount as fmt } from "@/lib/units";
 import { Button, Chip, cx } from "@/components/ui";
 import { RecipeImage } from "@/components/RecipeImage";
 import { formatAmount } from "@/lib/units";
@@ -16,6 +19,69 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
   const ingredients = [...(r.recipe_ingredients ?? [])].sort((a, b) => a.position - b.position);
   const steps = r.steps ?? [];
   let stepNo = 0;
+
+  const [tags, setTags] = useState(r.tags);
+  const [msg, setMsg] = useState<string | null>(null);
+  const loved = tags.includes("Loved");
+  async function toggleLoved() {
+    const next = loved ? tags.filter((t) => t !== "Loved") : [...tags, "Loved"];
+    setTags(next);
+    await supabaseBrowser().from("recipes").update({ tags: next }).eq("id", r.id);
+    router.refresh();
+  }
+
+  /** Crouton recipe file → iPhone share sheet (pick Crouton), or a download on a computer. */
+  async function sendToCrouton() {
+    let imageBase64: string | null = null;
+    if (r.image_path) {
+      try {
+        const blob = await (await fetch(r.image_path)).blob();
+        imageBase64 = await new Promise<string>((res) => {
+          const fr = new FileReader();
+          fr.onload = () => res(String(fr.result).replace(/^data:[^,]+,/, ""));
+          fr.readAsDataURL(blob);
+        });
+      } catch {
+        /* send without the photo */
+      }
+    }
+    const json = JSON.stringify(toCrumb({ ...recipeToDraft({ ...r, tags }) }, { id: r.id, imageBase64 }));
+    const file = new File([json], crumbFileName(r.title), { type: "application/octet-stream" });
+    try {
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ files: [file], title: r.title });
+        return;
+      }
+    } catch (e) {
+      if ((e as Error).name === "AbortError") return;
+    }
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(file);
+    a.download = file.name;
+    a.click();
+    setMsg("Saved a Crouton file. Open it to add the recipe to Crouton.");
+  }
+
+  async function copyAsText() {
+    const lines = [
+      r.title,
+      "",
+      `Serves ${Number(r.servings)}${r.prep_min ? `, ${r.prep_min} min prep` : ""}`,
+      "",
+      "Ingredients",
+      ...ingredients.map((i) => `${fmt(i.qty == null ? null : Number(i.qty), i.unit, i.qty_max == null ? null : Number(i.qty_max))} ${i.name}${i.note ? `, ${i.note}` : ""}`.trim()),
+      "",
+      "Steps",
+      ...steps.filter((s) => !s.isSection).map((s, n) => `${n + 1}. ${s.text.replace(/^\d+\.\s*/, "")}`),
+      ...(r.source_url ? ["", r.source_url] : []),
+    ];
+    try {
+      await navigator.clipboard.writeText(lines.join("\n"));
+      setMsg("Copied. In Crouton, add a recipe from text and paste.");
+    } catch {
+      setMsg("Couldn’t copy on this device.");
+    }
+  }
 
   async function archive() {
     if (!confirm(`Delete “${r.title}”? Past plans keep their history.`)) return;
@@ -34,9 +100,14 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
           <Link href="/recipes" className="grid h-10 w-10 place-items-center rounded-full bg-black/35 text-2xl text-white backdrop-blur" aria-label="Back">
             <IconBack />
           </Link>
-          <Link href={`/recipes/${r.id}/edit`} className="grid h-10 w-10 place-items-center rounded-full bg-black/35 text-xl text-white backdrop-blur" aria-label="Edit">
-            <IconPencil />
-          </Link>
+          <div className="flex gap-2">
+            <button onClick={toggleLoved} className={cx("grid h-10 w-10 place-items-center rounded-full text-xl backdrop-blur", loved ? "bg-white text-accent" : "bg-black/35 text-white")} aria-label={loved ? "Remove from Loved" : "Mark as Loved"} aria-pressed={loved}>
+              <IconHeart filled={loved} />
+            </button>
+            <Link href={`/recipes/${r.id}/edit`} className="grid h-10 w-10 place-items-center rounded-full bg-black/35 text-xl text-white backdrop-blur" aria-label="Edit">
+              <IconPencil />
+            </Link>
+          </div>
         </div>
       </div>
 
@@ -47,10 +118,10 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
           <span className="flex items-center gap-1"><IconUsers /> serves {Number(r.servings) * scale}</span>
           <span>{r.times_made ? `made ${r.times_made}×${r.last_made_at ? `, last ${new Date(r.last_made_at + "T00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}` : "not made yet"}</span>
         </div>
-        {(r.tags.length > 0 || r.kid_friendly) && (
+        {(tags.length > 0 || r.kid_friendly) && (
           <div className="mt-3 flex flex-wrap gap-1.5">
             {r.kid_friendly && <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[12px] font-semibold text-accent">Kids eat it</span>}
-            {r.tags.map((t) => <span key={t} className="rounded-full bg-soft px-2.5 py-1 text-[12px]">{t}</span>)}
+            {tags.map((t) => <span key={t} className="rounded-full bg-soft px-2.5 py-1 text-[12px]">{t}</span>)}
           </div>
         )}
         {r.source_url && (
@@ -106,7 +177,12 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
             <p className="text-[15px] leading-relaxed whitespace-pre-line">{r.notes}</p>
           </div>
         )}
-        <Button variant="danger" className="mt-8 w-full" onClick={archive}>Delete recipe</Button>
+        <div className="mt-8 grid grid-cols-2 gap-2">
+          <Button variant="secondary" onClick={sendToCrouton}><IconShare /> Send to Crouton</Button>
+          <Button variant="secondary" onClick={copyAsText}><IconCopy /> Copy as text</Button>
+        </div>
+        {msg && <p className="mt-2 px-1 text-[13px] text-muted">{msg}</p>}
+        <Button variant="danger" className="mt-3 w-full" onClick={archive}>Delete recipe</Button>
       </div>
     </article>
   );

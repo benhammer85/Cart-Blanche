@@ -46,6 +46,12 @@ describe("parseIngredientLine", () => {
     expect(r.note).toContain("white and light green");
   });
 
+  test("package size at the end goes to the note", () => {
+    const r = parseIngredientLine("Greek yogurt 32 oz");
+    expect([r.qty, r.nameNorm, r.note]).toEqual([null, "greek yogurt", "32 oz"]);
+    expect(parseIngredientLine("2 lb chicken thighs").qty).toBe(2);
+  });
+
   test("flags garbled OCR lines", () => {
     expect(parseIngredientLine("% teaspoon freshly ground black pepper").ok).toBe(false);
   });

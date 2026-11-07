@@ -5,7 +5,7 @@ import JSZip from "jszip";
 import { Button, PageHeader, Sheet, Toggle, cx } from "@/components/ui";
 import { IconCheck, IconUpload } from "@/components/icons";
 import { RecipeEditor } from "@/components/RecipeEditor";
-import { parseCrumb } from "@/lib/import/crouton";
+import { LOVED, parseCrumb } from "@/lib/import/crouton";
 import { base64ToBlob, isDuplicate, loadExistingKeys, saveRecipe } from "@/lib/data/recipes";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { useMembership } from "@/components/AppShell";
@@ -97,6 +97,14 @@ export function CroutonImport() {
   async function importAll() {
     setImporting(true);
     const db = supabaseBrowser();
+    // Already-saved recipes that are 4–5 stars in Crouton get the Loved tag added.
+    for (const item of items) {
+      if (!item.duplicate || !item.draft.externalId || !item.draft.tags.includes(LOVED)) continue;
+      const { data: existing } = await db.from("recipes").select("id, tags").eq("external_id", item.draft.externalId).maybeSingle();
+      if (existing && !(existing.tags as string[]).includes(LOVED)) {
+        await db.from("recipes").update({ tags: [...(existing.tags as string[]), LOVED] }).eq("id", existing.id);
+      }
+    }
     for (const item of items) {
       if (!item.include || item.status === "saved") continue;
       setItems((cur) => cur.map((i) => (i.key === item.key ? { ...i, status: "saving" } : i)));
