@@ -5,7 +5,7 @@ import { TonightCard } from "@/components/TonightCard";
 import { useMembership } from "@/components/AppShell";
 import { useSharedList } from "@/lib/offline/useSharedList";
 import { Button, Chip, Empty, Sheet, TextArea, Toast, cx } from "@/components/ui";
-import { IconCart, IconCheck, IconCopy, IconPlus, IconTrash, IconWifiOff, IconUpload, IconPencil, IconMinus } from "@/components/icons";
+import { IconCart, IconCheck, IconCopy, IconShare, IconPlus, IconTrash, IconWifiOff, IconUpload, IconPencil, IconMinus } from "@/components/icons";
 import { resizeImage } from "@/lib/data/recipes";
 import { parseIngredientLine } from "@/lib/ingredientParser";
 import { buildVocabulary, correctSpelling } from "@/lib/spell";
@@ -13,12 +13,12 @@ import { assignStore, buildKeywordIndex } from "@/lib/list/storeAssign";
 import { buildCandidates, suggestItems } from "@/lib/list/suggest";
 import { learnWalkOrder } from "@/lib/list/walkOrder";
 import { foldVariants, usualKey } from "@/lib/list/usual";
-import { staleChecked } from "@/lib/list/tidy";
+import { combine, mergeDuplicates, staleChecked } from "@/lib/list/tidy";
 import { cleanListLine, splitPastedList } from "@/lib/list/paste";
 import { normalizeName } from "@/lib/normalize";
 import { QtySheet } from "@/components/QtySheet";
 import EditItemSheet from "./EditItemSheet";
-import { addQty, formatAmount } from "@/lib/units";
+import { formatAmount } from "@/lib/units";
 import type { IngredientInfo, ListItem } from "@/lib/types";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
@@ -188,11 +188,7 @@ export function ListClient() {
         out.push(r);
         continue;
       }
-      // Two plain items (no amounts) make 2; amounts add up when the units do.
-      const sum = same.qty == null && r.qty == null ? { qty: 2, unit: "each" } : addQty(same.qty ?? 1, same.unit ?? "each", r.qty ?? 1, r.unit ?? "each");
-      const merged: ListItem = sum
-        ? { ...same, qty: sum.qty, unit: sum.unit, display_qty: formatAmount(sum.qty, sum.unit) || String(sum.qty) }
-        : { ...same, display_qty: [same.display_qty, r.display_qty].filter(Boolean).join(" + ") || same.display_qty };
+      const merged = combine(same, r);
       const k = out.findIndex((x) => x.id === same.id);
       if (k >= 0) out[k] = merged;
       else out.push(merged);
@@ -386,6 +382,18 @@ export function ListClient() {
     }
     return lines.join("\n");
   }
+  /** The phone's share sheet (Messages, Notes…), or copy where there isn't one. */
+  async function share(t: string, label: string) {
+    if (navigator.share) {
+      try {
+        await navigator.share({ text: t });
+        return;
+      } catch (e) {
+        if (e instanceof DOMException && e.name === "AbortError") return;
+      }
+    }
+    copy(t, `${label} list`);
+  }
   async function copy(t: string, label: string) {
     try {
       await navigator.clipboard.writeText(t);
@@ -409,6 +417,12 @@ export function ListClient() {
     tidied.current = true;
     const old = staleChecked(items);
     if (old.length) write(old.map((i) => ({ ...i, deleted_at: new Date().toISOString() })));
+  }, [loaded, status, items, write]);
+  // The same item twice in one store (two phones adding at once): fold into one.
+  useEffect(() => {
+    if (!loaded || status !== "synced") return;
+    const rows = mergeDuplicates(items);
+    if (rows.length) write(rows);
   }, [loaded, status, items, write]);
 
   function clearChecked() {
@@ -508,8 +522,8 @@ export function ListClient() {
                 <span className={cx("text-[14px] tabular-nums", g.todoCount ? "text-muted" : "font-semibold text-ok")}>
                   {g.todoCount ? `${g.todoCount} left` : "Done"}
                 </span>
-                <button onClick={() => copy(storeText(g), g.name)} className="grid h-11 w-11 place-items-center text-lg text-muted" aria-label={`Copy ${g.name} list`}>
-                  <IconCopy />
+                <button onClick={() => share(storeText(g), g.name)} className="grid h-11 w-11 place-items-center text-lg text-muted" aria-label={`Send the ${g.name} list`}>
+                  <IconShare />
                 </button>
               </div>
             </div>
@@ -873,16 +887,16 @@ function ItemRow({ item, onToggle, onEdit, onQty }: { item: ListItem; onToggle: 
             <span className={cx("block text-[17px] leading-snug", item.checked && "text-muted line-through decoration-1")}>
               {item.name}
             </span>
-            {item.note && <span className="block truncate text-[13px] text-muted">{item.note}</span>}
+            {item.note && <span className="line-clamp-2 block text-[13px] leading-snug text-muted">{item.note}</span>}
           </span>
         </button>
         {!item.checked && (
           <button
             onClick={onQty}
-            className={cx("my-auto h-9 shrink-0 rounded-full px-3 text-[15px] tabular-nums", item.display_qty ? "bg-soft font-semibold" : "text-muted ring-1 ring-line")}
-            aria-label={`Amount of ${item.name}`}
+            className={cx("my-auto shrink-0 rounded-full tabular-nums", item.display_qty ? "h-9 bg-soft px-3 text-[15px] font-semibold" : "grid h-9 w-9 place-items-center text-[18px] text-muted/60")}
+            aria-label={item.display_qty ? `Amount of ${item.name}` : `Add an amount for ${item.name}`}
           >
-            {item.display_qty || "+ Qty"}
+            {item.display_qty || <IconPlus />}
           </button>
         )}
         {item.checked && item.display_qty && <span className="my-auto shrink-0 text-[14px] text-muted">{item.display_qty}</span>}

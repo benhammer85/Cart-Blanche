@@ -159,7 +159,7 @@ export function buildShoppingList(meals: PlannedMealForList[], opts: BuildListOp
           coveredByStock = true;
           notes.push(`Use ${formatAmount(use.used.qty, use.used.unit)} from the freezer`);
         } else {
-          notes.push(`${formatAmount(use.used.qty, use.used.unit)} from the freezer`);
+          notes.push(`Have ${formatAmount(use.used.qty, use.used.unit)} frozen`);
           need = use.toBuy;
         }
       }

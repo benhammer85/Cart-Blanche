@@ -18,3 +18,23 @@ describe("clearing old checked items", () => {
     expect(out.map((i) => i.id)).toEqual(["a"]);
   });
 });
+
+import { mergeDuplicates } from "@/lib/list/tidy";
+describe("duplicates in one store", () => {
+  const base = { list_id: "L", store_id: "costco", name: "Milk", name_norm: "milk", checked: false, deleted_at: null } as const;
+  it("folds two into the first, adding amounts", () => {
+    const out = mergeDuplicates([
+      { ...base, id: "b", created_at: "2026-11-07T12:09:00Z", qty: 2, unit: "each", display_qty: "2" } as unknown as ListItem,
+      { ...base, id: "a", created_at: "2026-11-07T12:08:00Z", qty: 2, unit: "each", display_qty: "2" } as unknown as ListItem,
+    ], "T");
+    expect(out.find((r) => r.id === "a")).toMatchObject({ qty: 4, display_qty: "4", deleted_at: null });
+    expect(out.find((r) => r.id === "b")).toMatchObject({ deleted_at: "T" });
+  });
+  it("leaves different stores and checked items alone", () => {
+    expect(mergeDuplicates([
+      { ...base, id: "a", created_at: "1" } as unknown as ListItem,
+      { ...base, id: "b", created_at: "2", store_id: "tj" } as unknown as ListItem,
+      { ...base, id: "c", created_at: "3", checked: true } as unknown as ListItem,
+    ])).toEqual([]);
+  });
+});

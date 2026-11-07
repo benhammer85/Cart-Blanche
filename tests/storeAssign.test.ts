@@ -90,7 +90,7 @@ describe("store assignment", () => {
     const partly = buildShoppingList([meal(2, "lb", "chicken thigh")], { ...c, stores, synonyms: {}, stock: new Map([["chicken thigh", { qty: 0.5, unit: "lb" }]]) });
     expect(partly[0].coveredByStock).toBe(false);
     expect(partly[0].displayQty).toBe("1½ lb");
-    expect(partly[0].note).toContain("½ lb from the freezer");
+    expect(partly[0].note).toContain("Have ½ lb frozen");
   });
 
   test("only-at items go to their store even when it isn't on the trip", () => {

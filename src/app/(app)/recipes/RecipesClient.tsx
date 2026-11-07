@@ -3,7 +3,6 @@ import { isIdea } from "@/lib/ideas";
 import { lastMadeShort } from "@/lib/history";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { Button, Chip, Empty, Section, Segmented, Sheet } from "@/components/ui";
 import { RecipeImage } from "@/components/RecipeImage";
 import { StoreBadge } from "@/components/StoreBadge";
@@ -40,7 +39,6 @@ function usesIngredient(r: RecipeCard, needle: string): string | null {
 }
 
 export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; household: HouseholdData }) {
-  const router = useRouter();
   const [q, setQ] = useState("");
   const [tag, setTag] = useState<string | null>(null);
   const [maxPrep, setMaxPrep] = useState<number | null>(null);
@@ -91,16 +89,6 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
     <div>
       <header className="pt-safe px-5">
         <div className="flex h-11 items-center justify-end gap-2">
-          <button
-            onClick={() => {
-              const pool = shown.filter((r) => !r.is_kid_meal);
-              if (pool.length) router.push(`/recipes/${pool[Math.floor(Math.random() * pool.length)].id}`);
-            }}
-            className="h-9 px-2 text-[16px] text-accent"
-            aria-label="Open a random recipe"
-          >
-            Pick one
-          </button>
           <Link href="/recipes/new" className="grid h-9 w-9 place-items-center rounded-full text-[22px] text-accent" aria-label="Add recipe">
             <IconPlus />
           </Link>
@@ -189,5 +177,5 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
 
 function FitNote({ fit, store }: { fit: StoreFit; store: string }) {
   if (!fit.missing.length) return <p className="px-0.5 text-[12px] font-semibold text-ok">Everything at {store}</p>;
-  return <p className="truncate px-0.5 text-[12px] text-warn">Elsewhere: {fit.missing.slice(0, 2).join(", ")}{fit.missing.length > 2 ? ` +${fit.missing.length - 2}` : ""}</p>;
+  return <p className="truncate px-0.5 text-[12px] text-warn">Not at {store}: {fit.missing.slice(0, 2).join(", ")}{fit.missing.length > 2 ? ` +${fit.missing.length - 2}` : ""}</p>;
 }

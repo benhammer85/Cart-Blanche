@@ -8,7 +8,6 @@ import { IconCheck, IconClock, IconSliders, IconUpload } from "@/components/icon
 import { RecipeImage } from "@/components/RecipeImage";
 import { fitShare, makeFitContext, onlyAtStores, tripFit, type StoreFit } from "@/lib/trip";
 import { CardBadge } from "@/components/CardBadge";
-import { FlipThrough } from "@/components/FlipThrough";
 import { rng, scoreRecipe } from "@/lib/planner/planner";
 import { COOKING_STYLES, cookingStyles, type CookingStyle } from "@/lib/infer";
 import type { HouseholdData } from "@/lib/data/household";
@@ -40,8 +39,6 @@ export function Recommend({
   const [kidsOnly, setKidsOnly] = useState(false);
   const [lovedOnly, setLovedOnly] = useState(false);
   const [limit, setLimit] = useState(12);
-  const [flash, setFlash] = useState<string | null>(null);
-  const [flipping, setFlipping] = useState(false);
   const [filtering, setFiltering] = useState(false);
   const filterCount = (lovedOnly ? 1 : 0) + (kidsOnly ? 1 : 0) + styles.length;
   // Ranking has a little randomness, so build it on the phone only (no server/phone mismatch).
@@ -91,19 +88,6 @@ export function Recommend({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recipes, storeIds, mealTypes, maxPrep, kidsOnly, lovedOnly, styles, ctx, household, seed, stylesOf, special, haveTerms.join("|")]);
 
-  /** Pick a random dinner from the best matches that isn't picked yet. */
-  function surprise() {
-    const pool = ranked.slice(0, 20).filter(({ r }) => !picked.includes(r.id));
-    if (!pool.length) return;
-    const choice = pool[Math.floor(Math.random() * pool.length)].r;
-    onToggle(choice.id);
-    setFlash(choice.id);
-    const idx = ranked.findIndex((x) => x.r.id === choice.id);
-    if (idx >= limit) setLimit(idx + 1);
-    setTimeout(() => document.getElementById(`rec-${choice.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
-    setTimeout(() => setFlash(null), 1600);
-  }
-
   if (adultRecipes.length < 10) {
     return (
       <Link href="/recipes/import" className="card mt-4 flex items-center gap-3 p-4">
@@ -119,38 +103,9 @@ export function Recommend({
 
   return (
     <section className="mt-6">
-      {flipping && (
-        <FlipThrough
-          cards={ranked.slice(0, 40).map(({ r, fit }) => ({
-            id: r.id,
-            title: r.title,
-            image: r.image_path,
-            prepMin: r.prep_min,
-            lines: [
-              lastMadeShort(r.times_made, r.last_made_at),
-              r.tags.includes("Loved") && "loved",
-              r.kid_friendly && "kid-friendly",
-              fit.missing.length > 0 && `also need ${fit.missing.slice(0, 2).join(", ")}`,
-            ].filter(Boolean) as string[],
-          }))}
-          picked={picked}
-          onToggle={onToggle}
-          onClose={() => setFlipping(false)}
-        />
-      )}
       <div className="mb-3 px-1">
         <h2 className="recipe-title text-[22px] font-semibold">Your recipes</h2>
-        <div className="flex items-center justify-between gap-3">
-          <p className="truncate text-[13px] text-muted">Best for {storeNames.length > 2 ? "your stores" : storeNames.join(" & ")}</p>
-          <div className="-mr-2 flex shrink-0 items-center">
-            <button onClick={() => setFlipping(true)} disabled={!ranked.length} className="h-11 px-2 text-[16px] whitespace-nowrap text-accent disabled:opacity-40">
-              Flip through
-            </button>
-            <button onClick={surprise} disabled={!ranked.length} className="h-11 px-2 text-[16px] whitespace-nowrap text-accent disabled:opacity-40">
-              Pick one
-            </button>
-          </div>
-        </div>
+        <p className="truncate text-[13px] text-muted">Best for {storeNames.length > 2 ? "your stores" : storeNames.join(" & ")}</p>
       </div>
       <div className="no-scrollbar -mx-4 mb-2 flex gap-2 overflow-x-auto px-4 pb-1">
         <Chip active={filterCount > 0} onClick={() => setFiltering(true)}>
@@ -175,7 +130,7 @@ export function Recommend({
         {ranked.slice(0, limit).map(({ r, fit, uses }) => {
           const on = picked.includes(r.id);
           return (
-            <li key={r.id} id={`rec-${r.id}`} className={cx(flash === r.id && "animate-pulse")}>
+            <li key={r.id} id={`rec-${r.id}`}>
               <button onClick={() => onToggle(r.id)} className="w-full text-left active:scale-[0.98] transition" aria-pressed={on}>
                 <div className={cx("relative aspect-[4/3] overflow-hidden rounded-2xl bg-soft", on && "ring-3 ring-accent")}>
                   <RecipeImage src={r.image_path} title={r.title} />
@@ -210,5 +165,5 @@ export function Recommend({
 /** Only speak up when the trip won't cover everything. */
 function FitBadge({ fit }: { fit: StoreFit }) {
   if (!fit.missing.length) return null;
-  return <p className="truncate px-0.5 text-[12px] text-warn">Also need: {fit.missing.slice(0, 2).join(", ")}{fit.missing.length > 2 ? ` +${fit.missing.length - 2}` : ""}</p>;
+  return <p className="truncate px-0.5 text-[12px] text-warn">Not on this trip: {fit.missing.slice(0, 2).join(", ")}{fit.missing.length > 2 ? ` +${fit.missing.length - 2}` : ""}</p>;
 }
