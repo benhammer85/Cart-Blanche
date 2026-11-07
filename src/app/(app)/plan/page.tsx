@@ -1,16 +1,17 @@
 import { getAuthUser, supabaseServer } from "@/lib/supabase/server";
 import { getMembershipFor } from "@/lib/household/ensure";
 import { loadHouseholdData } from "@/lib/data/household";
-import { PlanClient, type PlanRecipe, type RepeatPlan } from "./PlanClient";
+import { PlanClient, type CurrentPlan, type PlanRecipe, type RepeatPlan } from "./PlanClient";
 
 export const metadata = { title: "Plan · Cart Blanche" };
 
-export default async function PlanPage({ searchParams }: { searchParams: Promise<{ from?: string; trip?: string; recipes?: string }> }) {
-  const { from, trip, recipes: tripRecipes } = await searchParams;
+export default async function PlanPage({ searchParams }: { searchParams: Promise<{ from?: string }> }) {
+  const { from } = await searchParams;
   const db = await supabaseServer();
   const user = await getAuthUser(db);
   const member = await getMembershipFor(user!);
-  const [household, recipes, repeat] = await Promise.all([
+  const weekAgo = new Date(Date.now() - 8 * 86_400_000).toISOString();
+  const [household, recipes, repeat, latest] = await Promise.all([
     loadHouseholdData(db, member!.householdId),
     db
       .from("recipes")
@@ -19,22 +20,29 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
     from
       ? db.from("meal_plans").select("params, store_ids, meal_plan_items(recipe_id, ai_recipe, title, for_kids, position)").eq("id", from).maybeSingle()
       : Promise.resolve({ data: null }),
+    // The week already planned (sent in the last 8 days), shown first.
+    db
+      .from("meal_plans")
+      .select("id, created_at, meal_plan_items(id, title, recipe_id, made_at, for_kids, position, recipes(image_path))")
+      .gte("created_at", weekAgo)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle(),
   ]);
-  // Quick trip: one store and the recipes picked on /plan/trip, loaded like a repeated week.
-  const tripPlan: RepeatPlan | null =
-    trip && tripRecipes
-      ? {
-          params: { mealCount: tripRecipes.split(",").length },
-          store_ids: [trip],
-          meal_plan_items: tripRecipes.split(",").filter(Boolean).map((id, position) => ({ recipe_id: id, ai_recipe: null, title: "", for_kids: false, position })),
-        }
-      : null;
+  type Row = { id: string; title: string; recipe_id: string | null; made_at: string | null; for_kids: boolean; position: number; recipes: { image_path: string | null } | null };
+  const current: CurrentPlan | null = latest.data
+    ? {
+        id: latest.data.id,
+        created_at: latest.data.created_at,
+        items: ((latest.data.meal_plan_items ?? []) as unknown as Row[]).map(({ recipes: r, ...i }) => ({ ...i, image_path: r?.image_path ?? null })),
+      }
+    : null;
   return (
     <PlanClient
       household={household}
       recipes={(recipes.data ?? []) as PlanRecipe[]}
-      repeat={tripPlan ?? (repeat.data as RepeatPlan) ?? null}
-      intro={tripPlan ? "Your selected recipes. Review, then build the shopping list." : undefined}
+      repeat={(repeat.data as RepeatPlan) ?? null}
+      current={from ? null : current}
     />
   );
 }

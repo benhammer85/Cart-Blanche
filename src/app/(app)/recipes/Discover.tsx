@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Chip, cx } from "@/components/ui";
+import { Button, Chip, Sheet, cx } from "@/components/ui";
 import { IconClock, IconHeart, IconPlus } from "@/components/icons";
 import { StoreBadge } from "@/components/StoreBadge";
 import { useMembership } from "@/components/AppShell";
@@ -120,9 +120,10 @@ export function Discover({ stores }: { stores: { id: string; name: string }[] })
 
   return (
     <div className="px-4">
-      <p className="mt-3 px-1 text-[14px] text-muted">
-        Recipes from trusted cooking sites, picked to match the recipes you love.
-      </p>
+      <Sources store={store} />
+
+      <h3 className="recipe-title mt-8 px-1 text-[22px] font-semibold">Search recipe sites</h3>
+      <p className="mt-1 px-1 text-[14px] text-muted">Recipes picked to match the ones you love.</p>
 
       <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
         <Chip active={!store} onClick={() => setStore(null)}>Any store</Chip>
@@ -146,7 +147,6 @@ export function Discover({ stores }: { stores: { id: string; name: string }[] })
         {busy ? "Searching recipe sites…" : cards ? "Find different recipes" : "Find recipes"}
       </Button>
       {busy && <p className="mt-2 text-center text-[13px] text-muted">This takes about 20 seconds.</p>}
-      {!cards && !busy && <Sources store={store} />}
       {error && <p className="card mt-3 p-3 text-[14px] text-[#d23c3c]">{error}</p>}
 
       {cards && (
@@ -181,38 +181,44 @@ export function Discover({ stores }: { stores: { id: string; name: string }[] })
           ))}
         </ul>
       )}
-      {cards && <Sources store={store} />}
     </div>
   );
 }
 
-/** Trusted sites to browse (pick from a list) and Reddit threads to read in Safari. */
+/** Trusted sites to browse (pick from a list); Reddit threads, read in Safari, are the last card. */
 function Sources({ store }: { store: string | null }) {
+  const [reddit, setReddit] = useState(false);
   const key = store?.toLowerCase().replace(/[^a-z]/g, "") ?? "";
   const first = <T extends { store?: string }>(xs: T[]) => [...xs.filter((x) => x.store === key), ...xs.filter((x) => !x.store), ...xs.filter((x) => x.store && x.store !== key)];
+  const card = "card flex w-[150px] shrink-0 flex-col p-3.5 text-left active:scale-[0.98]";
   return (
-    <div className="pb-6">
-      <h3 className="menu-label mt-7 px-1 text-muted">Browse</h3>
+    <div>
+      <h3 className="menu-label mt-5 px-1 text-muted">Browse</h3>
       <div className="no-scrollbar -mx-4 mt-2 flex gap-3 overflow-x-auto px-4 pb-1">
         {first(BROWSE_SOURCES).map((s) => (
-          <a key={s.url} href={`/recipes/new?mode=url&url=${encodeURIComponent(s.url)}`} className="card w-[156px] shrink-0 p-3.5 active:scale-[0.98]">
+          <a key={s.url} href={`/recipes/new?mode=url&url=${encodeURIComponent(s.url)}`} className={card}>
             <span className="menu-label block text-accent">{s.site}</span>
             <span className="recipe-title mt-1 block text-[16px] leading-snug font-semibold">{s.label}</span>
           </a>
         ))}
+        <button onClick={() => setReddit(true)} className={card}>
+          <span className="menu-label block text-accent">Reddit</span>
+          <span className="recipe-title mt-1 block text-[16px] leading-snug font-semibold">What people are cooking</span>
+        </button>
       </div>
-      <h3 className="menu-label mt-6 px-1 text-muted">From Reddit</h3>
-      <ul className="card mt-2 divide-y divide-line overflow-hidden">
-        {first(REDDIT_SOURCES).map((r) => (
-          <li key={r.url}>
-            <a href={r.url} target="_blank" rel="noopener noreferrer" className="flex min-h-[48px] items-center justify-between px-4 text-[15px] active:bg-soft">
-              {r.label}
-              <span className="text-[13px] text-muted">Open ↗</span>
-            </a>
-          </li>
-        ))}
-      </ul>
-      <p className="mt-2 px-1 text-[13px] text-muted">Found a good one? In Safari, tap Share, then Send page to Cart Blanche.</p>
+      <Sheet open={reddit} onClose={() => setReddit(false)} title="From Reddit">
+        <ul className="card divide-y divide-line overflow-hidden">
+          {first(REDDIT_SOURCES).map((r) => (
+            <li key={r.url}>
+              <a href={r.url} target="_blank" rel="noopener noreferrer" className="flex min-h-[50px] items-center justify-between px-4 text-[16px] active:bg-soft">
+                {r.label}
+                <span className="text-[13px] text-muted">Open ↗</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+        <p className="mt-3 px-1 text-[14px] text-muted">Found a good one? In Safari, tap Share, then Send page to Cart Blanche.</p>
+      </Sheet>
     </div>
   );
 }

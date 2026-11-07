@@ -86,11 +86,11 @@ describe("store assignment", () => {
     const c = ctx(["costco"], [info("chicken thigh", "meat", { pack_size: "~6 lb" })]);
     const covered = buildShoppingList([meal(1.5, "lb", "chicken thigh")], { ...c, stores, synonyms: {}, stock: new Map([["chicken thigh", { qty: 4.5, unit: "lb" }]]) });
     expect(covered[0].coveredByStock).toBe(true);
-    expect(covered[0].note).toBe("Use 1½ lb from stock");
+    expect(covered[0].note).toBe("Use 1½ lb from the freezer");
     const partly = buildShoppingList([meal(2, "lb", "chicken thigh")], { ...c, stores, synonyms: {}, stock: new Map([["chicken thigh", { qty: 0.5, unit: "lb" }]]) });
     expect(partly[0].coveredByStock).toBe(false);
     expect(partly[0].displayQty).toBe("1½ lb");
-    expect(partly[0].note).toContain("½ lb from stock");
+    expect(partly[0].note).toContain("½ lb from the freezer");
   });
 
   test("only-at items go to their store even when it isn't on the trip", () => {

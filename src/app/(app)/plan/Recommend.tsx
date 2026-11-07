@@ -3,12 +3,12 @@ import { isIdea } from "@/lib/ideas";
 import { lastMadeShort } from "@/lib/history";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Chip, cx } from "@/components/ui";
-import { IconCheck, IconClock, IconUpload } from "@/components/icons";
+import { Button, Chip, Sheet, cx } from "@/components/ui";
+import { IconCheck, IconClock, IconSliders, IconUpload } from "@/components/icons";
 import { RecipeImage } from "@/components/RecipeImage";
 import { StoreBadge } from "@/components/StoreBadge";
 import { fitShare, makeFitContext, onlyAtStores, tripFit, type StoreFit } from "@/lib/trip";
-import { OnlyAtBadge } from "@/components/OnlyAtBadge";
+import { CardBadge } from "@/components/CardBadge";
 import { FlipThrough } from "@/components/FlipThrough";
 import { rng, scoreRecipe } from "@/lib/planner/planner";
 import { COOKING_STYLES, cookingStyles, type CookingStyle } from "@/lib/infer";
@@ -41,6 +41,8 @@ export function Recommend({
   const [limit, setLimit] = useState(12);
   const [flash, setFlash] = useState<string | null>(null);
   const [flipping, setFlipping] = useState(false);
+  const [filtering, setFiltering] = useState(false);
+  const filterCount = (lovedOnly ? 1 : 0) + (kidsOnly ? 1 : 0) + styles.length;
   // Ranking has a little randomness, so build it on the phone only (no server/phone mismatch).
   const [seed, setSeed] = useState<number | null>(null);
   useEffect(() => setSeed(Date.now()), []);
@@ -148,6 +150,9 @@ export function Recommend({
         </div>
       </div>
       <div className="no-scrollbar -mx-4 mb-2 flex gap-2 overflow-x-auto px-4 pb-1">
+        <Chip active={filterCount > 0} onClick={() => setFiltering(true)}>
+          <span className="flex items-center gap-1.5"><IconSliders /> {filterCount ? `Filter · ${filterCount}` : "Filter"}</span>
+        </Chip>
         <Chip active={!focus} onClick={() => setFocus(null)}>Your stores</Chip>
         {allStores.map((st) => (
           <Chip key={st.id} active={focus === st.id} onClick={() => {
@@ -159,13 +164,19 @@ export function Recommend({
           </Chip>
         ))}
       </div>
-      <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-        <Chip active={lovedOnly} onClick={() => setLovedOnly(!lovedOnly)}>Loved</Chip>
-        <Chip active={kidsOnly} onClick={() => setKidsOnly(!kidsOnly)}>Kid-friendly</Chip>
-        {COOKING_STYLES.map((st) => (
-          <Chip key={st} active={styles.includes(st)} onClick={() => setStyles(styles.includes(st) ? styles.filter((x) => x !== st) : [...styles, st])}>{st}</Chip>
-        ))}
-      </div>
+      <Sheet open={filtering} onClose={() => setFiltering(false)} title="Filter">
+        <div className="flex flex-wrap gap-2">
+          <Chip active={lovedOnly} onClick={() => setLovedOnly(!lovedOnly)}>Loved</Chip>
+          <Chip active={kidsOnly} onClick={() => setKidsOnly(!kidsOnly)}>Kid-friendly</Chip>
+          {COOKING_STYLES.map((st) => (
+            <Chip key={st} active={styles.includes(st)} onClick={() => setStyles(styles.includes(st) ? styles.filter((x) => x !== st) : [...styles, st])}>{st}</Chip>
+          ))}
+        </div>
+        <div className="mt-5 flex gap-2">
+          <Button variant="secondary" className="flex-1" onClick={() => { setLovedOnly(false); setKidsOnly(false); setStyles([]); }}>Clear</Button>
+          <Button className="flex-1" onClick={() => setFiltering(false)}>Show {ranked.length}</Button>
+        </div>
+      </Sheet>
       {seed != null && !ranked.length && <p className="px-1 py-6 text-center text-[15px] text-muted">No recipes match those filters.</p>}
       <ul className="mt-3 grid grid-cols-2 gap-3">
         {ranked.slice(0, limit).map(({ r, fit }) => {
@@ -178,11 +189,10 @@ export function Recommend({
                   <span className={cx("absolute top-2 right-2 grid h-7 w-7 place-items-center rounded-full text-[15px] shadow", on ? "bg-accent text-white" : "bg-white/85 text-transparent")}>
                     <IconCheck strokeWidth={3} />
                   </span>
-                  {isIdea(r) ? <span className="absolute top-2 left-2 rounded-full bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur">Idea</span> : r.tags.includes("Loved") && <span className="absolute top-2 left-2 rounded-full bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur">♥</span>}
                   {(() => {
                     const sp = special.get(r.id)?.[0];
-                    const st = sp && allStores.find((s) => s.id === sp.storeId);
-                    return st ? <OnlyAtBadge store={st.name} items={sp.items} /> : null;
+                    const st = sp && allStores.find((x) => x.id === sp.storeId);
+                    return <CardBadge idea={isIdea(r)} store={st ? st.name : null} loved={r.tags.includes("Loved")} />;
                   })()}
                 </div>
                 <p className="recipe-title mt-1.5 line-clamp-2 px-0.5 text-[15px] leading-snug font-semibold">{r.title}</p>

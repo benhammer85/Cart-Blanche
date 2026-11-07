@@ -1,7 +1,6 @@
 "use client";
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";
 import { RecipeEditor, emptyDraft } from "@/components/RecipeEditor";
 import { Button, PageHeader, Segmented, TextArea, TextField, cx } from "@/components/ui";
 import { IconCamera } from "@/components/icons";
@@ -211,9 +210,6 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
             {error && (
               <div className="card mt-4 p-4 text-[15px]">
                 <p className="text-[#d23c3c]">{error}</p>
-                {mode === "url" && (
-                  <Link href="/recipes/claude" className="mt-2 inline-block font-semibold text-accent">Find it another way</Link>
-                )}
               </div>
             )}
           </>

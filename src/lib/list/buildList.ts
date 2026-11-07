@@ -157,9 +157,9 @@ export function buildShoppingList(meals: PlannedMealForList[], opts: BuildListOp
         fromStock = use.used;
         if (!use.toBuy) {
           coveredByStock = true;
-          notes.push(`Use ${formatAmount(use.used.qty, use.used.unit)} from stock`);
+          notes.push(`Use ${formatAmount(use.used.qty, use.used.unit)} from the freezer`);
         } else {
-          notes.push(`${formatAmount(use.used.qty, use.used.unit)} from stock`);
+          notes.push(`${formatAmount(use.used.qty, use.used.unit)} from the freezer`);
           need = use.toBuy;
         }
       }
@@ -179,6 +179,8 @@ export function buildShoppingList(meals: PlannedMealForList[], opts: BuildListOp
       } else notes.push(`Bulk pack: ${info.pack_size}`);
     }
     if (assignment.onlyAt && store) notes.push(`Only at ${store.name}`);
+    // Our rotisserie chickens become stock (and Saul's ramen).
+    if (/rotisserie chicken/.test(g.nameNorm)) notes.push("Save the bones for stock");
 
     const shown = need && fromStock && !coveredByStock ? [need] : parts;
     items.push({

@@ -62,7 +62,13 @@ type PreviewItem = DraftListItem & { have: boolean; moved: boolean };
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-export function PlanClient({ household, recipes, repeat, intro }: { household: HouseholdData; recipes: PlanRecipe[]; repeat: RepeatPlan | null; intro?: string }) {
+export interface CurrentPlan {
+  id: string;
+  created_at: string;
+  items: { id: string; title: string; recipe_id: string | null; made_at: string | null; for_kids: boolean; position: number; image_path: string | null }[];
+}
+
+export function PlanClient({ household, recipes, repeat, intro, current = null }: { household: HouseholdData; recipes: PlanRecipe[]; repeat: RepeatPlan | null; intro?: string; current?: CurrentPlan | null }) {
   const router = useRouter();
   const me = useMembership();
   const db = supabaseBrowser();
@@ -328,7 +334,7 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
 
   const orderedStoreIds = useMemo(() => stores.filter((s) => p.storeIds.includes(s.id)).map((s) => s.id), [stores, p.storeIds]);
 
-  function buildPreview() {
+  function computePreview(): PreviewItem[] {
     const ingredients = new Map<string, IngredientInfo>(household.ingredients.map((i) => [i.name_norm, i]));
     const items = buildShoppingList(mealsForList(), {
       selectedStoreIds: orderedStoreIds,
@@ -340,7 +346,11 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
       synonyms: household.synonyms,
       stock,
     });
-    setPreview(items.map((i) => ({ ...i, have: !!i.coveredByStock, moved: false })));
+    return items.map((i) => ({ ...i, have: !!i.coveredByStock, moved: false }));
+  }
+
+  function buildPreview() {
+    setPreview(computePreview());
     setStep("list");
   }
 
@@ -358,7 +368,7 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
     );
   }
 
-  async function sendToList() {
+  async function sendToList(items: PreviewItem[] = preview) {
     setBusy("Sending to the list…");
     try {
       // 0. Anything from the previous plan not marked yet is assumed cooked
@@ -394,7 +404,7 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
       // 3. Merge into existing unchecked items (same item + store), else add
       const now = new Date().toISOString();
       const rows: ListItem[] = [];
-      for (const it of preview.filter((x) => !x.have)) {
+      for (const it of items.filter((x) => !x.have)) {
         const match = (existing as ListItem[] | null)?.find((e) => e.name_norm === it.nameNorm && e.store_id === it.storeId);
         if (match) {
           const sum = addQty(match.qty, match.unit, it.qty, it.unit);
@@ -420,21 +430,21 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
       }
 
       // 4. Learn manual store moves; staples marked "out" are now on the list
-      const learned = preview.filter((x) => x.moved);
+      const learned = items.filter((x) => x.moved);
       if (learned.length) {
         await db.from("ingredients").upsert(
           learned.map((x) => ({ household_id: me.householdId, name_norm: x.nameNorm, learned_store_id: x.storeId, learned_section_id: x.sectionId })),
           { onConflict: "household_id,name_norm" },
         );
       }
-      const outStaples = preview.filter((x) => x.wasOut && !x.have).map((x) => x.nameNorm);
+      const outStaples = items.filter((x) => x.wasOut && !x.have).map((x) => x.nameNorm);
       if (outStaples.length) await db.from("ingredients").update({ is_out: false }).in("name_norm", outStaples);
 
       // 5. Stock: take out what the plan uses, add what new bulk packs leave over.
       try {
         const next = new Map(stock);
         const touched = new Set<string>();
-        for (const it of preview) {
+        for (const it of items) {
           const cur = next.get(it.nameNorm);
           if (it.fromStock && cur && (!it.coveredByStock || it.have)) {
             const use = takeFromStock(it.fromStock, cur);
@@ -506,7 +516,7 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
             ai.enabled && <span className="text-[12px] text-muted">{ai.requestsToday} idea lookups today</span>
           )}
         </div>
-        <h1 className="large-title">{step === "params" ? "What’s for dinner?" : step === "plan" ? "This week" : "Shopping list"}</h1>
+        <h1 className="large-title">{step === "params" ? (current?.items.length ? "This week" : "What’s for dinner?") : step === "plan" ? "Your week" : "Shopping list"}</h1>
         <p className="mt-1 text-[15px] text-muted">
           {step === "plan" && `${slots.length} meals · ${orderedStoreIds.map((id) => stores.find((s) => s.id === id)?.name).join(" + ")}`}
           {step === "list" && `${preview.filter((i) => !i.have).length} items · tick what you already have`}
@@ -514,8 +524,10 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
       </header>
 
       <div className="px-4">
+        {step === "params" && current && current.items.length > 0 && <ThisWeek plan={current} />}
         {step === "params" && (
           <>
+            {current && current.items.length > 0 && <h2 className="recipe-title mt-8 px-1 text-[24px] font-semibold">Plan next week</h2>}
             <Section title="Stores">
               <div className="flex flex-wrap gap-2">
                 {stores.map((s) => (
@@ -527,43 +539,6 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
                   <IconPlus />
                 </button>
               </div>
-            </Section>
-
-            <div className="card mt-6 divide-y divide-line">
-              <div className="flex items-center justify-between px-4 py-3">
-                <span className="text-[17px]">Meals</span>
-                <Stepper value={p.mealCount} min={1} max={14} onChange={(v) => setP({ ...p, mealCount: v })} />
-              </div>
-              <div className="px-4 py-3">
-                <div className="flex gap-2">
-                  {(["dinner", "lunch", "breakfast"] as MealType[]).map((m) => (
-                    <Chip key={m} active={p.mealTypes.includes(m)} onClick={() => setP({ ...p, mealTypes: toggleIn(p.mealTypes, m).length ? toggleIn(p.mealTypes, m) : p.mealTypes })}>
-                      {m[0].toUpperCase() + m.slice(1)}
-                    </Chip>
-                  ))}
-                </div>
-              </div>
-              {ai.enabled && (
-              <>
-              <label className="flex items-center justify-between px-4 py-3">
-                <span>
-                  <span className="text-[17px]">Add new ideas</span>
-                  <span className="block text-[13px] text-muted">Quick dinners built from products you buy, marked Idea</span>
-                </span>
-                <Toggle checked={useAi} onChange={setUseAi} />
-              </label>
-              {useAi && (
-                <div className="px-4 py-3">
-                  <div className="mb-1 flex justify-between text-[14px]"><span>Favorites</span><span className="text-muted">{p.aiFavoritesPct}% · {100 - p.aiFavoritesPct}% new</span></div>
-                  <input type="range" min={0} max={100} step={10} value={p.aiFavoritesPct} onChange={(e) => setP({ ...p, aiFavoritesPct: +e.target.value })} className="w-full accent-[var(--accent)]" />
-                </div>
-              )}
-              </>
-              )}
-            </div>
-
-            <Section title="Hands-on time">
-              <Segmented value={p.maxPrep} onChange={(v) => setP({ ...p, maxPrep: v })} options={[{ value: 15, label: "15 min" }, { value: 30, label: "30 min" }, { value: 45, label: "45 min" }, { value: null, label: "Any" }]} />
             </Section>
 
             <Recommend
@@ -589,6 +564,33 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
                 <IconChevron className="transition group-open:rotate-90" />
               </summary>
               <div className="card mt-2 divide-y divide-line">
+              <div className="flex items-center justify-between px-4 py-3">
+                <span className="text-[17px]">Dinners</span>
+                <Stepper value={p.mealCount} min={1} max={14} onChange={(v) => setP({ ...p, mealCount: v })} label="Number of dinners" />
+              </div>
+              <div className="px-4 py-3">
+                <span className="mb-2 block text-[15px] text-muted">Hands-on time</span>
+                <Segmented value={p.maxPrep} onChange={(v) => setP({ ...p, maxPrep: v })} options={[{ value: 15, label: "15 min" }, { value: 30, label: "30 min" }, { value: 45, label: "45 min" }, { value: null, label: "Any" }]} />
+              </div>
+              <div className="px-4 py-3">
+                <span className="mb-2 block text-[15px] text-muted">Also plan</span>
+                <div className="flex gap-2">
+                  {(["lunch", "breakfast"] as MealType[]).map((m) => (
+                    <Chip key={m} active={p.mealTypes.includes(m)} onClick={() => setP({ ...p, mealTypes: toggleIn(p.mealTypes, m).length ? toggleIn(p.mealTypes, m) : p.mealTypes })}>
+                      {m[0].toUpperCase() + m.slice(1)}
+                    </Chip>
+                  ))}
+                </div>
+              </div>
+              {ai.enabled && (
+                <label className="flex items-center justify-between px-4 py-3">
+                  <span>
+                    <span className="block text-[17px]">Add new ideas</span>
+                    <span className="block text-[13px] text-muted">Quick dinners built from products you buy, marked Idea</span>
+                  </span>
+                  <Toggle checked={useAi} onChange={setUseAi} label="Add new ideas" />
+                </label>
+              )}
               <div className="flex items-center justify-between px-4 py-3">
                 <span>
                   <span className="block text-[17px]">Portions per meal</span>
@@ -746,7 +748,8 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
               <Button variant="secondary" className="flex-1" onClick={() => setPicker({ mode: "add", index: -1 })}><IconPlus /> Add meal</Button>
               <Button variant="secondary" className="flex-1" onClick={planIt} disabled={!!busy}><IconSwap /> Re-plan</Button>
             </div>
-            <Button size="lg" className="mt-4 w-full" onClick={buildPreview} disabled={!slots.length || !!busy}>{busy ?? "Build shopping list"}</Button>
+            <Button size="lg" className="mt-4 w-full" onClick={() => sendToList(computePreview())} disabled={!slots.length || !!busy}>{busy ?? "Send to shopping list"}</Button>
+            <button className="mt-1 h-11 w-full text-[15px] text-accent disabled:opacity-40" onClick={buildPreview} disabled={!slots.length || !!busy}>Review the list first</button>
           </>
         )}
 
@@ -767,7 +770,7 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
               );
             })}
             <p className="mt-3 px-1 text-[13px] text-muted">Tick anything we already have. Items the freezer already covers are ticked for you. Use Move to switch stores and it will stick next time.</p>
-            <Button size="lg" className="mt-4 w-full" onClick={sendToList} disabled={!!busy}>{busy ?? `Send ${preview.filter((i) => !i.have).length} items to the list`}</Button>
+            <Button size="lg" className="mt-4 w-full" onClick={() => sendToList()} disabled={!!busy}>{busy ?? `Send ${preview.filter((i) => !i.have).length} items to the list`}</Button>
           </>
         )}
       </div>
@@ -931,5 +934,35 @@ function DayItem({ id, children }: { id: string; children: (handle: React.ReactN
     <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={cx("relative", isDragging && "z-10 opacity-90 shadow-xl")}>
       {children(handle)}
     </li>
+  );
+}
+
+/** The week we already planned: dinners in order, with what's been made. */
+function ThisWeek({ plan }: { plan: CurrentPlan }) {
+  const dinners = plan.items.filter((i) => !i.for_kids).sort((a, b) => a.position - b.position);
+  const kids = new Map(plan.items.filter((i) => i.for_kids).map((i) => [i.position - 1, i.title]));
+  const madeCount = dinners.filter((d) => d.made_at).length;
+  return (
+    <section className="mt-2">
+      <p className="px-1 text-[15px] text-muted">
+        {madeCount ? `${madeCount} of ${dinners.length} made` : `${dinners.length} ${dinners.length === 1 ? "dinner" : "dinners"} planned`} · {new Date(plan.created_at).toLocaleDateString(undefined, { weekday: "long" })}’s plan
+      </p>
+      <ul className="card mt-3 divide-y divide-line overflow-hidden">
+        {dinners.map((d) => (
+          <li key={d.id}>
+            <Link href={d.recipe_id ? `/recipes/${d.recipe_id}` : "/list"} className="flex items-center gap-3 px-3 py-2.5 active:bg-soft">
+              <span className="h-14 w-14 shrink-0 overflow-hidden rounded-lg">
+                <RecipeImage src={d.image_path} title={d.title} />
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className={cx("recipe-title block text-[17px] leading-snug font-semibold", d.made_at && "text-muted")}>{d.title}</span>
+                {kids.get(d.position) && <span className="block truncate text-[13px] text-muted">Kids: {kids.get(d.position)}</span>}
+              </span>
+              {d.made_at ? <span className="shrink-0 text-[13px] font-semibold text-ok">Made ✓</span> : <IconChevron className="shrink-0 text-muted" />}
+            </Link>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

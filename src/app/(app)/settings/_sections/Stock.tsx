@@ -63,7 +63,7 @@ export function StockSettings() {
   return (
     <div>
       <PageHeader
-        title="Freezer & bulk stock"
+        title="Freezer"
         back="/settings"
         subtitle="What’s left from Costco packs and what’s in the freezer. Plans use it first and only the rest goes on the list."
       />

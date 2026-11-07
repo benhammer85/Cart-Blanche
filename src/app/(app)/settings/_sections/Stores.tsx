@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import Link from "next/link";
 import { StoreBadge } from "@/components/StoreBadge";
 import { useHousehold } from "@/lib/data/useHousehold";
 import { Button, PageHeader, Section, Sheet, TextArea, TextField, Toggle } from "@/components/ui";
@@ -50,6 +51,10 @@ export function StoresSettings() {
             )}
           />
         </Section>
+        <Link href="/settings/rules" className="mt-4 flex items-center justify-between px-1 py-2 text-[15px] text-muted">
+          <span>Advanced: which store gets each category</span>
+          <IconChevron />
+        </Link>
         <Section title="Add a store">
           <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); addStore(); }}>
             <TextField value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Store name" />

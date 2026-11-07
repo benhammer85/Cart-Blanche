@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import { useHousehold } from "@/lib/data/useHousehold";
-import { Button, Chip, PageHeader, Section, Select, Sheet, TextField, Toggle } from "@/components/ui";
+import { Button, PageHeader, Section, Select, Sheet, TextField, Toggle } from "@/components/ui";
 import { IconChevron, IconPlus, IconSearch, IconTrash } from "@/components/icons";
 import { normalizeName } from "@/lib/normalize";
 import type { IngredientInfo } from "@/lib/types";
@@ -41,10 +41,9 @@ export function IngredientsSettings() {
     <div>
       <PageHeader title="Ingredients" back="/settings" />
       <div className="px-4">
-        <div className="mt-3 flex gap-2">
-          <Chip active={tab === "items"} onClick={() => setTab("items")}>Categories</Chip>
-          <Chip active={tab === "synonyms"} onClick={() => setTab("synonyms")}>Synonyms</Chip>
-        </div>
+        {tab === "synonyms" && (
+          <button className="mt-3 px-1 text-[15px] text-accent" onClick={() => setTab("items")}>‹ Ingredients</button>
+        )}
         {tab === "items" ? (
           <>
             <div className="relative mt-3">
@@ -73,6 +72,10 @@ export function IngredientsSettings() {
                 ))}
               </ul>
             </Section>
+            <button className="mt-2 flex w-full items-center justify-between px-1 py-2 text-[15px] text-muted" onClick={() => setTab("synonyms")}>
+              <span>Advanced: synonyms</span>
+              <IconChevron />
+            </button>
           </>
         ) : (
           <>

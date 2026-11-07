@@ -1,4 +1,5 @@
 import "server-only";
+import { parseIngredientLine } from "../ingredientParser";
 import { OUR_KITCHEN } from "../kitchen";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { inferMealTypes } from "../infer";
@@ -33,6 +34,7 @@ export async function applyUpgrades(db: SupabaseClient, householdId: string): Pr
     await reclassifyMeals(db, householdId);
     await addCostcoFavorites(db, householdId);
     await setUpKitchen(db, householdId);
+    await addChickenRamen(db, householdId);
     done.add(householdId);
   } catch (e) {
     console.error("household upgrade failed", e);
@@ -203,4 +205,45 @@ async function setUpKitchen(db: SupabaseClient, household_id: string) {
     _kitchenV1: true,
   };
   await db.from("household_settings").update({ planner_defaults: next }).eq("household_id", household_id);
+}
+
+/**
+ * A kids' menu dinner we make all the time: ramen noodles in homemade stock
+ * (from Costco rotisserie chickens) with bits of the chicken. The stock is a
+ * pantry staple, so only the noodles and chicken go on the list.
+ */
+async function addChickenRamen(db: SupabaseClient, household_id: string) {
+  const { data: settings } = await db.from("household_settings").select("planner_defaults").eq("household_id", household_id).maybeSingle();
+  const d = (settings?.planner_defaults ?? {}) as Record<string, unknown>;
+  if (!settings || d._ramenV1) return;
+  const title = "Chicken Ramen with Homemade Stock";
+  const { data: existing } = await db.from("recipes").select("id").eq("household_id", household_id).eq("title_norm", title.toLowerCase()).maybeSingle();
+  if (!existing) {
+    const { data: syn } = await db.from("synonyms").select("alias, canonical").eq("household_id", household_id);
+    const synonyms = Object.fromEntries(((syn ?? []) as { alias: string; canonical: string }[]).map((x) => [x.alias, x.canonical]));
+    const { data: r } = await db
+      .from("recipes")
+      .insert({
+        household_id, title, title_norm: title.toLowerCase(), servings: 2, prep_min: 10, cook_min: 5,
+        steps: [
+          { text: "Bring the stock to a simmer." },
+          { text: "Add the noodles (skip the flavor packet) and cook about 3 minutes, until tender." },
+          { text: "Stir in the chicken and warm through. Let it cool a little before serving." },
+        ],
+        notes: "Made with stock from our Costco rotisserie chickens.",
+        tags: ["kids"], meal_types: ["dinner"], main_protein: "chicken", kid_friendly: true, is_kid_meal: true, origin: "manual",
+      })
+      .select("id")
+      .single();
+    if (r) {
+      const lines = ["2 cups homemade chicken stock", "1 package ramen noodles", "1 cup shredded rotisserie chicken"];
+      await db.from("recipe_ingredients").insert(
+        lines.map((raw, position) => {
+          const p = parseIngredientLine(raw, synonyms);
+          return { recipe_id: r.id, household_id, position, raw_text: raw, qty: p.qty, qty_max: p.qtyMax, unit: p.unit, name: p.name, name_norm: p.nameNorm, note: p.note, parsed_ok: p.ok };
+        }),
+      );
+    }
+  }
+  await db.from("household_settings").update({ planner_defaults: { ...d, _ramenV1: true } }).eq("household_id", household_id);
 }

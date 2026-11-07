@@ -472,7 +472,7 @@ export function ListClient() {
             <IconLeaf className="text-muted" /> Pantry staples we’re out of
           </Link>
           <Link href="/settings/stock" className="flex h-14 w-full items-center gap-3 px-4 text-left text-[17px]" onClick={() => setMenu(false)}>
-            <IconSnow className="text-muted" /> Freezer & bulk stock
+            <IconSnow className="text-muted" /> Freezer
           </Link>
         </div>
         <div className="card divide-y divide-line overflow-hidden">

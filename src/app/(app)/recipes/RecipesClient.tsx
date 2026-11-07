@@ -9,10 +9,10 @@ import { Discover } from "./Discover";
 import { RecipeImage } from "@/components/RecipeImage";
 import { StoreBadge } from "@/components/StoreBadge";
 import { fitShare, makeFitContext, onlyAtStores, storeFit, type StoreFit } from "@/lib/trip";
-import { OnlyAtBadge } from "@/components/OnlyAtBadge";
+import { CardBadge } from "@/components/CardBadge";
 import type { HouseholdData } from "@/lib/data/household";
 import type { IngredientInfo } from "@/lib/types";
-import { IconBook, IconChat, IconClock, IconLink, IconPencil, IconPlus, IconSearch, IconShare, IconUpload, IconSliders, IconCamera } from "@/components/icons";
+import { IconBook, IconClock, IconLink, IconPencil, IconPlus, IconSearch, IconShare, IconUpload, IconSliders, IconCamera } from "@/components/icons";
 
 export interface RecipeCard {
   id: string;
@@ -177,13 +177,10 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
             <Link key={r.id} href={`/recipes/${r.id}`} className="group active:scale-[0.98] transition">
               <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-soft">
                 <RecipeImage src={r.image_path} title={r.title} />
-                {(isIdea(r) || r.kid_friendly || r.is_kid_meal) && (
-                  <span className="absolute top-2 left-2 rounded-full bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur">{isIdea(r) ? "Idea" : r.is_kid_meal ? "Kids’ menu" : "Kid-friendly"}</span>
-                )}
                 {(() => {
                   const sp = special.get(r.id)?.[0];
-                  const st = sp && stores.find((s) => s.id === sp.storeId);
-                  return st ? <OnlyAtBadge store={st.name} items={sp.items} /> : null;
+                  const st = sp && stores.find((x) => x.id === sp.storeId);
+                  return <CardBadge idea={isIdea(r)} store={st ? st.name : null} kidsMenu={r.is_kid_meal} loved={r.tags.includes("Loved")} kidFriendly={r.kid_friendly} />;
                 })()}
               </div>
               <p className="recipe-title mt-2 line-clamp-2 px-0.5 text-[16px] leading-snug font-semibold">{r.title}</p>
@@ -233,8 +230,7 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
             { href: "/recipes/new?mode=scan", icon: <IconCamera />, label: "Scan a cookbook page", detail: "A photo of a page, or a screenshot" },
             { href: "/recipes/new?mode=paste", icon: <IconPencil />, label: "Type or paste", detail: "A recipe page you copied, or your own" },
             { href: "/recipes/import", icon: <IconUpload />, label: "Import from Crouton", detail: ".crumb files or a .zip" },
-            { href: "/recipes/claude", icon: <IconChat />, label: "Find new recipes", detail: "Get fresh ideas that fit our week" },
-            { href: "/recipes/share-setup", icon: <IconShare />, label: "Share button setup", detail: "Save recipes from any website or app in one tap" },
+            { href: "/recipes/share-setup", icon: <IconShare />, label: "Share button setup", detail: "Save from any site in Safari, in one tap" },
           ].map((o) => (
             <Link key={o.href} href={o.href} className="flex min-h-[64px] items-center gap-3 px-4 py-2 active:bg-soft" onClick={() => setAdding(false)}>
               <span className="grid h-9 w-9 place-items-center rounded-full bg-accent-soft text-[18px] text-accent">{o.icon}</span>
