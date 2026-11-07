@@ -91,7 +91,7 @@ export function StockSettings() {
                 </ul>
               )}
               <p className="mt-3 px-1 text-[13px] text-muted">
-                When a plan buys a Costco pack with pack size set (Settings, Ingredients), what’s left over is added here automatically.
+                Leftovers from bulk packs are added here automatically.
               </p>
             </Section>
           </>

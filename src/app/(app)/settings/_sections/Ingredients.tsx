@@ -76,7 +76,7 @@ export function IngredientsSettings() {
           </>
         ) : (
           <>
-            <p className="mt-3 px-1 text-[14px] text-muted">When a recipe says the first thing, we buy the second. For example, chicken stock becomes bone broth.</p>
+            <p className="mt-3 px-1 text-[14px] text-muted">When a recipe says the first thing, we buy the second.</p>
             <form className="mt-3 flex gap-2" onSubmit={(e) => { e.preventDefault(); addSynonym(); }}>
               <TextField value={alias} onChange={(e) => setAlias(e.target.value)} placeholder="Recipe says…" />
               <TextField value={canonical} onChange={(e) => setCanonical(e.target.value)} placeholder="We buy…" />
@@ -164,7 +164,7 @@ function IngredientSheet({ row, categories, stores, onClose, onDelete }: {
             <Toggle checked={onlyAt} onChange={setOnlyAt} label="Only sold there" />
           </div>
         )}
-        <TextField value={pack} onChange={(e) => setPack(e.target.value)} placeholder="Bulk pack size (e.g. 6 lb)" aria-label="Bulk pack size" />
+        <TextField value={pack} onChange={(e) => setPack(e.target.value)} placeholder="Bulk pack size" aria-label="Bulk pack size" />
         <div className="card flex items-center justify-between px-4 py-3">
           <span className="text-[17px]">Pantry staple</span>
           <Toggle checked={staple} onChange={setStaple} label="Pantry staple" />

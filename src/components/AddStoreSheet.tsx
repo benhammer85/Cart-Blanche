@@ -55,12 +55,12 @@ export function AddStoreSheet({ householdId, onClose, onAdded }: { householdId: 
   return (
     <Sheet open onClose={onClose} title="Add a store">
       <div className="space-y-3">
-        <TextField value={name} onChange={(e) => setName(e.target.value)} placeholder="Store name (e.g. Whole Foods)" autoFocus />
+        <TextField value={name} onChange={(e) => setName(e.target.value)} placeholder="Store name" autoFocus />
         <TextField value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Where (optional)" />
         <label className="card flex items-center justify-between px-4 py-3">
           <span>
             <span className="block text-[17px]">Full grocery store</span>
-            <span className="block text-[13px] text-muted">Carries a bit of everything (like Market Basket). Off for specialty shops.</span>
+            <span className="block text-[13px] text-muted">Carries a bit of everything. Off for specialty shops.</span>
           </span>
           <Toggle checked={full} onChange={setFull} label="Full grocery store" />
         </label>

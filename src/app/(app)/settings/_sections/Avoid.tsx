@@ -32,7 +32,7 @@ export function AvoidSettings() {
       <div className="px-4">
         <Section title="Never use">
           <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (avoid.trim()) save({ avoid_terms: [...new Set([...data.avoidTerms, avoid.trim().toLowerCase()])] }); setAvoid(""); }}>
-            <TextField value={avoid} onChange={(e) => setAvoid(e.target.value)} placeholder="Ingredient or word (e.g. cilantro)" />
+            <TextField value={avoid} onChange={(e) => setAvoid(e.target.value)} placeholder="Ingredient or word" />
             <Button aria-label="Add"><IconPlus /></Button>
           </form>
           <ChipList items={data.avoidTerms} onRemove={(t) => save({ avoid_terms: data.avoidTerms.filter((x) => x !== t) })} />
@@ -40,7 +40,7 @@ export function AvoidSettings() {
         </Section>
         <Section title="Favorite tags (planner bonus)">
           <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (bonus.trim()) save({ bonus_tags: [...new Set([...data.bonusTags, bonus.trim()])] }); setBonus(""); }}>
-            <TextField value={bonus} onChange={(e) => setBonus(e.target.value)} placeholder="Tag (e.g. Molly Favorites)" />
+            <TextField value={bonus} onChange={(e) => setBonus(e.target.value)} placeholder="Tag" />
             <Button aria-label="Add"><IconPlus /></Button>
           </form>
           <ChipList items={data.bonusTags} onRemove={(t) => save({ bonus_tags: data.bonusTags.filter((x) => x !== t) })} />

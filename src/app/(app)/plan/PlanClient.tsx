@@ -614,11 +614,11 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
               <TagPicker tags={allTags} selected={p.excludeTags} onChange={(v) => setP({ ...p, excludeTags: v })} />
             </Section>
             <Section title="Exclude ingredients">
-              <FreeChips values={p.excludeIngredients} onChange={(v) => setP({ ...p, excludeIngredients: v })} placeholder="e.g. mushrooms" />
+              <FreeChips values={p.excludeIngredients} onChange={(v) => setP({ ...p, excludeIngredients: v })} placeholder="Ingredient" />
               {household.avoidTerms.length > 0 && <p className="mt-2 px-1 text-[13px] text-muted">Always avoided: {household.avoidTerms.join(", ")}</p>}
             </Section>
             <Section title="Use up what we have">
-              <FreeChips values={useUp} onChange={setUseUp} placeholder="e.g. spinach, feta" />
+              <FreeChips values={useUp} onChange={setUseUp} placeholder="Ingredient" />
             </Section>
             <Section title="Pinned meals" action={<button className="text-[15px] text-accent" onClick={() => setPicker({ mode: "pin", index: -1 })}>Add</button>}>
               <div className="flex flex-wrap gap-2">

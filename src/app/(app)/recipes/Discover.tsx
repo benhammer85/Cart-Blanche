@@ -36,7 +36,6 @@ export function Discover({ stores }: { stores: { id: string; name: string }[] })
   const [kidFriendly, setKidFriendly] = useState(false);
   const [style, setStyle] = useState<string | null>(null);
   const [cards, setCards] = useState<Card[] | null>(null);
-  const [basedOn, setBasedOn] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState<Record<string, "saving" | "saved">>({});
@@ -46,7 +45,6 @@ export function Discover({ stores }: { stores: { id: string; name: string }[] })
     try {
       const hit = JSON.parse(localStorage.getItem(key) ?? "null");
       setCards(hit?.cards ?? null);
-      setBasedOn(hit?.basedOn ?? []);
     } catch {
       setCards(null);
     }
@@ -65,9 +63,8 @@ export function Discover({ stores }: { stores: { id: string; name: string }[] })
       if (!r.ok) setError(r.error ?? "Couldn’t find recipes right now.");
       else {
         setCards(r.cards);
-        setBasedOn(r.basedOn ?? []);
         try {
-          localStorage.setItem(key, JSON.stringify({ cards: r.cards, basedOn: r.basedOn }));
+          localStorage.setItem(key, JSON.stringify({ cards: r.cards }));
         } catch {
           /* ignore */
         }
@@ -123,7 +120,7 @@ export function Discover({ stores }: { stores: { id: string; name: string }[] })
   return (
     <div className="px-4">
       <p className="mt-3 px-1 text-[14px] text-muted">
-        Real recipes from NYT Cooking, Serious Eats, Budget Bytes, Bon Appétit and more, picked to match the recipes you love.
+        Recipes from trusted cooking sites, picked to match the recipes you love.
       </p>
 
       <div className="no-scrollbar -mx-4 mt-3 flex gap-2 overflow-x-auto px-4 pb-1">
@@ -149,9 +146,6 @@ export function Discover({ stores }: { stores: { id: string; name: string }[] })
       </Button>
       {busy && <p className="mt-2 text-center text-[13px] text-muted">This takes about 20 seconds.</p>}
       {error && <p className="card mt-3 p-3 text-[14px] text-[#d23c3c]">{error}</p>}
-      {basedOn.length > 0 && cards && (
-        <p className="mt-3 px-1 text-[13px] text-muted">Based on recipes you love, like {basedOn.slice(0, 3).join(", ")}.</p>
-      )}
 
       {cards && (
         <ul className="mt-3 space-y-4 pb-6">
@@ -171,7 +165,6 @@ export function Discover({ stores }: { stores: { id: string; name: string }[] })
                     {c.prepMin != null && (<><IconClock /> {c.prepMin} min · </>)}
                     {c.ingredientCount} ingredients
                   </p>
-                  {c.why && <p className="mt-1.5 text-[14px]">{c.why}</p>}
                 </div>
               </a>
               <div className="flex border-t hairline text-[15px] font-semibold">

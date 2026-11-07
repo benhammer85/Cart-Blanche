@@ -24,7 +24,7 @@ export function PantrySettings() {
       <div className="px-4">
         <Section>
           <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); add(); }}>
-            <TextField value={name} onChange={(e) => setName(e.target.value)} placeholder="Add a staple (e.g. bone broth)" />
+            <TextField value={name} onChange={(e) => setName(e.target.value)} placeholder="Add a staple" />
             <Button aria-label="Add staple"><IconPlus /></Button>
           </form>
         </Section>
@@ -42,7 +42,6 @@ export function PantrySettings() {
             ))}
           </ul>
         </Section>
-        <p className="mt-3 px-2 text-[13px] text-muted">Our homemade bone broth counts as a staple. We keep it frozen, about 2 cups per soup, and recipes that call for chicken broth or stock use it.</p>
       </div>
     </div>
   );

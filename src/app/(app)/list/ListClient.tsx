@@ -656,7 +656,7 @@ function EditItemSheet({
     <Sheet open onClose={onClose} title="Edit item">
       <div className="space-y-3">
         <TextField value={name} onChange={(e) => setName(e.target.value)} aria-label="Name" />
-        <TextField value={qty} onChange={(e) => setQty(e.target.value)} placeholder="Amount (e.g. 2 lb)" aria-label="Amount" />
+        <TextField value={qty} onChange={(e) => setQty(e.target.value)} placeholder="Amount" aria-label="Amount" />
         <div>
           <p className="mb-2 px-1 text-[13px] font-semibold uppercase tracking-wide text-muted">Store</p>
           <div className="flex flex-wrap gap-2">

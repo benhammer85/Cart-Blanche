@@ -103,7 +103,7 @@ function StoreSheet({ store, sections: initial, onClose }: { store: Store; secti
     <Sheet open onClose={save} title={store.name}>
       <div className="space-y-3">
         <TextField value={name} onChange={(e) => setName(e.target.value)} aria-label="Store name" />
-        <TextField value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location (e.g. Everett)" aria-label="Location" />
+        <TextField value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location" aria-label="Location" />
         <div className="card flex items-center justify-between px-4 py-3">
           <span>
             <span className="block text-[17px]">Bulk store</span>
@@ -117,7 +117,7 @@ function StoreSheet({ store, sections: initial, onClose }: { store: Store; secti
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={3}
-            placeholder="e.g. Soyaki, Mandarin orange chicken, frozen dumplings, cheap flowers"
+            placeholder="Products, sauces, specialty items"
             aria-label="What we buy here"
           />
           <span className="mt-1 block px-1 text-[12px] text-muted">Used by Discover to find recipes that suit this store.</span>

@@ -80,7 +80,7 @@ export function ClaudeBridge() {
             <span className="text-[17px]">How many ideas</span>
             <Stepper value={count} min={1} max={10} onChange={setCount} />
           </div>
-          <TextField className="mt-2" value={extra} onChange={(e) => setExtra(e.target.value)} placeholder="Anything else? (e.g. a soup, use up spinach)" />
+          <TextField className="mt-2" value={extra} onChange={(e) => setExtra(e.target.value)} placeholder="Anything else?" />
           <details className="card mt-2 p-4 text-[13px] text-muted">
             <summary className="cursor-pointer text-[15px] text-ink">See the full request</summary>
             <pre className="mt-2 whitespace-pre-wrap font-sans">{prompt}</pre>
