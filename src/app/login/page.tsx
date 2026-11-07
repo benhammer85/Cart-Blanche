@@ -8,7 +8,6 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/beret.webp" alt="" width={480} height={302} className="mb-5 w-40" />
         <h1 className="large-title text-[2.75rem]">Cart Blanche</h1>
-        <p className="recipe-title mt-1 text-[19px] text-muted italic">Dinner and groceries, together.</p>
       </div>
       <LoginForm next={next} />
     </main>
