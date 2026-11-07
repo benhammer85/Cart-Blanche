@@ -28,15 +28,27 @@ export function inferMealTypes(title: string, tags: string[]): MealType[] {
   const text = `${t} ${tags.join(" ")}`.toLowerCase();
   const hasProtein = inferMainProtein(title, []) !== null && !/\b(eggs)\b/.test(inferMainProtein(title, []) ?? "");
   const savoryPie = /\b(pot pie|shepherd'?s pie|meat pie|chicken pie|cottage pie)\b/.test(t);
+  // Not a meal at all: drinks, sauces, dressings, doughs, pickles, how-to guides.
+  if (/\b(latte|espresso|coffee|smoothie|punch|lemonade|cocktail|sikhye|horchata|iced tea|hot chocolate|drink)\b/.test(t)) return ["basic"];
+  if (/^how to\b/.test(t)) return ["basic"];
+  if (/\b(pizza dough|pie crust|bread dough)\b/.test(t)) return ["basic"];
+  const dish0 = t.split(/\s+with\s+/)[0];
+  const isMealWord = /\b(pasta|noodles?|soup|stew|bowls?|rice and|tacos?|pizza|sandwich|salad|curry|chicken|beef|pork|shrimp|salmon|tofu)\b/;
+  if (/\b(dressing|vinaigrette|marinade|dough|pickled|pickles?|seasoning|spice (blend|mix|rub)|stock|broth|syrup|aioli|pesto|salsa|dip|hummus|chutney|jam|pie crust|sauce)\b/.test(dish0) && !isMealWord.test(dish0)) return ["basic"];
+  if (/\b(stock|broth|bone broth)$/.test(dish0.replace(/\s*\(.*\)$/, ""))) return ["basic"];
+  if (/^(the best |easy |perfect |simple )?(instant pot |pressure[- ]cooker |stovetop |oven )?(garlic |coconut |jasmine |basmati |brown |white |sushi |cilantro[- ]lime |lemon )?(rice|quinoa|farro|polenta|grits)\b/.test(t) && !/\b(bowls?|and|chicken|beef|pork|shrimp|tofu|beans?)\b/.test(t)) return ["side"];
   if (/\b(oats|oatmeal|pancakes?|waffles?|granola|smoothie|muffins?|french toast|breakfast|scones?|porridge|banana bread|zucchini bread)\b/.test(text)) {
     return hasProtein ? ["breakfast", "dinner"] : ["breakfast"]; // e.g. chicken rice porridge
   }
-  if (!hasProtein && !savoryPie && /\b(cakes?|cookies?|brownies?|pie|tart|cobbler|crumble|pudding|ice cream|sorbet|gelato|creamie|fudge|cupcakes?|blondies?|dessert|frosting|cheesecake)\b|\bcrisp$/.test(t + " " + tags.join(" ").toLowerCase())) {
+  if (!hasProtein && !savoryPie && (/\b(cakes?|cookies?|brownies?|pie|tart|cobbler|crumble|pudding|tapioca|ice cream|sorbet|gelato|creamie|fudge|cupcakes?|blondies?|dessert|frosting|cheesecake|crisp)\b/.test(dish0) || /\b(dessert)\b/.test(tags.join(" ").toLowerCase()))) {
     return ["dessert"];
   }
   if (/\b(lunch|sandwich|wrap)\b/.test(text)) return ["lunch", "dinner"];
-  // Breads and single-vegetable dishes are sides — never planned as a dinner.
-  if (!hasProtein && /\b(rolls?|bread|biscuits?|focaccia|cornbread)\b/.test(text)) return ["side"];
+  // Breads and single-vegetable dishes are sides, never planned as a dinner.
+  if (/\b(rolls?|bread|biscuits?|focaccia|cornbread)\b/.test(dish0) && !/\b(pudding|bowls?|soup)\b/.test(dish0)) return ["side"];
+  if (!hasProtein && /\b(fries|slaw|coleslaw|vegetables|veggies|banchan|jangjorim)\b/.test(dish0) && !/\b(soup|stew|curry|pasta|noodles|rice|bowls?|tacos?|pot pie)\b/.test(dish0)) return ["side"];
+  if (!hasProtein && /\bsalad\b/.test(dish0) && !/\b(pasta|noodle|grain|farro|quinoa|lentil|bean|chickpea|egg|tuna|chicken|salmon|steak)\b/.test(t)) return ["side"];
+  if (!hasProtein && /\b(chinese broccoli|gai lan|bok choy|sugar snaps?|snap peas|stuffed tomatoes)\b/.test(dish0)) return ["side"];
   // Vegetable dishes without a protein: "Air-Fryer Brussels Sprouts", "Broccoli Gratin", "Korean Spinach Side Dish"
   if (/\bside dish\b/.test(text)) return ["side"];
   // Only the dish itself counts, not "…with garlic, lemon and parmesan".
