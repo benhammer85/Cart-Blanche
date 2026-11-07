@@ -50,6 +50,7 @@ export function ListClient() {
   const [storeOverride, setStoreOverride] = useState<string | null>(null);
   const [editing, setEditing] = useState<ListItem | null>(null);
   const [qtyItem, setQtyItem] = useState<ListItem | null>(null);
+  const [doneAt, setDoneAt] = useState<string | null>(null);
   // Amount for the item being typed in the add box (− 1 +).
   const [addCount, setAddCount] = useState(1);
   const [toast, setToast] = useState<string | null>(null);
@@ -425,6 +426,35 @@ export function ListClient() {
     if (rows.length) write(rows);
   }, [loaded, status, items, write]);
 
+  /** End a trip: what we got goes, and what we didn't stays, moves, or goes too. */
+  function finishTrip(storeId: string, what: "keep" | "remove" | { moveTo: string }) {
+    const now = new Date().toISOString();
+    const here = items.filter((i) => !i.deleted_at && i.store_id === storeId && (!listId || i.list_id === listId));
+    const got = here.filter((i) => i.checked).map((i) => ({ ...i, deleted_at: now, client_updated_at: now }));
+    const left = here.filter((i) => !i.checked);
+    const rest =
+      what === "keep"
+        ? []
+        : what === "remove"
+          ? left.map((i) => ({ ...i, deleted_at: now, client_updated_at: now }))
+          : left.map((i) => ({
+              ...i,
+              store_id: what.moveTo,
+              section_id: assignCtx && i.name_norm ? assignStore(i.name_norm, { ...assignCtx, selectedStoreIds: [what.moveTo] }).sectionId : null,
+              client_updated_at: now,
+            }));
+    if (got.length || rest.length) write([...got, ...rest]);
+    const name = stores.find((s) => s.id === storeId)?.name ?? "";
+    setToast(
+      typeof what === "object"
+        ? `Moved ${left.length} to ${stores.find((s) => s.id === what.moveTo)?.name ?? "the other store"}`
+        : what === "remove" || !left.length
+          ? `Done at ${name}`
+          : `Kept ${left.length} for next time`,
+    );
+    setDoneAt(null);
+  }
+
   function clearChecked() {
     const checked = items.filter((i) => i.checked && !i.deleted_at);
     if (!checked.length) return;
@@ -545,6 +575,11 @@ export function ListClient() {
                   <ItemRow key={i.id} item={i} onToggle={() => toggle(i)} onEdit={() => setEditing(i)} onQty={() => setQtyItem(i)} />
                 ))}
               </ul>
+            )}
+            {g.inCart.length > 0 && g.storeId !== NO_STORE && (
+              <button onClick={() => (g.todoCount ? setDoneAt(g.storeId) : finishTrip(g.storeId, "keep"))} className="flex h-12 w-full items-center justify-center border-t hairline text-[16px] font-semibold text-accent active:bg-soft">
+                Done at {g.name}
+              </button>
             )}
             {(() => {
               const usual = (favsByStore.get(g.storeId) ?? []).filter((f) => !f.onList);
@@ -827,6 +862,26 @@ export function ListClient() {
           write([{ ...qtyItem, qty: q, unit: q == null ? null : u, display_qty: q == null ? null : formatAmount(q, u) || String(q) }]);
         }}
       />
+      {doneAt && (() => {
+        const g = groups.find((x) => x.storeId === doneAt);
+        const left = g ? g.sections.flatMap((x) => x.items) : [];
+        return (
+          <Sheet open onClose={() => setDoneAt(null)} title={`Done at ${g?.name ?? ""}`}>
+            <p className="px-1 text-[15px] text-muted">Didn’t get</p>
+            <p className="mt-1 px-1 text-[17px] leading-snug">{left.map((i) => i.name).join(", ")}</p>
+            <p className="menu-label mt-5 mb-2 px-1 text-muted">Get them at</p>
+            <div className="flex flex-wrap gap-2">
+              {stores.filter((st) => st.id !== doneAt).map((st) => (
+                <Chip key={st.id} onClick={() => finishTrip(doneAt, { moveTo: st.id })}>
+                  <span className="flex items-center gap-1.5"><StoreBadge name={st.name} size={18} />{st.name}</span>
+                </Chip>
+              ))}
+            </div>
+            <Button size="lg" variant="secondary" className="mt-5 w-full" onClick={() => finishTrip(doneAt, "keep")}>Keep for next trip</Button>
+            <button className="mt-2 h-11 w-full text-[16px] text-[#d23c3c]" onClick={() => finishTrip(doneAt, "remove")}>Remove them</button>
+          </Sheet>
+        );
+      })()}
       <Toast message={toast} onDone={() => setToast(null)} />
     </div>
   );
