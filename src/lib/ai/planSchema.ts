@@ -40,6 +40,19 @@ export interface AiPlanContext {
   favorites: { id: string; title: string; tags: string[]; ingredients: string[]; timesMade: number; lastMade: string | null; kidFriendly: boolean; prepMin: number | null }[];
   recentTitles: string[];
   pinnedIds: string[];
+  /** Products we've confirmed at each store on the trip: our notes, "only sold here" items, receipts. */
+  storeProducts?: { store: string; notes: string | null; onlyHere: string[]; buyHere: string[] }[];
+}
+
+function confirmedProducts(c: AiPlanContext): string {
+  const rows = (c.storeProducts ?? []).filter((s) => s.notes || s.onlyHere.length || s.buyHere.length);
+  if (!rows.length) return "Confirmed products: none listed.";
+  return (
+    "Confirmed products (what we actually buy at each store):\n" +
+    rows
+      .map((s) => `- ${s.store}: ${[s.notes, s.onlyHere.length && `only sold here: ${s.onlyHere.slice(0, 25).join(", ")}`, s.buyHere.length && `we buy here: ${s.buyHere.slice(0, 40).join(", ")}`].filter(Boolean).join("; ")}`)
+      .join("\n")
+  );
 }
 
 /** Only the household food profile goes to the AI — never names or emails. */
@@ -57,6 +70,9 @@ Household: ${c.adults} adults, kids aged ${c.kidAges.join(", ") || "none"} (kids
 Max active prep: ${c.maxPrep ? `${c.maxPrep} min` : "any"}.
 ${c.includeTags.length ? `Must include: ${c.includeTags.join(", ")}.\n` : ""}${c.exclude.length ? `Never use: ${c.exclude.join(", ")}.\n` : ""}${c.useUp.length ? `Use up: ${c.useUp.join(", ")}.\n` : ""}${c.variety ? "Variety: no two meals with the same main protein; at most one soup.\n" : ""}${c.pinnedIds.length ? `Must include these favorite ids: ${c.pinnedIds.join(", ")}.\n` : ""}Stores: ${c.stores.join(", ")}. Pantry staples we always have: ${c.staples.slice(0, 40).join(", ")}.
 Avoid repeating these recent meals: ${c.recentTitles.slice(0, 30).join("; ") || "none"}.
+${confirmedProducts(c)}
+New ideas: quick dinners built mostly from what these stores sell, often a shortcut product plus a few fresh things.
+Only name a store-brand or signature product (a specific sauce, frozen item or kit) if it is listed under "Confirmed products". Otherwise use generic ingredients ("teriyaki sauce", "frozen potstickers", "rotisserie chicken"). Never invent or guess product names.
 
 Favorites (id | title | tags | history | prep | ingredients):
 ${favs || "(none)"}

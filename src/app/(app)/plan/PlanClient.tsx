@@ -1,4 +1,5 @@
 "use client";
+import { isIdea } from "@/lib/ideas";
 import { useEffect, useMemo, useState } from "react";
 import { DndContext, PointerSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -213,7 +214,7 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
             .filter((m: { recipeId?: string }) => !m.recipeId || !lockedIds.includes(m.recipeId))
             .map((m: { recipeId?: string; draft?: RecipeDraft; title: string }) => ({
               key: uid(), recipeId: m.recipeId ?? null, draft: m.draft ?? null, title: m.title, locked: false, kid: null, skipIds: [],
-              reason: m.draft ? "new recipe" : "favorite",
+              reason: m.draft ? "not cooked yet" : "favorite",
             }));
           setSlots(assignKids([...locked, ...fresh]));
           setStep("plan");
@@ -258,7 +259,7 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
         if (res.requestsToday) setAi((a) => ({ ...a, requestsToday: res.requestsToday }));
         setBusy(null);
         if (res.ok) {
-          replaceSlot(i, { recipeId: res.meal.recipeId ?? null, draft: res.meal.draft ?? null, title: res.meal.title, reason: res.meal.draft ? "new recipe" : "favorite" });
+          replaceSlot(i, { recipeId: res.meal.recipeId ?? null, draft: res.meal.draft ?? null, title: res.meal.title, reason: res.meal.draft ? "not cooked yet" : "favorite" });
           return;
         }
         setToast("Replaced with another favorite");
@@ -539,7 +540,7 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
               <label className="flex items-center justify-between px-4 py-3">
                 <span>
                   <span className="text-[17px]">Add new ideas</span>
-                  <span className="block text-[13px] text-muted">Mix in dishes we haven’t tried</span>
+                  <span className="block text-[13px] text-muted">Quick dinners built from products you buy, marked Idea</span>
                 </span>
                 <Toggle checked={useAi} onChange={setUseAi} />
               </label>
@@ -690,14 +691,14 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
                         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                         <span className="absolute top-1.5 right-1.5 grid h-11 w-11 place-items-center rounded-full bg-black/25 text-white backdrop-blur [&_button]:text-white">{handle}</span>
                         <div className="absolute inset-x-0 bottom-0 p-4 text-white">
-                          <p className="menu-label opacity-90">{dayLabel(i)}</p>
+                          <p className="menu-label opacity-90">{dayLabel(i)}{(s.draft && !s.recipeId) || (r && isIdea(r)) ? " · Idea" : ""}</p>
                           <p className="recipe-title mt-0.5 text-[22px] leading-tight font-semibold">{title}</p>
                         </div>
                       </div>
                     ) : (
                       <div className="flex items-start justify-between gap-3 px-4 pt-4">
                         <div>
-                          <p className={cx("menu-label", i === 0 ? "text-accent" : "text-muted")}>{dayLabel(i)}</p>
+                          <p className={cx("menu-label", i === 0 ? "text-accent" : "text-muted")}>{dayLabel(i)}{(s.draft && !s.recipeId) || (r && isIdea(r)) ? " · Idea" : ""}</p>
                           <p className="recipe-title mt-0.5 text-[22px] leading-tight font-semibold">{title}</p>
                         </div>
                         <span className="-mt-2 -mr-2 grid h-11 w-11 shrink-0 place-items-center">{handle}</span>
@@ -712,7 +713,7 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
                         isKidFriendly(s) && <p className="text-[15px] text-muted">Kid-friendly</p>
                       )}
                       <p className="mt-0.5 text-[13px] text-muted">
-                        {[prep != null && `${prep} min`, s.draft && !s.recipeId ? "new recipe" : s.reason].filter(Boolean).join(" · ")}
+                        {[prep != null && `${prep} min`, s.draft && !s.recipeId ? "not cooked yet" : s.reason].filter(Boolean).join(" · ")}
                       </p>
                     </div>
                     <div className="mt-1 flex px-2 pb-1 text-[15px]">

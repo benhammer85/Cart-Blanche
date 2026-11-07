@@ -1,4 +1,5 @@
 "use client";
+import { isIdea } from "@/lib/ideas";
 import { lastMadeShort } from "@/lib/history";
 import { useMemo, useState } from "react";
 import Link from "next/link";
@@ -169,8 +170,8 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
             <Link key={r.id} href={`/recipes/${r.id}`} className="group active:scale-[0.98] transition">
               <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-soft">
                 <RecipeImage src={r.image_path} title={r.title} />
-                {(r.kid_friendly || r.is_kid_meal) && (
-                  <span className="absolute top-2 left-2 rounded-full bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur">{r.is_kid_meal ? "Kids’ menu" : "Kid-friendly"}</span>
+                {(isIdea(r) || r.kid_friendly || r.is_kid_meal) && (
+                  <span className="absolute top-2 left-2 rounded-full bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur">{isIdea(r) ? "Idea" : r.is_kid_meal ? "Kids’ menu" : "Kid-friendly"}</span>
                 )}
                 {(() => {
                   const sp = special.get(r.id)?.[0];

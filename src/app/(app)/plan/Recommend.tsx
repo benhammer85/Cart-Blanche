@@ -1,4 +1,5 @@
 "use client";
+import { isIdea } from "@/lib/ideas";
 import { lastMadeShort } from "@/lib/history";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
@@ -177,7 +178,7 @@ export function Recommend({
                   <span className={cx("absolute top-2 right-2 grid h-7 w-7 place-items-center rounded-full text-[15px] shadow", on ? "bg-accent text-white" : "bg-white/85 text-transparent")}>
                     <IconCheck strokeWidth={3} />
                   </span>
-                  {r.tags.includes("Loved") && <span className="absolute top-2 left-2 rounded-full bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur">♥</span>}
+                  {isIdea(r) ? <span className="absolute top-2 left-2 rounded-full bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur">Idea</span> : r.tags.includes("Loved") && <span className="absolute top-2 left-2 rounded-full bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur">♥</span>}
                   {(() => {
                     const sp = special.get(r.id)?.[0];
                     const st = sp && allStores.find((s) => s.id === sp.storeId);

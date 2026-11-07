@@ -7,6 +7,7 @@ import { formatAmount, canonicalUnit } from "../units";
 import { inferMealTypes } from "../infer";
 import { ageOn } from "../list/buildList";
 import type { RecipeDraft } from "../types";
+import { IDEA_TAG } from "../ideas";
 import type { z } from "zod";
 
 export interface AiPlanRequest {
@@ -36,7 +37,7 @@ export async function buildContext(db: SupabaseClient, req: AiPlanRequest): Prom
   const [recipes, people, stores, staples, settings, recent, syn] = await Promise.all([
     db.from("recipes").select("id, title, tags, times_made, last_made_at, kid_friendly, prep_min, meal_types, recipe_ingredients(name_norm)").eq("archived", false).eq("is_kid_meal", false),
     db.from("household_people").select("kind, birthdate"),
-    db.from("stores").select("id, name"),
+    db.from("stores").select("*"),
     db.from("ingredients").select("name_norm").eq("is_staple", true).eq("is_out", false),
     db.from("household_settings").select("avoid_terms").maybeSingle(),
     db.from("meal_plan_items").select("title, meal_plans!inner(created_at)").gte("meal_plans.created_at", since),
@@ -88,12 +89,31 @@ export async function buildContext(db: SupabaseClient, req: AiPlanRequest): Prom
       useUp: req.useUp,
       variety: req.variety,
       stores: ((stores.data ?? []) as { id: string; name: string }[]).filter((s) => req.storeIds.includes(s.id)).map((s) => s.name),
+      storeProducts: await confirmedStoreProducts(db, ((stores.data ?? []) as { id: string; name: string; notes?: string | null }[]).filter((s) => req.storeIds.includes(s.id)), scrub),
       staples: ((staples.data ?? []) as { name_norm: string }[]).map((s) => s.name_norm),
       favorites,
       recentTitles: [...new Set(((recent.data ?? []) as { title: string }[]).map((r) => scrub(r.title)))],
       pinnedIds: req.pinnedIds.map((id) => reverse.get(id)).filter(Boolean) as string[],
     },
   };
+}
+
+/** What we've confirmed at each store: our notes, "only sold here" items and receipt-learned items. */
+async function confirmedStoreProducts(
+  db: SupabaseClient,
+  stores: { id: string; name: string; notes?: string | null }[],
+  scrub: (t: string) => string,
+): Promise<{ store: string; notes: string | null; onlyHere: string[]; buyHere: string[] }[]> {
+  if (!stores.length) return [];
+  // select("*") so a database without the newer columns still works.
+  const { data } = await db.from("ingredients").select("*").in("learned_store_id", stores.map((s) => s.id));
+  const rows = (data ?? []) as { name_norm: string; learned_store_id: string; only_at?: boolean; is_staple?: boolean }[];
+  return stores.map((s) => ({
+    store: s.name,
+    notes: s.notes?.trim() ? scrub(s.notes.trim()).slice(0, 400) : null,
+    onlyHere: rows.filter((r) => r.learned_store_id === s.id && r.only_at).map((r) => r.name_norm),
+    buyHere: rows.filter((r) => r.learned_store_id === s.id && !r.only_at && !r.is_staple).map((r) => r.name_norm),
+  }));
 }
 
 export function scrubNames(text: string, kidNames: string[], adultNames: string[]): string {
@@ -116,7 +136,7 @@ export function newMealToDraft(m: AiNewMeal, synonyms: Record<string, string>): 
     notes: null,
     sourceUrl: null,
     sourceName: "Gemini",
-    tags: [...new Set([...m.tags.filter(Boolean), "AI idea"])],
+    tags: [...new Set([...m.tags.filter(Boolean), IDEA_TAG])],
     mealTypes: inferMealTypes(m.title, m.tags),
     mainProtein: m.mainProtein?.toLowerCase() || null,
     kidFriendly: m.kidFriendly,
