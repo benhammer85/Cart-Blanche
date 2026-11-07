@@ -41,6 +41,7 @@ export async function applyUpgrades(db: SupabaseClient, householdId: string): Pr
     await setWalkOrder(db, householdId);
     await addShawsHistory(db, householdId);
     await addCostcoCounts(db, householdId);
+    await addFamilyWords(db, householdId);
     done.add(householdId);
   } catch (e) {
     console.error("household upgrade failed", e);
@@ -343,4 +344,13 @@ async function addCostcoCounts(db: SupabaseClient, household_id: string) {
   }
   storeCounts[costco.id] = counts;
   await db.from("household_settings").update({ planner_defaults: { ...d, storeCounts, itemLabels, _costcoCountsV1: true } }).eq("household_id", household_id);
+}
+
+/** Our own words for things: Saul's "white chicken" is rotisserie chicken. */
+async function addFamilyWords(db: SupabaseClient, household_id: string) {
+  const { data: settings } = await db.from("household_settings").select("planner_defaults").eq("household_id", household_id).maybeSingle();
+  const d = (settings?.planner_defaults ?? {}) as Record<string, unknown>;
+  if (!settings || d._familyWordsV1) return;
+  await db.from("synonyms").upsert([{ household_id, alias: "white chicken", canonical: "rotisserie chicken" }], { onConflict: "household_id,alias" });
+  await db.from("household_settings").update({ planner_defaults: { ...d, _familyWordsV1: true } }).eq("household_id", household_id);
 }

@@ -13,8 +13,10 @@ import { buildVocabulary, correctSpelling } from "@/lib/spell";
 import { assignStore, buildKeywordIndex } from "@/lib/list/storeAssign";
 import { buildCandidates, suggestItems } from "@/lib/list/suggest";
 import { learnWalkOrder } from "@/lib/list/walkOrder";
+import { splitPastedList } from "@/lib/list/paste";
+import { normalizeName } from "@/lib/normalize";
 import { QtySheet } from "@/components/QtySheet";
-import { formatAmount } from "@/lib/units";
+import { addQty, formatAmount } from "@/lib/units";
 import type { IngredientInfo, ListItem } from "@/lib/types";
 import { supabaseBrowser } from "@/lib/supabase/client";
 
@@ -24,43 +26,20 @@ export function ListClient() {
   const me = useMembership();
   const { listId, items, household, status, pending, loaded, write, refetch } = useSharedList(me.householdId);
 
-  // Quick-add: the things we add by hand most often (from past lists).
-  const [frequent, setFrequent] = useState<string[]>([]);
+  // Past list items: what we buy at each store, and suggestions while typing.
   const [history, setHistory] = useState<{ name: string; name_norm: string | null; store_id: string | null }[]>([]);
   useEffect(() => {
     supabaseBrowser()
       .from("shopping_list_items")
-      .select("name, name_norm, is_manual, added_by, store_id")
+      .select("name, name_norm, store_id")
       .order("created_at", { ascending: false })
       .limit(800)
-      .then(({ data }) => {
-        const rows = (data ?? []) as { name: string; name_norm: string | null; is_manual: boolean; added_by: string | null; store_id: string | null }[];
-        setHistory(rows);
-        const counts = new Map<string, { name: string; n: number }>();
-        for (const r of rows.filter((x) => x.is_manual && x.added_by !== "Alexa")) {
-          const key = r.name_norm ?? r.name.toLowerCase();
-          const cur = counts.get(key);
-          counts.set(key, { name: cur?.name ?? r.name, n: (cur?.n ?? 0) + 1 });
-        }
-        setFrequent([...counts.values()].filter((c) => c.n >= 2).sort((a, b) => b.n - a.n).map((c) => c.name).slice(0, 10));
-      });
+      .then(({ data }) => setHistory((data ?? []) as { name: string; name_norm: string | null; store_id: string | null }[]));
   }, []);
-  const quickAdd = useMemo(() => {
-    const onList = new Set(items.filter((i) => !i.checked && !i.deleted_at).map((i) => (i.name_norm ?? i.name).toLowerCase()));
-    // Until we have our own history, start with what our Shaw's receipts show we buy most.
-    const base = frequent.length >= 4 ? frequent : [...frequent, "Bananas", "Carrots", "Milk", "Onions", "Garlic", "Cilantro", "Chicken thighs", "Ice cream", "Pasta", "Strawberries"];
-    const seen = new Set<string>();
-    return base.filter((n) => {
-      const k = n.toLowerCase();
-      if (seen.has(k) || onList.has(k) || onList.has(k.replace(/s$/, ""))) return false;
-      seen.add(k);
-      return true;
-    }).slice(0, 8);
-  }, [frequent, items]);
   function addQuick(name: string, storeId: string | null = viewing) {
     const item = makeItem(parseIngredientLine(name, household?.synonyms ?? {}), storeId);
     if (item) {
-      write([item]);
+      put([item]);
       if (navigator.vibrate) navigator.vibrate(8);
       setToast(`Added ${name}`);
     }
@@ -134,26 +113,34 @@ export function ListClient() {
   // "Usually at Costco": what we buy at the store we're looking at, most often first
   // (receipts + past lists), so Costco never offers ice cream.
   const favStore = storeOverride ?? viewing;
-  const storeFavs = useMemo(() => {
-    if (!favStore || !household) return [];
-    const score = new Map<string, { label: string; n: number }>();
-    const bump = (key: string, label: string, n: number) => {
-      const cur = score.get(key);
-      score.set(key, { label: cur?.label ?? label, n: (cur?.n ?? 0) + n });
-    };
+  // What we buy at each store, most often first (receipts + past lists).
+  const favsByStore = useMemo(() => {
+    const out = new Map<string, { key: string; label: string; n: number; onList: boolean }[]>();
+    if (!household) return out;
     const labels = household.plannerDefaults.itemLabels ?? {};
-    for (const [k, n] of Object.entries(household.plannerDefaults.storeCounts?.[favStore] ?? {})) bump(k, labels[k] ?? k.charAt(0).toUpperCase() + k.slice(1), n);
-    for (const h of history) {
-      if (h.store_id !== favStore) continue;
-      const name = h.name.replace(/^\s*[\d½¼¾⅓⅔/.]+\s*/, "").trim();
-      if (name) bump(h.name_norm ?? name.toLowerCase(), name.charAt(0).toUpperCase() + name.slice(1), 1);
-    }
-    for (const i of household.ingredients) if (i.learned_store_id === favStore && !score.has(i.name_norm)) bump(i.name_norm, labels[i.name_norm] ?? i.name_norm.charAt(0).toUpperCase() + i.name_norm.slice(1), 0.5);
     const onList = new Set(items.filter((i) => !i.checked && !i.deleted_at).map((i) => i.name_norm ?? i.name.toLowerCase()));
-    return [...score.entries()]
-      .map(([key, v]) => ({ key, label: v.label, n: v.n, onList: onList.has(key) }))
-      .sort((a, b) => b.n - a.n || a.label.localeCompare(b.label));
-  }, [favStore, household, history, items]);
+    for (const st of stores) {
+      const score = new Map<string, { label: string; n: number }>();
+      const bump = (key: string, label: string, n: number) => {
+        const cur = score.get(key);
+        score.set(key, { label: cur?.label ?? label, n: (cur?.n ?? 0) + n });
+      };
+      for (const [k, n] of Object.entries(household.plannerDefaults.storeCounts?.[st.id] ?? {})) bump(k, labels[k] ?? k.charAt(0).toUpperCase() + k.slice(1), n);
+      for (const h of history) {
+        if (h.store_id !== st.id) continue;
+        const name = h.name.replace(/^\s*[\d½¼¾⅓⅔/.]+\s*/, "").trim();
+        if (name) bump(h.name_norm ?? name.toLowerCase(), name.charAt(0).toUpperCase() + name.slice(1), 1);
+      }
+      for (const ing of household.ingredients) if (ing.learned_store_id === st.id && !score.has(ing.name_norm)) bump(ing.name_norm, labels[ing.name_norm] ?? ing.name_norm.charAt(0).toUpperCase() + ing.name_norm.slice(1), 0.5);
+      out.set(
+        st.id,
+        [...score.entries()].map(([key, v]) => ({ key, label: v.label, n: v.n, onList: onList.has(key) })).sort((a, b) => b.n - a.n || a.label.localeCompare(b.label)),
+      );
+    }
+    return out;
+  }, [household, history, items, stores]);
+  const [favSheetStore, setFavSheetStore] = useState<string | null>(null);
+  const storeFavs = favsByStore.get(favSheetStore ?? favStore ?? "") ?? [];
   const [favSheet, setFavSheet] = useState(false);
   const [favPicked, setFavPicked] = useState<Set<string>>(new Set());
 
@@ -173,7 +160,7 @@ export function ListClient() {
     const line = p.qty != null ? `${formatAmount(p.qty, p.unit)} ${sg.label}` : addCount > 1 ? `${addCount} ${sg.label}` : sg.label;
     const item = makeItem(parseIngredientLine(line, household?.synonyms ?? {}), sg.storeId);
     if (!item) return;
-    write([item]);
+    put([item]);
     if (navigator.vibrate) navigator.vibrate(8);
     setToast(`Added ${sg.label}${sg.storeId ? ` · ${stores.find((x) => x.id === sg.storeId)?.name}` : ""}`);
     setText("");
@@ -182,13 +169,45 @@ export function ListClient() {
     setStoreOverride(null);
   }
 
+  /**
+   * Add items, merging with the same thing already on that store's list
+   * (Milk + Milk = Milk 2) instead of listing it twice.
+   */
+  function put(rows: ListItem[]) {
+    const open = items.filter((i) => !i.checked && !i.deleted_at && (!listId || i.list_id === listId));
+    const out: ListItem[] = [];
+    for (const r of rows) {
+      const same = [...out, ...open].find((e) => e.id !== r.id && e.store_id === r.store_id && !!r.name_norm && e.name_norm === r.name_norm);
+      if (!same) {
+        out.push(r);
+        continue;
+      }
+      // Two plain items (no amounts) make 2; amounts add up when the units do.
+      const sum = same.qty == null && r.qty == null ? { qty: 2, unit: "each" } : addQty(same.qty ?? 1, same.unit ?? "each", r.qty ?? 1, r.unit ?? "each");
+      const merged: ListItem = sum
+        ? { ...same, qty: sum.qty, unit: sum.unit, display_qty: formatAmount(sum.qty, sum.unit) || String(sum.qty) }
+        : { ...same, display_qty: [same.display_qty, r.display_qty].filter(Boolean).join(" + ") || same.display_qty };
+      const k = out.findIndex((x) => x.id === same.id);
+      if (k >= 0) out[k] = merged;
+      else out.push(merged);
+    }
+    if (out.length) write(out);
+  }
+
+  /** What we call it on the list: a nickname we've set up ("white chicken") shows as the item it means. */
+  function displayName(parsed: ReturnType<typeof parseIngredientLine>): string {
+    const plain = normalizeName(parsed.name, {});
+    const n = plain && plain !== parsed.nameNorm && household?.synonyms[plain] ? parsed.nameNorm : parsed.name;
+    return n.charAt(0).toUpperCase() + n.slice(1);
+  }
+
   /** A list row from one parsed line, in the chosen store (or the store our rules pick). */
   function makeItem(parsed: ReturnType<typeof parseIngredientLine>, storeId: string | null): ListItem | null {
     if (!listId) return null;
     const auto = assignCtx ? assignStore(parsed.nameNorm, assignCtx) : null;
     const store = storeId ?? auto?.storeId ?? stores[0]?.id ?? null;
     const sectionId = store && assignCtx ? (store === auto?.storeId ? auto.sectionId : assignStore(parsed.nameNorm, { ...assignCtx, selectedStoreIds: [store] }).sectionId) : null;
-    const name = parsed.name.charAt(0).toUpperCase() + parsed.name.slice(1);
+    const name = displayName(parsed);
     return {
         id: crypto.randomUUID(),
         household_id: me.householdId,
@@ -216,7 +235,7 @@ export function ListClient() {
     const withCount = parsed.qty == null && addCount > 1 ? parseIngredientLine(`${addCount} ${spelled.text}`, household?.synonyms ?? {}) : parsed;
     const item = makeItem(withCount, addStoreId);
     if (!item) return;
-    write([item]);
+    put([item]);
     setText("");
     setAddCount(1);
     setKeepSpelling(false);
@@ -225,25 +244,25 @@ export function ListClient() {
 
   // Bulk add: a pasted list or the items read from a screenshot (e.g. Molly's Instacart cart)
   const [bulk, setBulk] = useState<{ text: string; busy?: string; error?: string } | null>(null);
+  // Paste: "Auto" sends each item to its usual store; or pick one store for all.
+  const [bulkStore, setBulkStore] = useState<string | null>(null);
   const bulkLines = useMemo(
     () =>
-      (bulk?.text ?? "")
-        .split(/\n|,(?![^(]*\))/)
-        .map((l) => l.replace(/^\s*(?:[-•*▢☐]\s*|\d+[.)]\s+)/, "").trim())
-        .filter((l) => l.length > 1)
+      splitPastedList(bulk?.text ?? "")
         .map((l) => {
           const fixed = correctSpelling(l, vocab).text;
           const p = parseIngredientLine(fixed, household?.synonyms ?? {});
           const a = assignCtx ? assignStore(p.nameNorm, assignCtx) : null;
-          return { line: fixed, parsed: p, storeId: a?.storeId ?? stores[0]?.id ?? null };
+          return { line: fixed, parsed: p, storeId: bulkStore ?? a?.storeId ?? stores[0]?.id ?? null };
         }),
-    [bulk?.text, vocab, household, assignCtx, stores],
+    [bulk?.text, vocab, household, assignCtx, stores, bulkStore],
   );
   function addBulk() {
     const rows = bulkLines.map((b) => makeItem(b.parsed, b.storeId)).filter(Boolean) as ListItem[];
-    if (rows.length) write(rows);
+    if (rows.length) put(rows);
     setToast(`Added ${rows.length} item${rows.length === 1 ? "" : "s"}`);
     setBulk(null);
+    setBulkStore(null);
   }
   async function readScreenshot(file: File) {
     setMenu(false);
@@ -369,6 +388,13 @@ export function ListClient() {
       setToast("Couldn’t copy");
     }
   }
+  function clearAll() {
+    const all = items.filter((i) => !i.deleted_at && (!listId || i.list_id === listId));
+    if (!all.length || !confirm(`Clear all ${all.length} items from the list?`)) return;
+    write(all.map((i) => ({ ...i, deleted_at: new Date().toISOString() })));
+    setToast("List cleared");
+    setMenu(false);
+  }
   function clearChecked() {
     const checked = items.filter((i) => i.checked && !i.deleted_at);
     if (!checked.length) return;
@@ -484,6 +510,27 @@ export function ListClient() {
               </div>
             ))}
             {!g.sections.length && <p className="px-4 py-3 text-[15px] text-muted">Everything’s in the cart.</p>}
+            {(() => {
+              const usual = (favsByStore.get(g.storeId) ?? []).filter((f) => !f.onList);
+              if (!usual.length) return null;
+              return (
+                <div className="border-t hairline px-4 pt-3 pb-3.5">
+                  <p className="menu-label mb-2 text-muted">Usually here</p>
+                  <div className="flex flex-wrap gap-2">
+                    {usual.slice(0, 6).map((f) => (
+                      <button key={f.key} onClick={() => addQuick(f.label, g.storeId)} className="h-9 rounded-full px-3 text-[14px] ring-1 ring-line active:scale-95 active:bg-soft">
+                        + {f.label}
+                      </button>
+                    ))}
+                    {usual.length > 6 && (
+                      <button onClick={() => { setFavPicked(new Set()); setFavSheetStore(g.storeId); setFavSheet(true); }} className="h-9 rounded-full px-3 text-[14px] font-semibold text-accent">
+                        See all
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })()}
 
             {g.inCart.length > 0 && (
               <div className="border-t hairline">
@@ -507,7 +554,7 @@ export function ListClient() {
             )}
           </section>
         ))}
-        {shown && loaded && (
+        {shown && loaded && !groups.some((g) => g.storeId === shown) && (
           <section className="card mt-4 overflow-hidden">
             <div className="flex items-baseline justify-between px-4 pt-4 pb-1">
               <h2 className="recipe-title text-[20px] font-semibold">Usually at {stores.find((x) => x.id === shown)?.name}</h2>
@@ -537,15 +584,6 @@ export function ListClient() {
       {/* Add bar */}
       <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+58px)] z-30 border-t hairline bg-bg px-3 pt-2 pb-2">
         <div className="mx-auto max-w-xl">
-          {!text.trim() && !favStore && quickAdd.length > 0 && listId && (
-            <div className="no-scrollbar mb-2 flex gap-2 overflow-x-auto px-1">
-              {quickAdd.map((n) => (
-                <button key={n} onClick={() => addQuick(n)} className="h-9 shrink-0 rounded-full px-3 text-[14px] text-ink ring-1 ring-line active:scale-95 active:bg-soft">
-                  + {n}
-                </button>
-              ))}
-            </div>
-          )}
           {spelled.corrections.length > 0 && (
             <button type="button" onClick={() => setKeepSpelling(true)} className="mb-2 ml-1 rounded-full bg-card px-3 py-1.5 text-[13px] shadow-sm ring-1 ring-line">
               Adding as <b>{spelled.corrections.map((c) => c.to).join(", ")}</b>. <span className="text-accent">Keep “{spelled.corrections.map((c) => c.from).join(", ")}”</span>
@@ -652,6 +690,9 @@ export function ListClient() {
           <button className="flex h-14 w-full items-center gap-3 px-4 text-left text-[17px] text-[#d23c3c] disabled:opacity-40" disabled={!totalCart} onClick={clearChecked}>
             <IconTrash /> Clear checked items ({totalCart})
           </button>
+          <button className="flex h-14 w-full items-center gap-3 px-4 text-left text-[17px] text-[#d23c3c] disabled:opacity-40" disabled={!totalTodo && !totalCart} onClick={clearAll}>
+            <IconTrash /> Clear the whole list
+          </button>
         </div>
         <p className="mt-3 px-1 text-[13px] text-muted">Tip: copy a store’s list to paste into Apple Reminders or AnyList as a backup.</p>
       </Sheet>
@@ -670,11 +711,21 @@ export function ListClient() {
                 placeholder={"One item per line\n2 lb chicken thighs\nbananas\nGreek yogurt"}
               />
               {bulkLines.length > 0 && (
+                <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4">
+                  <Chip active={!bulkStore} onClick={() => setBulkStore(null)}>Usual stores</Chip>
+                  {stores.map((st) => (
+                    <Chip key={st.id} active={bulkStore === st.id} onClick={() => setBulkStore(st.id)}>
+                      <span className="flex items-center gap-1.5"><StoreBadge name={st.name} size={18} />{st.name}</span>
+                    </Chip>
+                  ))}
+                </div>
+              )}
+              {bulkLines.length > 0 && (
                 <ul className="card divide-y divide-line overflow-hidden">
                   {bulkLines.map((b, i) => (
                     <li key={i} className="flex items-center gap-2 px-3 py-2 text-[15px]">
                       <StoreBadge name={stores.find((s) => s.id === b.storeId)?.name ?? "?"} size={22} />
-                      <span className="flex-1">{b.parsed.name.charAt(0).toUpperCase() + b.parsed.name.slice(1)}</span>
+                      <span className="flex-1">{displayName(b.parsed)}</span>
                       <span className="text-[13px] text-muted">{b.parsed.qty != null ? formatAmount(b.parsed.qty, b.parsed.unit, b.parsed.qtyMax) : ""}</span>
                     </li>
                   ))}
@@ -683,7 +734,7 @@ export function ListClient() {
               <Button size="lg" className="w-full" disabled={!bulkLines.length || !listId} onClick={addBulk}>
                 Add {bulkLines.length || ""} {bulkLines.length === 1 ? "item" : "items"}
               </Button>
-              <p className="px-1 text-[13px] text-muted">Each item goes to the store our rules pick. You can move any of them afterwards.</p>
+              <p className="px-1 text-[13px] text-muted">{bulkStore ? `Everything goes to ${stores.find((x) => x.id === bulkStore)?.name}.` : "Each item goes to the store you usually buy it at."}</p>
             </div>
           )}
         </Sheet>
@@ -720,7 +771,7 @@ export function ListClient() {
           }}
         />
       )}
-      <Sheet open={favSheet} onClose={() => setFavSheet(false)} title={`Usually at ${stores.find((x) => x.id === favStore)?.name ?? "this store"}`}>
+      <Sheet open={favSheet} onClose={() => { setFavSheet(false); setFavSheetStore(null); }} title={`Usually at ${stores.find((x) => x.id === (favSheetStore ?? favStore))?.name ?? "this store"}`}>
         <p className="px-1 text-[14px] text-muted">Most bought first. Tick what you need.</p>
         <ul className="card mt-3 divide-y divide-line overflow-hidden">
           {storeFavs.map((f) => {
@@ -748,10 +799,11 @@ export function ListClient() {
           className="mt-4 w-full"
           disabled={!favPicked.size}
           onClick={() => {
-            const rows = storeFavs.filter((f) => favPicked.has(f.key)).map((f) => makeItem(parseIngredientLine(f.label, household?.synonyms ?? {}), favStore)).filter(Boolean) as ListItem[];
-            if (rows.length) write(rows);
+            const rows = storeFavs.filter((f) => favPicked.has(f.key)).map((f) => makeItem(parseIngredientLine(f.label, household?.synonyms ?? {}), favSheetStore ?? favStore)).filter(Boolean) as ListItem[];
+            if (rows.length) put(rows);
             setToast(`Added ${rows.length} ${rows.length === 1 ? "item" : "items"}`);
             setFavSheet(false);
+            setFavSheetStore(null);
           }}
         >
           {favPicked.size ? `Add ${favPicked.size} ${favPicked.size === 1 ? "item" : "items"}` : "Tick items to add"}
