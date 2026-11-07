@@ -4,6 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Chip, Empty, Sheet, cx } from "@/components/ui";
 import { RecipeImage } from "@/components/RecipeImage";
+import { StoreBadge } from "@/components/StoreBadge";
+import { fitShare, makeFitContext, storeFit, type StoreFit } from "@/lib/trip";
+import type { HouseholdData } from "@/lib/data/household";
+import type { IngredientInfo } from "@/lib/types";
 import { IconBook, IconChat, IconClock, IconLink, IconPencil, IconPlus, IconSearch, IconShare, IconUpload, IconDice } from "@/components/icons";
 
 export interface RecipeCard {
@@ -22,6 +26,7 @@ export interface RecipeCard {
   times_made: number;
   last_made_at: string | null;
   created_at: string;
+  recipe_ingredients?: { name_norm: string }[];
 }
 
 type Sort = "az" | "stale" | "new" | "most";
@@ -32,13 +37,24 @@ const SORTS: { value: Sort; label: string }[] = [
   { value: "new", label: "Newest" },
 ];
 
-export function RecipesClient({ recipes }: { recipes: RecipeCard[] }) {
+export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; household: HouseholdData }) {
   const router = useRouter();
   const [q, setQ] = useState("");
   const [tag, setTag] = useState<string | null>(null);
   const [maxPrep, setMaxPrep] = useState<number | null>(null);
   const [sort, setSort] = useState<Sort>("az");
   const [adding, setAdding] = useState(false);
+  // "Best at <store>": sort by how much of each recipe that store usually carries.
+  const [storeFocus, setStoreFocus] = useState<string | null>(null);
+  const stores = household.stores.filter((s) => !s.archived);
+  const fitCtx = useMemo(
+    () => makeFitContext({ categories: household.categories, rules: household.rules, ingredients: new Map<string, IngredientInfo>(household.ingredients.map((i) => [i.name_norm, i])), synonyms: household.synonyms }),
+    [household],
+  );
+  const fits = useMemo(() => {
+    if (!storeFocus) return null;
+    return new Map(recipes.map((r) => [r.id, storeFit((r.recipe_ingredients ?? []).map((i) => i.name_norm), storeFocus, fitCtx)]));
+  }, [storeFocus, recipes, fitCtx]);
 
   const tags = useMemo(() => {
     const counts = new Map<string, number>();
@@ -56,6 +72,12 @@ export function RecipesClient({ recipes }: { recipes: RecipeCard[] }) {
       if (maxPrep && r.prep_min != null && r.prep_min > maxPrep) return false;
       return !needle || r.title.toLowerCase().includes(needle) || r.tags.some((t) => t.toLowerCase().includes(needle));
     });
+    if (fits) {
+      // Store view: dinners and lunches only, best fit first.
+      return list
+        .filter((r) => !r.is_kid_meal && r.meal_types.some((t) => t === "dinner" || t === "lunch"))
+        .sort((a, b) => fitShare(fits.get(b.id)!) - fitShare(fits.get(a.id)!) || a.title.localeCompare(b.title));
+    }
     list = [...list].sort((a, b) => {
       if (sort === "stale") return (a.last_made_at ?? "0000").localeCompare(b.last_made_at ?? "0000");
       if (sort === "most") return b.times_made - a.times_made;
@@ -63,7 +85,7 @@ export function RecipesClient({ recipes }: { recipes: RecipeCard[] }) {
       return a.title.localeCompare(b.title);
     });
     return list;
-  }, [recipes, q, tag, maxPrep, sort]);
+  }, [recipes, q, tag, maxPrep, sort, fits]);
 
   return (
     <div>
@@ -100,6 +122,14 @@ export function RecipesClient({ recipes }: { recipes: RecipeCard[] }) {
         </Link>
       )}
       <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto px-5 pb-1">
+        <Chip active={!storeFocus} onClick={() => setStoreFocus(null)}>All recipes</Chip>
+        {stores.map((st) => (
+          <Chip key={st.id} active={storeFocus === st.id} onClick={() => setStoreFocus(storeFocus === st.id ? null : st.id)}>
+            <span className="flex items-center gap-1.5"><StoreBadge name={st.name} size={18} />Best at {st.name}</span>
+          </Chip>
+        ))}
+      </div>
+      <div className="no-scrollbar mt-2 flex gap-2 overflow-x-auto px-5 pb-1">
         <Chip active={!tag} onClick={() => setTag(null)}>All</Chip>
         <Chip active={tag === "Loved"} onClick={() => setTag(tag === "Loved" ? null : "Loved")}>♥ Loved</Chip>
         <Chip active={tag === "__kf"} onClick={() => setTag(tag === "__kf" ? null : "__kf")}>Kid-friendly</Chip>
@@ -144,6 +174,7 @@ export function RecipesClient({ recipes }: { recipes: RecipeCard[] }) {
                 {r.prep_min != null && (<><IconClock /> {r.prep_min} min · </>)}
                 {r.times_made ? `made ${r.times_made}×` : "not made yet"}
               </p>
+              {fits && <FitNote fit={fits.get(r.id)!} store={stores.find((s) => s.id === storeFocus)?.name ?? ""} />}
             </Link>
           ))}
         </div>
@@ -171,4 +202,9 @@ export function RecipesClient({ recipes }: { recipes: RecipeCard[] }) {
       </Sheet>
     </div>
   );
+}
+
+function FitNote({ fit, store }: { fit: StoreFit; store: string }) {
+  if (!fit.missing.length) return <p className="px-0.5 text-[12px] font-semibold text-ok">Everything at {store}</p>;
+  return <p className="truncate px-0.5 text-[12px] text-warn">Elsewhere: {fit.missing.slice(0, 2).join(", ")}{fit.missing.length > 2 ? ` +${fit.missing.length - 2}` : ""}</p>;
 }

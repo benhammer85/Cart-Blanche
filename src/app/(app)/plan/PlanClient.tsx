@@ -515,6 +515,7 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
               maxPrep={p.maxPrep}
               picked={pinnedIds}
               onToggle={(id) => setPinnedIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))}
+              onFocusStore={(id) => setP((cur) => (cur.storeIds.includes(id) ? cur : { ...cur, storeIds: [...cur.storeIds, id] }))}
             />
 
             {!pinnedIds.length && (

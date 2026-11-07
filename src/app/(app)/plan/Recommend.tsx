@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Chip, cx } from "@/components/ui";
 import { IconCheck, IconClock, IconDice, IconUpload } from "@/components/icons";
 import { RecipeImage } from "@/components/RecipeImage";
+import { StoreBadge } from "@/components/StoreBadge";
 import { fitShare, makeFitContext, tripFit, type StoreFit } from "@/lib/trip";
 import { rng, scoreRecipe } from "@/lib/planner/planner";
 import { COOKING_STYLES, cookingStyles, type CookingStyle } from "@/lib/infer";
@@ -18,7 +19,7 @@ type R = PlanRecipe & { steps?: { text: string }[] };
  * there first, then the usual planner picks (Loved, kid-friendly, not made lately).
  */
 export function Recommend({
-  recipes, household, storeIds, mealTypes, maxPrep, picked, onToggle,
+  recipes, household, storeIds, mealTypes, maxPrep, picked, onToggle, onFocusStore,
 }: {
   recipes: R[];
   household: HouseholdData;
@@ -27,6 +28,8 @@ export function Recommend({
   maxPrep: number | null;
   picked: string[];
   onToggle: (id: string) => void;
+  /** Called when you look at a store that isn't on the trip yet. */
+  onFocusStore?: (storeId: string) => void;
 }) {
   const [styles, setStyles] = useState<CookingStyle[]>([]);
   const [kidsOnly, setKidsOnly] = useState(false);
@@ -36,7 +39,11 @@ export function Recommend({
   // Ranking has a little randomness, so build it on the phone only (no server/phone mismatch).
   const [seed, setSeed] = useState<number | null>(null);
   useEffect(() => setSeed(Date.now()), []);
-  const storeNames = household.stores.filter((s) => storeIds.includes(s.id)).map((s) => s.name);
+  // Which store's suggestions to show: the trip's stores, or one store you tap.
+  const [focus, setFocus] = useState<string | null>(null);
+  const shownIds = focus ? [focus] : storeIds;
+  const storeNames = household.stores.filter((s) => shownIds.includes(s.id)).map((s) => s.name);
+  const allStores = household.stores.filter((s) => !s.archived);
 
   const ctx = useMemo(
     () => makeFitContext({ categories: household.categories, rules: household.rules, ingredients: new Map<string, IngredientInfo>(household.ingredients.map((i) => [i.name_norm, i])), synonyms: household.synonyms }),
@@ -46,7 +53,7 @@ export function Recommend({
 
   const adultRecipes = recipes.filter((r) => !r.is_kid_meal);
   const ranked = useMemo(() => {
-    if (!storeIds.length || seed == null) return [];
+    if (!shownIds.length || seed == null) return [];
     const rand = rng(seed);
     const avoid = household.avoidTerms.map((t) => t.toLowerCase());
     return adultRecipes
@@ -58,7 +65,7 @@ export function Recommend({
       .filter((r) => !avoid.some((a) => r.recipe_ingredients.some((i) => i.name_norm.includes(a))))
       .map((r) => {
         const names = r.recipe_ingredients.map((i) => i.name_norm);
-        const fit = tripFit(names, storeIds, ctx);
+        const fit = tripFit(names, shownIds, ctx);
         const { score } = scoreRecipe(
           { ...r, ingredientNames: names },
           { mealCount: 1, mealTypes, maxPrep: null, includeTags: [], excludeTags: [], excludeIngredients: [], avoidTerms: [], bonusTags: household.bonusTags, variety: false, useUp: [], pinnedIds: [], kidMeals: false },
@@ -69,7 +76,7 @@ export function Recommend({
       })
       .sort((a, b) => b.rank - a.rank);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recipes, storeIds, mealTypes, maxPrep, kidsOnly, lovedOnly, styles, ctx, household, seed, stylesOf]);
+  }, [recipes, focus, storeIds, mealTypes, maxPrep, kidsOnly, lovedOnly, styles, ctx, household, seed, stylesOf]);
 
   /** Pick a random dinner from the best matches that isn't picked yet. */
   function surprise() {
@@ -102,11 +109,23 @@ export function Recommend({
       <div className="mb-3 flex items-start justify-between gap-3 px-1">
         <div>
           <h2 className="text-[20px] font-bold">Suggested dinners</h2>
-          <p className="text-[13px] text-muted">Best matches for {storeNames.length > 2 ? "these stores" : storeNames.join(" & ")}. Tap to choose.</p>
+          <p className="text-[13px] text-muted">Best for {storeNames.length > 2 ? "your stores" : storeNames.join(" & ")}. Tap to choose.</p>
         </div>
         <button onClick={surprise} disabled={!ranked.length} className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-accent-soft px-3.5 text-[14px] font-semibold whitespace-nowrap text-accent disabled:opacity-40">
           <IconDice /> Pick one
         </button>
+      </div>
+      <div className="no-scrollbar -mx-4 mb-2 flex gap-2 overflow-x-auto px-4 pb-1">
+        <Chip active={!focus} onClick={() => setFocus(null)}>Your stores</Chip>
+        {allStores.map((st) => (
+          <Chip key={st.id} active={focus === st.id} onClick={() => {
+            const next = focus === st.id ? null : st.id;
+            setFocus(next);
+            if (next && !storeIds.includes(next)) onFocusStore?.(next);
+          }}>
+            <span className="flex items-center gap-1.5"><StoreBadge name={st.name} size={18} />{st.name}</span>
+          </Chip>
+        ))}
       </div>
       <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
         <Chip active={lovedOnly} onClick={() => setLovedOnly(!lovedOnly)}>♥ Loved</Chip>
