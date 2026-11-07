@@ -5,8 +5,10 @@ import { useEffect, useState } from "react";
 import { PhotoSheet } from "@/components/PhotoSheet";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { IconBack, IconCamera, IconCart, IconClock, IconPencil, IconUsers, IconLink, IconHeart } from "@/components/icons";
-import { Chip, cx } from "@/components/ui";
+import { IconBack, IconCamera, IconCart, IconClock, IconPencil, IconUsers, IconLink, IconHeart, IconSwap } from "@/components/icons";
+import { Chip, Sheet, cx } from "@/components/ui";
+import { Substitutes } from "@/components/Substitutes";
+import { substitutesFor } from "@/lib/substitutes";
 import { RecipeImage } from "@/components/RecipeImage";
 import { formatAmount, usEquivalent } from "@/lib/units";
 import { AddToListSheet } from "@/components/AddToListSheet";
@@ -25,6 +27,7 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
   const [tags, setTags] = useState(r.tags);
   const [adding, setAdding] = useState(false);
   const [photoOpen, setPhotoOpen] = useState(false);
+  const [subFor, setSubFor] = useState<string | null>(null);
   // Imported photos are sometimes tiny; offer a sharper one.
   const [lowRes, setLowRes] = useState(false);
   useEffect(() => {
@@ -83,6 +86,9 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
           <button onClick={() => setPhotoOpen(true)} className="mt-2 text-[14px] text-accent">Find a sharper photo</button>
         )}
         <PhotoSheet recipe={r} open={photoOpen} onClose={() => setPhotoOpen(false)} />
+        <Sheet open={!!subFor} onClose={() => setSubFor(null)} title={subFor ?? ""}>
+          {subFor && <Substitutes name={subFor} dish={r.title} />}
+        </Sheet>
         {(tags.length > 0 || r.kid_friendly) && (
           <div className="mt-3 flex flex-wrap gap-1.5">
             {isIdea(r) && <span className="rounded-full bg-soft px-2.5 py-1 text-[12px] font-semibold">Idea · not cooked yet</span>}
@@ -127,7 +133,8 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
                 isIngredientHeading(i.raw_text || i.name, i.qty, i.unit) ? (
                   <li key={i.id} className="menu-label pt-5 pb-2 text-muted">{i.name}</li>
                 ) : (
-                <li key={i.id} className="flex gap-3 py-3 text-[16px]">
+                <li key={i.id}>
+                  <button className="flex w-full gap-3 py-3 text-left text-[16px] active:bg-soft" onClick={() => setSubFor(i.name)}>
                   <span className="w-20 shrink-0 font-semibold tabular-nums">{formatAmount(i.qty != null ? Number(i.qty) * scale : null, i.unit, i.qty_max != null ? Number(i.qty_max) * scale : null)}</span>
                   <span className={cx(!i.parsed_ok && "text-[#d23c3c]")}>
                     {i.name}
@@ -138,6 +145,8 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
                       return us ? <span className="text-muted"> (about {us})</span> : null;
                     })()}
                   </span>
+                  {substitutesFor(i.name) && <IconSwap className="ml-auto shrink-0 self-center text-[15px] text-muted" aria-label="Has substitutes" />}
+                  </button>
                 </li>
                 ),
               )}

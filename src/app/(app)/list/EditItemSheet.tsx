@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button, Chip, Select, Sheet, TextField, Toggle } from "@/components/ui";
 import { IconTrash } from "@/components/icons";
 import type { ListItem } from "@/lib/types";
+import { Substitutes } from "@/components/Substitutes";
 
 export default function EditItemSheet({
   item,
@@ -56,6 +57,7 @@ export default function EditItemSheet({
         {item.source_meals?.length > 0 && (
           <p className="px-1 text-[14px] text-muted">Needed for: {item.source_meals.map((m) => m.title).join(", ")}</p>
         )}
+        <Substitutes name={item.name} dish={item.source_meals?.[0]?.title} />
         {item.name_norm && storeId && (
           <div className="card flex items-center justify-between px-4 py-3">
             <span>
