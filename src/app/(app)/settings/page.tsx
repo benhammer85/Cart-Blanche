@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PageHeaderStatic } from "./_sections/Header";
-import { IconChevron, IconStore, IconUsers, IconX, IconBook, IconReceipt, IconPot, IconUpload, IconShare } from "@/components/icons";
+import { IconChevron, IconStore, IconUsers, IconX, IconBook, IconReceipt, IconPot, IconUpload, IconShare, IconDownload } from "@/components/icons";
 import type { ReactNode } from "react";
 
 type Item = { href: string; label: string; detail: string; icon: ReactNode };
@@ -32,6 +32,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { href: "/settings/receipts", label: "Learn from receipts", detail: "Teach which store you buy things at", icon: <IconReceipt /> },
       { href: "/recipes/import", label: "Import from Crouton", detail: ".crumb files or a .zip", icon: <IconUpload /> },
       { href: "/recipes/share-setup", label: "Share button setup", detail: "Save recipes from Safari", icon: <IconShare /> },
+      { href: "/settings/backups", label: "Backups", detail: "A copy of your recipes every week", icon: <IconDownload /> },
     ],
   },
 ];

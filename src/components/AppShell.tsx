@@ -27,6 +27,16 @@ export function AppShell({ membership, children }: { membership: Membership; chi
     if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
       navigator.serviceWorker.register("/sw.js").catch(() => {});
     }
+    // Weekly backup: ask once a day; the server only saves when the last one is a week old.
+    try {
+      const today = new Date().toISOString().slice(0, 10);
+      if (navigator.onLine && localStorage.getItem("cb:backup-check") !== today) {
+        localStorage.setItem("cb:backup-check", today);
+        setTimeout(() => fetch("/api/backup", { method: "POST", headers: { "content-type": "application/json" }, body: "{}" }).catch(() => {}), 5000);
+      }
+    } catch {
+      /* private mode */
+    }
   }, []);
   return (
     <Ctx.Provider value={membership}>

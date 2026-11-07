@@ -13,6 +13,7 @@ import { assignStore, buildKeywordIndex } from "@/lib/list/storeAssign";
 import { buildCandidates, suggestItems } from "@/lib/list/suggest";
 import { learnWalkOrder } from "@/lib/list/walkOrder";
 import { foldVariants, usualKey } from "@/lib/list/usual";
+import { staleChecked } from "@/lib/list/tidy";
 import { cleanListLine, splitPastedList } from "@/lib/list/paste";
 import { normalizeName } from "@/lib/normalize";
 import { QtySheet } from "@/components/QtySheet";
@@ -400,6 +401,16 @@ export function ListClient() {
     setToast("List cleared");
     setMenu(false);
   }
+  // Things ticked off on an earlier day are done: clear them once the list is in
+  // step with the server (so we never clear something someone just unticked).
+  const tidied = useRef(false);
+  useEffect(() => {
+    if (tidied.current || !loaded || status !== "synced") return;
+    tidied.current = true;
+    const old = staleChecked(items);
+    if (old.length) write(old.map((i) => ({ ...i, deleted_at: new Date().toISOString() })));
+  }, [loaded, status, items, write]);
+
   function clearChecked() {
     const checked = items.filter((i) => i.checked && !i.deleted_at);
     if (!checked.length) return;

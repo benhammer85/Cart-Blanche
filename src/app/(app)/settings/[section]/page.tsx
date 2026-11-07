@@ -6,6 +6,7 @@ import { IngredientsSettings } from "../_sections/Ingredients";
 import { AvoidSettings } from "../_sections/Avoid";
 import { KitchenSettings } from "../_sections/Kitchen";
 import { ReceiptsSettings } from "../_sections/Receipts";
+import { BackupsSettings } from "../_sections/Backups";
 
 const SECTIONS = {
   people: PeopleSettings,
@@ -17,6 +18,7 @@ const SECTIONS = {
   stock: KitchenSettings,
   kitchen: KitchenSettings,
   receipts: ReceiptsSettings,
+  backups: BackupsSettings,
 };
 
 export default async function SettingsSection({ params }: { params: Promise<{ section: string }> }) {
