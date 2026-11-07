@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Chip, cx } from "@/components/ui";
-import { IconClock, IconHeart, IconPlus, IconSparkle } from "@/components/icons";
+import { IconClock, IconHeart, IconPlus } from "@/components/icons";
 import { StoreBadge } from "@/components/StoreBadge";
 import { useMembership } from "@/components/AppShell";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -142,7 +142,7 @@ export function Discover({ stores }: { stores: { id: string; name: string }[] })
       </div>
 
       <Button size="lg" className="mt-4 w-full" onClick={search} disabled={busy}>
-        <IconSparkle /> {busy ? "Searching recipe sites…" : cards ? "Find different recipes" : "Find recipes"}
+        {busy ? "Searching recipe sites…" : cards ? "Find different recipes" : "Find recipes"}
       </Button>
       {busy && <p className="mt-2 text-center text-[13px] text-muted">This takes about 20 seconds.</p>}
       {error && <p className="card mt-3 p-3 text-[14px] text-[#d23c3c]">{error}</p>}

@@ -7,9 +7,8 @@ import { StoreBadge } from "@/components/StoreBadge";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, Chip, Section, Segmented, Sheet, Stepper, TextField, Toast, Toggle, cx } from "@/components/ui";
-import { IconGrip, IconCart, IconChevron, IconCheck, IconLock, IconSearch, IconSparkle, IconSwap, IconUnlock, IconX, IconPlus, IconClock } from "@/components/icons";
+import { IconGrip, IconChevron, IconCheck, IconLock, IconSwap, IconPlus } from "@/components/icons";
 import { useMembership } from "@/components/AppShell";
-import { RecipeImage } from "@/components/RecipeImage";
 import { AddStoreSheet } from "@/components/AddStoreSheet";
 import { Recommend } from "./Recommend";
 import { planMeals, pickKidMeals, rng, swapMeal, type PlannerRecipe, type PlanParams } from "@/lib/planner/planner";
@@ -499,7 +498,6 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
         </div>
         <h1 className="large-title">{step === "params" ? "What’s for dinner?" : step === "plan" ? "This week" : "Shopping list"}</h1>
         <p className="mt-1 text-[15px] text-muted">
-          {step === "params" && "Pick where you’re shopping, then tap the dinners you want."}
           {step === "plan" && `${slots.length} meals · ${orderedStoreIds.map((id) => stores.find((s) => s.id === id)?.name).join(" + ")}`}
           {step === "list" && `${preview.filter((i) => !i.have).length} items · tick what you already have`}
         </p>
@@ -539,7 +537,7 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
               <>
               <label className="flex items-center justify-between px-4 py-3">
                 <span>
-                  <span className="flex items-center gap-1.5 text-[17px]"><IconSparkle className="text-accent" /> Add new ideas</span>
+                  <span className="text-[17px]">Add new ideas</span>
                   <span className="block text-[13px] text-muted">Mix in dishes we haven’t tried</span>
                 </span>
                 <Toggle checked={useAi} onChange={setUseAi} />
@@ -668,56 +666,51 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
                 <ul className="mt-1 list-disc pl-5 text-muted">{suggestions.map((s) => <li key={s}>{s}</li>)}</ul>
               </div>
             )}
-            <p className="mt-4 px-1 text-[13px] text-muted">Drag ≡ to change the day.</p>
-            <DayList
-              ids={slots.map((s) => s.key)}
-              onReorder={(keys) => setSlots(keys.map((k) => slots.find((s) => s.key === k)!))}
-              render={(key, i, handle) => {
-                const s = slots.find((x) => x.key === key)!;
-                const r = s.recipeId ? byId.get(s.recipeId) : null;
-                return (
-                  <div className="card overflow-hidden">
-                    <div className="flex items-center justify-between border-b hairline px-3 py-1.5">
-                      <span className="text-[12px] font-semibold uppercase tracking-wide text-accent">{dayLabel(i)}</span>
-                      {handle}
-                    </div>
-                    <div className="flex gap-3 p-3">
-                      <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-soft">
-                        {s.draft && !r ? (
-                          <div className="grid h-full w-full place-items-center bg-gradient-to-br from-accent-soft to-soft text-2xl text-accent"><IconSparkle /></div>
-                        ) : (
-                          <RecipeImage src={r?.image_path} title={s.title} placeholderText={false} />
-                        )}
+            <div className="card mt-4 px-5 pt-6 pb-2">
+              <div className="text-center">
+                <p className="menu-label text-accent">The menu</p>
+                <p className="recipe-title mt-1 text-[22px] italic">{weekOf()}</p>
+                <div className="menu-rule mt-3"><span className="h-1.5 w-1.5 rotate-45 bg-line" /></div>
+              </div>
+              <DayList
+                ids={slots.map((s) => s.key)}
+                onReorder={(keys) => setSlots(keys.map((k) => slots.find((s) => s.key === k)!))}
+                render={(key, i, handle) => {
+                  const s = slots.find((x) => x.key === key)!;
+                  const r = s.recipeId ? byId.get(s.recipeId) : null;
+                  const prep = r?.prep_min ?? s.draft?.prepMin;
+                  return (
+                    <div className="bg-card py-4">
+                      <div className="flex items-baseline justify-between gap-3">
+                        <span className={cx("menu-label", i === 0 ? "text-accent" : "text-muted")}>{dayLabel(i)}</span>
+                        <span className="-my-2 -mr-1">{handle}</span>
                       </div>
-                      <div className="min-w-0 flex-1">
-                        <p className="recipe-title text-[17px] leading-snug font-semibold">{s.title}</p>
-                        <p className="mt-0.5 flex items-center gap-1 text-[13px] text-muted">
-                          {(r?.prep_min ?? s.draft?.prepMin) != null && <><IconClock /> {r?.prep_min ?? s.draft?.prepMin} min · </>}
-                          {s.draft && !s.recipeId ? "new recipe" : s.reason}
-                        </p>
-                        {s.kid && (
-                          <button onClick={() => cycleKid(i)} className="mt-1.5 rounded-full bg-accent-soft px-2.5 py-0.5 text-[12px] font-semibold text-accent">
-                            Kids: {s.kid.title} ↻
-                          </button>
-                        )}
-                        {!s.kid && isKidFriendly(s) && <p className="mt-1.5 text-[12px] font-semibold text-ok">Kid-friendly</p>}
+                      <p className="recipe-title mt-1 text-[20px] leading-snug font-semibold">
+                        {s.title}
+                        {s.locked && <IconLock className="ml-1.5 inline align-baseline text-[13px] text-muted" />}
+                      </p>
+                      {s.kid ? (
+                        <button onClick={() => cycleKid(i)} className="recipe-title mt-0.5 text-left text-[15px] text-muted italic">
+                          For the kids: {s.kid.title} <span className="not-italic text-accent">↻</span>
+                        </button>
+                      ) : (
+                        isKidFriendly(s) && <p className="recipe-title mt-0.5 text-[15px] text-muted italic">Everyone eats this</p>
+                      )}
+                      <p className="mt-1 text-[13px] text-muted">
+                        {[prep != null && `${prep} min`, s.draft && !s.recipeId ? "new recipe" : s.reason].filter(Boolean).join(" · ")}
+                      </p>
+                      <div className="mt-2 flex gap-4 text-[14px]">
+                        <button className="text-accent disabled:opacity-40" onClick={() => swap(i)} disabled={s.locked || !!busy}>Swap</button>
+                        <button className="text-accent" onClick={() => setPicker({ mode: "replace", index: i })}>Change</button>
+                        <button className="text-muted" onClick={() => setSlots(slots.map((x, j) => (j === i ? { ...x, locked: !x.locked } : x)))}>{s.locked ? "Unlock" : "Keep"}</button>
+                        <button className="text-muted" onClick={() => setSlots(slots.filter((_, j) => j !== i))}>Remove</button>
+                        {s.draft && !s.recipeId && <button className="ml-auto font-semibold text-accent" onClick={() => saveDraftToFavorites(i)}>Save</button>}
                       </div>
                     </div>
-                    <div className="flex border-t hairline text-[14px] font-medium">
-                      <SlotAction onClick={() => swap(i)} disabled={s.locked || !!busy}><IconSwap /> Swap</SlotAction>
-                      <SlotAction onClick={() => setSlots(slots.map((x, j) => (j === i ? { ...x, locked: !x.locked } : x)))} active={s.locked}>
-                        {s.locked ? <IconLock /> : <IconUnlock />} {s.locked ? "Locked" : "Lock"}
-                      </SlotAction>
-                      <SlotAction onClick={() => setPicker({ mode: "replace", index: i })}><IconSearch /> Pick</SlotAction>
-                      <SlotAction onClick={() => setSlots(slots.filter((_, j) => j !== i))}><IconX /> Remove</SlotAction>
-                    </div>
-                    {s.draft && !s.recipeId && (
-                      <button onClick={() => saveDraftToFavorites(i)} className="w-full border-t hairline py-2.5 text-[14px] font-semibold text-accent">Save to recipes</button>
-                    )}
-                  </div>
-                );
-              }}
-            />
+                  );
+                }}
+              />
+            </div>
             <div className="mt-3 flex gap-2">
               <Button variant="secondary" className="flex-1" onClick={() => setPicker({ mode: "add", index: -1 })}><IconPlus /> Add meal</Button>
               <Button variant="secondary" className="flex-1" onClick={planIt} disabled={!!busy}><IconSwap /> Re-plan</Button>
@@ -774,14 +767,6 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
       )}
       <Toast message={toast} onDone={() => setToast(null)} />
     </div>
-  );
-}
-
-function SlotAction({ children, onClick, disabled, active }: { children: React.ReactNode; onClick: () => void; disabled?: boolean; active?: boolean }) {
-  return (
-    <button onClick={onClick} disabled={disabled} className={cx("flex h-11 flex-1 items-center justify-center gap-1 disabled:opacity-35", active ? "text-accent" : "text-muted")}>
-      {children}
-    </button>
   );
 }
 
@@ -868,6 +853,10 @@ function RecipePicker({ recipes, onPick, onClose }: { recipes: PlanRecipe[]; onP
 }
 
 /** "Tonight", "Tomorrow", then weekday names. */
+function weekOf(): string {
+  return `Week of ${new Date().toLocaleDateString(undefined, { month: "long", day: "numeric" })}`;
+}
+
 function dayLabel(i: number): string {
   if (i === 0) return "Tonight";
   if (i === 1) return "Tomorrow";
@@ -892,7 +881,7 @@ function DayList({ ids, onReorder, render }: { ids: string[]; onReorder: (ids: s
       }}
     >
       <SortableContext items={ids} strategy={verticalListSortingStrategy}>
-        <ul className="mt-2 space-y-3">
+        <ul className="mt-2 divide-y divide-line">
           {ids.map((id, i) => (
             <DayItem key={id} id={id}>
               {(handle) => render(id, i, handle)}

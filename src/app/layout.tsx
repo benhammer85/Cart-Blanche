@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Fraunces } from "next/font/google";
 import "./globals.css";
 
-const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces", display: "swap", axes: ["SOFT", "opsz"] });
+const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces", display: "swap", axes: ["SOFT", "opsz"], style: ["normal", "italic"] });
 
 export const metadata: Metadata = {
   title: "Cart Blanche",

@@ -23,7 +23,7 @@ export default function SettingsPage() {
           {ITEMS.map((i) => (
             <li key={i.href}>
               <Link href={i.href} className="flex min-h-[60px] items-center gap-3 px-4 py-2 active:bg-soft">
-                <span className="grid h-8 w-8 place-items-center rounded-lg text-[18px] text-white" style={{ background: i.tint }}>
+                <span className="grid h-8 w-8 place-items-center text-[20px] text-ink/70">
                   {i.icon}
                 </span>
                 <span className="flex-1">

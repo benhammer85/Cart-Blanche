@@ -316,7 +316,7 @@ export function ListClient() {
             More
           </button>
         </div>
-        <h1 className="large-title">Shopping List</h1>
+        <h1 className="large-title">Shopping list</h1>
         <p className="mt-1 text-[15px] text-muted">
           {loaded ? (totalTodo ? `${totalTodo} to get${totalCart ? ` · ${totalCart} in cart` : ""}` : totalCart ? `All done · ${totalCart} in cart` : "No items") : "Loading…"}
         </p>
@@ -449,7 +449,7 @@ export function ListClient() {
               enterKeyHint="done"
               autoCapitalize="sentences"
             />
-            <button disabled={!text.trim() || !listId} className="grid h-11 w-11 place-items-center rounded-full bg-accent text-2xl text-accent-ink disabled:opacity-30" aria-label="Add">
+            <button disabled={!text.trim() || !listId} className="grid h-11 w-11 place-items-center rounded-full bg-ink text-2xl text-bg disabled:opacity-30" aria-label="Add">
               <IconPlus />
             </button>
           </form>

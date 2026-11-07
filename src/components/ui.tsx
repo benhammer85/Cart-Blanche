@@ -19,11 +19,11 @@ export function Button({
     <button
       {...props}
       className={cx(
-        "inline-flex items-center justify-center gap-2 rounded-full font-semibold transition active:scale-[0.97] disabled:opacity-40 disabled:active:scale-100",
+        "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition active:scale-[0.97] disabled:opacity-40 disabled:active:scale-100",
         size === "sm" && "h-9 px-3.5 text-sm",
         size === "md" && "h-11 px-5 text-[15px]",
         size === "lg" && "h-14 px-6 text-[17px]",
-        variant === "primary" && "bg-accent text-accent-ink shadow-sm",
+        variant === "primary" && "bg-ink text-bg",
         variant === "secondary" && "bg-soft text-ink",
         variant === "ghost" && "text-accent",
         variant === "danger" && "bg-soft text-[#d23c3c]",
@@ -120,7 +120,7 @@ export function Section({ title, children, action, className }: { title?: string
     <section className={cx("mt-6", className)}>
       {(title || action) && (
         <div className="mb-2 flex items-end justify-between px-1">
-          {title && <h2 className="text-[13px] font-semibold uppercase tracking-wide text-muted">{title}</h2>}
+          {title && <h2 className="menu-label text-muted">{title}</h2>}
           {action}
         </div>
       )}

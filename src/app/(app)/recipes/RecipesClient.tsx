@@ -1,8 +1,9 @@
 "use client";
+import { lastMadeShort } from "@/lib/history";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Chip, Empty, Segmented, Sheet, cx } from "@/components/ui";
+import { Button, Chip, Empty, Section, Segmented, Sheet } from "@/components/ui";
 import { Discover } from "./Discover";
 import { RecipeImage } from "@/components/RecipeImage";
 import { StoreBadge } from "@/components/StoreBadge";
@@ -10,7 +11,7 @@ import { fitShare, makeFitContext, onlyAtStores, storeFit, type StoreFit } from 
 import { OnlyAtBadge } from "@/components/OnlyAtBadge";
 import type { HouseholdData } from "@/lib/data/household";
 import type { IngredientInfo } from "@/lib/types";
-import { IconBook, IconChat, IconClock, IconLink, IconPencil, IconPlus, IconSearch, IconShare, IconUpload, IconDice } from "@/components/icons";
+import { IconBook, IconChat, IconClock, IconLink, IconPencil, IconPlus, IconSearch, IconShare, IconUpload, IconSliders } from "@/components/icons";
 
 export interface RecipeCard {
   id: string;
@@ -46,10 +47,12 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
   const [maxPrep, setMaxPrep] = useState<number | null>(null);
   const [sort, setSort] = useState<Sort>("az");
   const [adding, setAdding] = useState(false);
+  const [filtering, setFiltering] = useState(false);
   const [view, setView] = useState<"ours" | "discover">("ours");
   // "Best at <store>": sort by how much of each recipe that store usually carries.
   const [storeFocus, setStoreFocus] = useState<string | null>(null);
   const stores = household.stores.filter((s) => !s.archived);
+  const filterCount = (storeFocus ? 1 : 0) + (maxPrep ? 1 : 0) + (sort !== "az" ? 1 : 0);
   const fitCtx = useMemo(
     () => makeFitContext({ categories: household.categories, rules: household.rules, ingredients: new Map<string, IngredientInfo>(household.ingredients.map((i) => [i.name_norm, i])), synonyms: household.synonyms }),
     [household],
@@ -102,12 +105,12 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
               const pool = shown.filter((r) => !r.is_kid_meal);
               if (pool.length) router.push(`/recipes/${pool[Math.floor(Math.random() * pool.length)].id}`);
             }}
-            className="flex h-9 items-center gap-1.5 rounded-full bg-accent-soft px-3.5 text-[14px] font-semibold text-accent"
+            className="h-9 px-2 text-[16px] text-accent"
             aria-label="Open a random recipe"
           >
-            <IconDice /> Surprise me
+            Pick one
           </button>
-          <button onClick={() => setAdding(true)} className="grid h-9 w-9 place-items-center rounded-full bg-accent text-xl text-accent-ink shadow-sm" aria-label="Add recipe">
+          <button onClick={() => setAdding(true)} className="grid h-9 w-9 place-items-center rounded-full text-[22px] text-accent" aria-label="Add recipe">
             <IconPlus />
           </button>
         </div>
@@ -135,41 +138,29 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
         </Link>
       )}
       <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto px-5 pb-1">
-        <Chip active={!storeFocus} onClick={() => setStoreFocus(null)}>All recipes</Chip>
-        {stores.map((st) => (
-          <Chip key={st.id} active={storeFocus === st.id} onClick={() => setStoreFocus(storeFocus === st.id ? null : st.id)}>
-            <span className="flex items-center gap-1.5"><StoreBadge name={st.name} size={18} />Best at {st.name}</span>
-          </Chip>
-        ))}
-      </div>
-      <div className="no-scrollbar mt-2 flex gap-2 overflow-x-auto px-5 pb-1">
+        <Chip active={filterCount > 0} onClick={() => setFiltering(true)}>
+          <span className="flex items-center gap-1.5"><IconSliders /> {filterCount ? `Filter · ${filterCount}` : "Filter"}</span>
+        </Chip>
         <Chip active={!tag} onClick={() => setTag(null)}>All</Chip>
-        <Chip active={tag === "Loved"} onClick={() => setTag(tag === "Loved" ? null : "Loved")}>♥ Loved</Chip>
+        <Chip active={tag === "Loved"} onClick={() => setTag(tag === "Loved" ? null : "Loved")}>Loved</Chip>
         <Chip active={tag === "__kf"} onClick={() => setTag(tag === "__kf" ? null : "__kf")}>Kid-friendly</Chip>
         <Chip active={tag === "__kids"} onClick={() => setTag(tag === "__kids" ? null : "__kids")}>Kids’ menu</Chip>
         {tags.filter((t) => t !== "kids" && t !== "Loved").map((t) => (
           <Chip key={t} active={tag === t} onClick={() => setTag(tag === t ? null : t)}>{t}</Chip>
         ))}
       </div>
-      <div className="no-scrollbar mt-2 flex items-center gap-2 overflow-x-auto px-5 pb-1 text-[13px]">
-        {[null, 15, 30, 45].map((m) => (
-          <button key={String(m)} onClick={() => setMaxPrep(m)} className={cx("h-7 shrink-0 rounded-full px-3", maxPrep === m ? "bg-ink text-bg" : "text-muted")}>
-            {m ? `≤ ${m} min` : "Any time"}
-          </button>
-        ))}
-        <span className="mx-1 h-4 w-px shrink-0 bg-line" />
-        {SORTS.map((s) => (
-          <button key={s.value} onClick={() => setSort(s.value)} className={cx("h-7 shrink-0 rounded-full px-3", sort === s.value ? "bg-ink text-bg" : "text-muted")}>
-            {s.label}
-          </button>
-        ))}
-      </div>
+      {filterCount > 0 && (
+        <p className="mt-1.5 px-6 text-[13px] text-muted">
+          {[storeFocus && `Best at ${stores.find((st) => st.id === storeFocus)?.name}`, maxPrep && `${maxPrep} min or less`, sort !== "az" && SORTS.find((x) => x.value === sort)?.label].filter(Boolean).join(" · ")}
+          <button className="ml-2 font-semibold text-accent" onClick={() => { setStoreFocus(null); setMaxPrep(null); setSort("az"); }}>Clear</button>
+        </p>
+      )}
 
       {!recipes.length ? (
         <Empty icon={<IconBook />} title="No recipes yet">
           Import your Crouton favorites to get started.
           <div className="mt-4">
-            <Link href="/recipes/import" className="inline-flex h-11 items-center rounded-full bg-accent px-5 font-semibold text-accent-ink">Import from Crouton</Link>
+            <Link href="/recipes/import" className="inline-flex h-11 items-center rounded-xl bg-ink px-5 font-semibold text-bg">Import from Crouton</Link>
           </div>
         </Empty>
       ) : (
@@ -190,7 +181,7 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
               <p className="recipe-title mt-2 line-clamp-2 px-0.5 text-[16px] leading-snug font-semibold">{r.title}</p>
               <p className="flex items-center gap-1 px-0.5 text-[12px] text-muted">
                 {r.prep_min != null && (<><IconClock /> {r.prep_min} min · </>)}
-                {r.times_made ? `made ${r.times_made}×` : "not made yet"}
+                {lastMadeShort(r.times_made, r.last_made_at)}
               </p>
               {fits && <FitNote fit={fits.get(r.id)!} store={stores.find((s) => s.id === storeFocus)?.name ?? ""} />}
             </Link>
@@ -201,6 +192,26 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
 
       </>
       )}
+
+      <Sheet open={filtering} onClose={() => setFiltering(false)} title="Filter">
+        <Section title="Best at a store" className="mt-0">
+          <div className="flex flex-wrap gap-2">
+            <Chip active={!storeFocus} onClick={() => setStoreFocus(null)}>Any store</Chip>
+            {stores.map((st) => (
+              <Chip key={st.id} active={storeFocus === st.id} onClick={() => setStoreFocus(storeFocus === st.id ? null : st.id)}>
+                <span className="flex items-center gap-1.5"><StoreBadge name={st.name} size={18} />{st.name}</span>
+              </Chip>
+            ))}
+          </div>
+        </Section>
+        <Section title="Hands-on time">
+          <Segmented value={maxPrep} onChange={setMaxPrep} options={[{ value: null, label: "Any" }, { value: 15, label: "15 min" }, { value: 30, label: "30 min" }, { value: 45, label: "45 min" }]} />
+        </Section>
+        <Section title="Sort">
+          <Segmented value={sort} onChange={setSort} options={SORTS} />
+        </Section>
+        <Button size="lg" className="mt-6 w-full" onClick={() => setFiltering(false)}>Show {shown.length} recipes</Button>
+      </Sheet>
 
       <Sheet open={adding} onClose={() => setAdding(false)} title="Add recipes">
         <div className="card divide-y divide-line overflow-hidden">

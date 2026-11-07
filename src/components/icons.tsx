@@ -101,6 +101,9 @@ export const IconSnow = (p: SVGProps<SVGSVGElement>) => (
 export const IconReceipt = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}><path d="M6 3h12v18l-3-2-3 2-3-2-3 2Z" /><path d="M9 8h6M9 12h6M9 16h3" /></svg>
 );
+export const IconSliders = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}><path d="M4 7h10M18 7h2M4 17h2M10 17h10" /><circle cx="16" cy="7" r="2" /><circle cx="8" cy="17" r="2" /></svg>
+);
 export const IconChat = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}><path d="M5 18.5V6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v7a2.5 2.5 0 0 1-2.5 2.5H8l-3 2.5Z" /></svg>
 );

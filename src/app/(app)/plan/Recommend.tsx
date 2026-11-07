@@ -1,8 +1,9 @@
 "use client";
+import { lastMadeShort } from "@/lib/history";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Chip, cx } from "@/components/ui";
-import { IconCheck, IconClock, IconDice, IconUpload } from "@/components/icons";
+import { IconCheck, IconClock, IconUpload } from "@/components/icons";
 import { RecipeImage } from "@/components/RecipeImage";
 import { StoreBadge } from "@/components/StoreBadge";
 import { fitShare, makeFitContext, onlyAtStores, tripFit, type StoreFit } from "@/lib/trip";
@@ -112,11 +113,11 @@ export function Recommend({
     <section className="mt-6">
       <div className="mb-3 flex items-start justify-between gap-3 px-1">
         <div>
-          <h2 className="text-[20px] font-bold">Suggested dinners</h2>
-          <p className="text-[13px] text-muted">Best for {storeNames.length > 2 ? "your stores" : storeNames.join(" & ")}. Tap to choose.</p>
+          <h2 className="recipe-title text-[22px] font-semibold">Suggested dinners</h2>
+          <p className="text-[13px] text-muted">Best for {storeNames.length > 2 ? "your stores" : storeNames.join(" & ")}</p>
         </div>
-        <button onClick={surprise} disabled={!ranked.length} className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-accent-soft px-3.5 text-[14px] font-semibold whitespace-nowrap text-accent disabled:opacity-40">
-          <IconDice /> Pick one
+        <button onClick={surprise} disabled={!ranked.length} className="h-9 shrink-0 px-1 text-[16px] whitespace-nowrap text-accent disabled:opacity-40">
+          Pick one
         </button>
       </div>
       <div className="no-scrollbar -mx-4 mb-2 flex gap-2 overflow-x-auto px-4 pb-1">
@@ -132,7 +133,7 @@ export function Recommend({
         ))}
       </div>
       <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
-        <Chip active={lovedOnly} onClick={() => setLovedOnly(!lovedOnly)}>♥ Loved</Chip>
+        <Chip active={lovedOnly} onClick={() => setLovedOnly(!lovedOnly)}>Loved</Chip>
         <Chip active={kidsOnly} onClick={() => setKidsOnly(!kidsOnly)}>Kid-friendly</Chip>
         {COOKING_STYLES.map((st) => (
           <Chip key={st} active={styles.includes(st)} onClick={() => setStyles(styles.includes(st) ? styles.filter((x) => x !== st) : [...styles, st])}>{st}</Chip>
@@ -160,7 +161,7 @@ export function Recommend({
                 <p className="recipe-title mt-1.5 line-clamp-2 px-0.5 text-[15px] leading-snug font-semibold">{r.title}</p>
                 <p className="flex items-center gap-1 px-0.5 text-[12px] text-muted">
                   {r.prep_min != null && (<><IconClock /> {r.prep_min} min · </>)}
-                  {r.kid_friendly ? "kid-friendly" : (stylesOf.get(r.id) ?? [])[0] ?? (r.times_made ? `made ${r.times_made}×` : "not made yet")}
+                  {r.kid_friendly ? "kid-friendly" : (stylesOf.get(r.id) ?? [])[0] ?? lastMadeShort(r.times_made, r.last_made_at)}
                 </p>
                 <FitBadge fit={fit} />
               </button>

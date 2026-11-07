@@ -18,7 +18,7 @@ export default function ShareSetupPage() {
         <ol className="card mt-5 divide-y divide-line overflow-hidden">
           {STEPS.map((s, i) => (
             <li key={i} className="flex gap-3 px-4 py-3.5 text-[16px] leading-relaxed">
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-accent text-[13px] font-bold text-accent-ink">{i + 1}</span>
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-ink text-[13px] font-bold text-bg">{i + 1}</span>
               <span>{s}</span>
             </li>
           ))}
@@ -33,7 +33,7 @@ export default function ShareSetupPage() {
             "On a recipe page, tap Share → Copy recipe to Cart Blanche, then tap Paste from clipboard and read.",
           ].map((t, i) => (
             <li key={i} className="flex gap-3 px-4 py-3.5 text-[16px] leading-relaxed">
-              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-accent text-[13px] font-bold text-accent-ink">{i + 1}</span>
+              <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-ink text-[13px] font-bold text-bg">{i + 1}</span>
               <span>{t}</span>
             </li>
           ))}

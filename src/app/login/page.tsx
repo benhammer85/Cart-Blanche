@@ -7,8 +7,8 @@ export default async function LoginPage({ searchParams }: { searchParams: Promis
       <div className="mt-[18vh]">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/icon-192.png" alt="" className="mb-6 h-20 w-20 rounded-[1.4rem] shadow-md" />
-        <h1 className="large-title">Cart Blanche</h1>
-        <p className="mt-2 text-[17px] text-muted">Dinner plans and one shared list for the whole family.</p>
+        <h1 className="large-title text-[2.75rem]">Cart Blanche</h1>
+        <p className="recipe-title mt-1 text-[19px] text-muted italic">Dinner, planned. The list, shared.</p>
       </div>
       <LoginForm next={next} />
     </main>

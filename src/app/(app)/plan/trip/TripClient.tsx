@@ -1,4 +1,5 @@
 "use client";
+import { lastMadeShort } from "@/lib/history";
 import { useEffect, useMemo, useState } from "react";
 import { StoreBadge } from "@/components/StoreBadge";
 import { useRouter } from "next/navigation";
@@ -137,7 +138,7 @@ export function TripClient({ household, recipes, initialStore }: { household: Ho
                         <p className="mt-0.5 flex items-center gap-1 text-[13px] text-muted">
                           {r.prep_min != null ? (<><IconClock /> {r.prep_min} min · </>) : unknownTime ? "time not listed · " : null}
                           {(stylesOf.get(r.id) ?? []).length > 0 && `${stylesOf.get(r.id)!.join(", ")} · `}
-                          {r.kid_friendly ? "kid-friendly" : r.times_made ? `made ${r.times_made}×` : "not made yet"}
+                          {r.kid_friendly ? "kid-friendly" : lastMadeShort(r.times_made, r.last_made_at)}
                         </p>
                         <FitLine fit={fit} storeName={store!.name} />
                       </div>

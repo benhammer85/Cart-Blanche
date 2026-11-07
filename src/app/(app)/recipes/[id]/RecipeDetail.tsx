@@ -1,4 +1,5 @@
 "use client";
+import { historyLine } from "@/lib/history";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -116,7 +117,7 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
         <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-[14px] text-muted">
           {r.prep_min != null && <span className="flex items-center gap-1"><IconClock /> {r.prep_min} min prep{r.cook_min ? ` · ${r.cook_min} cook` : ""}</span>}
           <span className="flex items-center gap-1"><IconUsers /> serves {Number(r.servings) * scale}</span>
-          <span>{r.times_made ? `made ${r.times_made}×${r.last_made_at ? `, last ${new Date(r.last_made_at + "T00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" })}` : ""}` : "not made yet"}</span>
+          <span>{historyLine(r.times_made, r.last_made_at)}</span>
         </div>
         {(tags.length > 0 || r.kid_friendly) && (
           <div className="mt-3 flex flex-wrap gap-1.5">
@@ -131,7 +132,7 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
         )}
 
         {(r.steps ?? []).some((x) => !x.isSection) && (
-          <Link href={`/recipes/${r.id}/cook`} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-full bg-accent text-[16px] font-semibold text-accent-ink shadow-sm">
+          <Link href={`/recipes/${r.id}/cook`} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink text-[16px] font-semibold text-bg shadow-sm">
             Start cooking
           </Link>
         )}
@@ -167,7 +168,7 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
                 <li key={idx} className="pt-2 text-[13px] font-semibold uppercase tracking-wide text-muted">{s.text}</li>
               ) : (
                 <li key={idx} className="flex gap-3">
-                  <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-accent text-[13px] font-bold text-accent-ink">{++stepNo}</span>
+                  <span className="recipe-title w-6 shrink-0 text-[20px] leading-7 font-semibold text-accent">{++stepNo}</span>
                   <p className="text-[17px] leading-relaxed">{s.text.replace(/^\d+\.\s*/, "")}</p>
                 </li>
               ),

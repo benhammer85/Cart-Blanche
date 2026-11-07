@@ -24,6 +24,7 @@
 //      (hot dogs, nuggets…) rotating least-recently-made first, no repeats
 //      until all have been used.
 
+import { lastMadeShort } from "../history";
 import { isSoup } from "../infer";
 import type { MealType } from "../types";
 
@@ -126,13 +127,13 @@ export function scoreRecipe(r: PlannerRecipe, p: PlanParams, rand: () => number)
   const days = daysSince(r.last_made_at, today);
   if (days == null) {
     score += 1;
-    reasons.push("not made recently");
+    reasons.push(r.times_made ? "not made recently" : "new to us");
   } else if (days < 21) {
     score -= 3;
-    reasons.push(`made ${days}d ago`);
+    reasons.push(lastMadeShort(r.times_made || 1, r.last_made_at, today));
   } else {
     score += Math.min((days - 21) / 30 + 0.5, 2);
-    reasons.push(`last made ${days}d ago`);
+    reasons.push(lastMadeShort(r.times_made || 1, r.last_made_at, today));
   }
 
   if (r.times_made > 0) score += 0.5 * Math.log2(1 + r.times_made);
