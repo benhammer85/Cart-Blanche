@@ -38,11 +38,24 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialUrl]);
 
-  async function fetchUrl(target = url) {
+  /** A whole page sent from Safari by the share shortcut (works on sites that turn apps away). */
+  function looksLikeHtml(t: string) {
+    return /^\s*(<!doctype html|<html)/i.test(t) || (t.includes("</head>") && t.includes("<body"));
+  }
+  function slimHtml(t: string) {
+    return t
+      .replace(/<script\b(?![^>]*ld\+json)[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<(style|svg|noscript|iframe)\b[^>]*>[\s\S]*?<\/\1>/gi, "")
+      .replace(/<!--[\s\S]*?-->/g, "")
+      .replace(/\s(style|class|data-(?!src|lazy-src)[a-z-]+)="[^"]*"/gi, "")
+      .slice(0, 3_800_000);
+  }
+
+  async function fetchUrl(target = url, html?: string) {
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/recipes-from-page", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: target }) });
+      const res = await fetch("/api/recipes-from-page", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(html ? { html: slimHtml(html) } : { url: target }) });
       const body = await res.json();
       if (!res.ok) {
         if (body.blocked) setMode("paste");
@@ -168,7 +181,9 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
                   onClick={async () => {
                     try {
                       const t = await navigator.clipboard.readText();
-                      if (t.trim()) {
+                      if (looksLikeHtml(t)) {
+                        await fetchUrl("", t);
+                      } else if (t.trim()) {
                         setPaste(t);
                         const err = await readWithAi({ text: t });
                         if (err) setError(err);

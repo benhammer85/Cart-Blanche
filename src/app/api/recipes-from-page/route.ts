@@ -8,6 +8,10 @@ import { allJsonLdRecipes, buildPagePrompt, draftFromAi, inlineRecipeCount, main
 
 // Reads any recipe page: one recipe, several written out on the page, or a
 // roundup of links. Returns { kind: "one" | "several" | "links" }.
+//
+// Either we load the page ({ url }), or the phone sends the page it already
+// has open in Safari ({ html, url? }) via the share-sheet shortcut. The second
+// way works for sites that turn apps away, because it's the user's own visit.
 
 export const maxDuration = 60;
 
@@ -31,28 +35,46 @@ export async function POST(request: NextRequest) {
   const db = await supabaseServer();
   if (!(await getAuthUser(db))) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
-  const { url } = (await request.json().catch(() => ({}))) as { url?: string };
+  const body = (await request.json().catch(() => ({}))) as { url?: string; html?: string };
+  let html: string;
+  let finalUrl: string;
+
+  if (body.html) {
+    if (body.html.length > 4_000_000) return NextResponse.json({ error: "That page is too large." }, { status: 413 });
+    html = body.html;
+    const fromPage =
+      html.match(/<link[^>]+rel=["']canonical["'][^>]+href=["']([^"']+)["']/i)?.[1] ??
+      html.match(/<meta[^>]+property=["']og:url["'][^>]+content=["']([^"']+)["']/i)?.[1];
+    try {
+      finalUrl = new URL(String(body.url || fromPage || "")).toString();
+    } catch {
+      finalUrl = "https://unknown.page/";
+    }
+    return read(html, finalUrl, db);
+  }
+
   let target: URL;
   try {
-    target = new URL(String(url ?? "").trim());
+    target = new URL(String(body.url ?? "").trim());
     if (!["http:", "https:"].includes(target.protocol) || isPrivateHost(target.hostname)) throw new Error();
   } catch {
     return NextResponse.json({ error: "That doesn’t look like a web address." }, { status: 400 });
   }
-
-  let html: string;
-  let finalUrl = target.toString();
+  finalUrl = target.toString();
   try {
     const res = await fetchPage(target);
     if (res.status === 403 || res.status === 401)
-      return NextResponse.json({ error: "This site blocks apps from reading its recipes. Open the page, select all, copy, and paste it here instead (or paste a screenshot).", blocked: true }, { status: 422 });
+      return NextResponse.json({ error: "This site doesn’t let apps read it. Open the page in Safari and tap Share, then Send page to Cart Blanche (see Share button setup), or paste the recipe here.", blocked: true }, { status: 422 });
     if (!res.ok) return NextResponse.json({ error: `The site answered ${res.status}. Paste the recipe text instead.` }, { status: 422 });
     finalUrl = res.url || finalUrl;
     html = (await res.text()).slice(0, 3_000_000);
   } catch {
     return NextResponse.json({ error: "Couldn’t load that page." }, { status: 422 });
   }
+  return read(html, finalUrl, db);
+}
 
+async function read(html: string, finalUrl: string, db: Awaited<ReturnType<typeof supabaseServer>>) {
   const { data: syn } = await db.from("synonyms").select("alias, canonical");
   const synonyms = Object.fromEntries((syn ?? []).map((s: { alias: string; canonical: string }) => [s.alias, s.canonical]));
   const site = siteName(html, finalUrl);
