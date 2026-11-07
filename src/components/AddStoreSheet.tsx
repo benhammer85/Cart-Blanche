@@ -56,7 +56,6 @@ export function AddStoreSheet({ householdId, onClose, onAdded }: { householdId: 
     <Sheet open onClose={onClose} title="Add a store">
       <div className="space-y-3">
         <TextField value={name} onChange={(e) => setName(e.target.value)} placeholder="Store name" autoFocus />
-        <TextField value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Where (optional)" />
         <label className="card flex items-center justify-between px-4 py-3">
           <span>
             <span className="block text-[17px]">Full grocery store</span>

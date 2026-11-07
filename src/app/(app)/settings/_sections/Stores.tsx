@@ -44,7 +44,7 @@ export function StoresSettings() {
                 <StoreBadge name={s.name} size={32} />
                 <span className="flex-1">
                   <span className="block text-[17px]">{s.name}</span>
-                  <span className="block text-[13px] text-muted">{[s.location, s.is_bulk && "bulk store"].filter(Boolean).join(" · ")}</span>
+                  <span className="block text-[13px] text-muted">{s.is_bulk ? "Bulk store" : ""}</span>
                 </span>
                 <IconChevron className="text-muted" />
               </button>
@@ -108,7 +108,6 @@ function StoreSheet({ store, sections: initial, onClose }: { store: Store; secti
     <Sheet open onClose={save} title={store.name}>
       <div className="space-y-3">
         <TextField value={name} onChange={(e) => setName(e.target.value)} aria-label="Store name" />
-        <TextField value={location} onChange={(e) => setLocation(e.target.value)} placeholder="Location" aria-label="Location" />
         <div className="card flex items-center justify-between px-4 py-3">
           <span>
             <span className="block text-[17px]">Bulk store</span>

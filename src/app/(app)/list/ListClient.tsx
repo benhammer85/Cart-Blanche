@@ -481,12 +481,11 @@ export function ListClient() {
 
         {groups.filter((g) => !shown || g.storeId === shown).map((g) => (
           <section key={g.storeId} className="card mt-4 overflow-hidden">
-            <div className="flex items-start justify-between px-4 pt-4 pb-1">
-              <div className="flex items-start gap-2.5">
-                <span className="mt-1"><StoreBadge name={g.name} size={24} /></span>
+            <div className="flex items-center justify-between px-4 pt-3 pb-1">
+              <div className="flex items-center gap-2.5">
+                <StoreBadge name={g.name} size={24} />
                 <div>
                   <h2 className="recipe-title text-[22px] leading-tight font-semibold">{g.name}</h2>
-                  {g.location && <p className="menu-label mt-0.5 text-muted">{g.location}</p>}
                 </div>
               </div>
               <div className="-mr-2 flex items-center gap-1">
