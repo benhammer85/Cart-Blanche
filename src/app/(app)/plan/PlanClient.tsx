@@ -398,7 +398,7 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
         }
       }
       if (rows.length) {
-        const { error } = await db.from("shopping_list_items").upsert(rows, { onConflict: "id" });
+        const { error } = await db.from("shopping_list_items").upsert(rows, { onConflict: "id", defaultToNull: false });
         if (error) throw error;
       }
 

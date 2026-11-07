@@ -106,11 +106,11 @@ export function useSharedList(householdId: string) {
     const isAuth = (e: { code?: string; message?: string } | null) => !!e && (e.code === "PGRST301" || e.code === "42501" || /jwt|expired|not authenticated/i.test(e.message ?? ""));
     try {
       const batch = [...queueRef.current.values()];
-      let { error } = await db.from("shopping_list_items").upsert(batch, { onConflict: "id" });
+      let { error } = await db.from("shopping_list_items").upsert(batch, { onConflict: "id", defaultToNull: false });
       // Signed out in the background: refresh once and try again.
       if (isAuth(error)) {
         await db.auth.refreshSession().catch(() => {});
-        ({ error } = await db.from("shopping_list_items").upsert(batch, { onConflict: "id" }));
+        ({ error } = await db.from("shopping_list_items").upsert(batch, { onConflict: "id", defaultToNull: false }));
       }
       if (!error) {
         batch.forEach(done);
@@ -121,7 +121,7 @@ export function useSharedList(householdId: string) {
         // One bad change shouldn't hold up the rest: send them one by one.
         let lastNo: string | null = null;
         for (const row of batch) {
-          const { error: e } = await db.from("shopping_list_items").upsert([row], { onConflict: "id" });
+          const { error: e } = await db.from("shopping_list_items").upsert([row], { onConflict: "id", defaultToNull: false });
           if (!e) done(row);
           else if (isServerNo(e)) {
             lastNo = e.message || "The server turned this change down.";

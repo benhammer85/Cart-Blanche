@@ -12,6 +12,7 @@ import { buildVocabulary, correctSpelling } from "@/lib/spell";
 import { assignStore, buildKeywordIndex } from "@/lib/list/storeAssign";
 import { buildCandidates, suggestItems } from "@/lib/list/suggest";
 import { learnWalkOrder } from "@/lib/list/walkOrder";
+import { foldVariants, usualKey } from "@/lib/list/usual";
 import { cleanListLine, splitPastedList } from "@/lib/list/paste";
 import { normalizeName } from "@/lib/normalize";
 import { QtySheet } from "@/components/QtySheet";
@@ -118,6 +119,7 @@ export function ListClient() {
     if (!household) return out;
     const labels = household.plannerDefaults.itemLabels ?? {};
     const onList = new Set(items.filter((i) => !i.checked && !i.deleted_at).map((i) => i.name_norm ?? i.name.toLowerCase()));
+    const onListKinds = new Set([...onList].map(usualKey));
     for (const st of stores) {
       const score = new Map<string, { label: string; n: number }>();
       const bump = (key: string, label: string, n: number) => {
@@ -137,7 +139,7 @@ export function ListClient() {
       for (const ing of household.ingredients) if (ing.learned_store_id === st.id && !score.has(ing.name_norm)) bump(ing.name_norm, labels[ing.name_norm] ?? ing.name_norm.charAt(0).toUpperCase() + ing.name_norm.slice(1), 0.5);
       out.set(
         st.id,
-        [...score.entries()].map(([key, v]) => ({ key, label: v.label, n: v.n, onList: onList.has(key) })).sort((a, b) => b.n - a.n || a.label.localeCompare(b.label)),
+        foldVariants([...score.entries()].map(([key, v]) => ({ key, label: v.label, n: v.n }))).map((v) => ({ ...v, onList: onListKinds.has(usualKey(v.key)) })),
       );
     }
     return out;

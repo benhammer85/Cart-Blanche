@@ -73,7 +73,7 @@ export function AddToListSheet({ recipe: r, scale, open, onClose }: { recipe: Re
         };
       });
       if (rows.length) {
-        const { error } = await db.from("shopping_list_items").upsert(rows, { onConflict: "id" });
+        const { error } = await db.from("shopping_list_items").upsert(rows, { onConflict: "id", defaultToNull: false });
         if (error) throw error;
       }
       setDone(rows.length);
