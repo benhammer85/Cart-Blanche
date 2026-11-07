@@ -43,7 +43,8 @@ export function ListClient() {
   }, []);
   const quickAdd = useMemo(() => {
     const onList = new Set(items.filter((i) => !i.checked && !i.deleted_at).map((i) => (i.name_norm ?? i.name).toLowerCase()));
-    const base = frequent.length >= 4 ? frequent : [...frequent, "Milk", "Eggs", "Bananas", "Bread", "Greek yogurt", "Apples", "Butter", "Coffee"];
+    // Until we have our own history, start with what our Shaw's receipts show we buy most.
+    const base = frequent.length >= 4 ? frequent : [...frequent, "Bananas", "Carrots", "Milk", "Onions", "Garlic", "Cilantro", "Chicken thighs", "Ice cream", "Pasta", "Strawberries"];
     const seen = new Set<string>();
     return base.filter((n) => {
       const k = n.toLowerCase();

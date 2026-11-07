@@ -26,10 +26,37 @@ export async function applyUpgrades(db: SupabaseClient, householdId: string): Pr
   try {
     await addHMart(db, householdId);
     await addLovedBonus(db, householdId);
+    await addEverydayItems(db, householdId);
     done.add(householdId);
   } catch (e) {
     console.error("household upgrade failed", e);
   }
+}
+
+// Things we actually buy (from our Shaw's receipts) that recipes rarely mention.
+const EVERYDAY: Record<string, string[]> = {
+  Produce: ["mandarin", "cantaloupe", "watermelon", "kiwi", "mango", "radish", "turnip", "corn on the cob"],
+  "Dairy & Eggs": ["creamer", "coffee creamer", "international delight creamer", "whipped cream", "cottage cheese", "kefir", "chocolate milk", "organic 2% milk", "half gallon milk"],
+  Cheese: ["american cheese", "string cheese", "sliced cheese"],
+  Deli: ["genoa salami", "pepperoni", "deli ham"],
+  "Bread & Bakery": ["portuguese sweet roll", "sandwich bread", "boule"],
+  Pantry: ["ramen noodles", "maruchan", "canned soup", "progresso soup", "jell-o", "nutella", "bisquick", "brownie mix", "cake mix", "pasta sauce", "pizza sauce", "mac and cheese", "boxed mac and cheese", "applesauce pouch", "storage bag"],
+  Frozen: ["popsicle", "popsicles", "fruit bar", "hoodsie", "ice cream cake", "frozen pizza", "pillsbury dough"],
+  Snacks: ["cheez-it", "goldfish", "ice breakers", "candy", "m&ms", "kit kat", "corn nuts", "popcorn", "veggie straws", "donettes", "peanuts"],
+  Beverages: ["gatorade", "seltzer", "ginger ale", "coke", "coke zero", "juice boxes", "apple juice", "orange juice"],
+};
+
+async function addEverydayItems(db: SupabaseClient, household_id: string) {
+  const [{ data: cats }, { data: known }] = await Promise.all([
+    db.from("categories").select("id, name").eq("household_id", household_id),
+    db.from("ingredients").select("name_norm").eq("household_id", household_id),
+  ]);
+  const have = new Set(((known ?? []) as { name_norm: string }[]).map((k) => k.name_norm));
+  const catId = (n: string) => (cats ?? []).find((c: { name: string }) => c.name === n)?.id as string | undefined;
+  const rows = Object.entries(EVERYDAY).flatMap(([cat, items]) =>
+    catId(cat) ? items.filter((i) => !have.has(i)).map((name_norm) => ({ household_id, name_norm, category_id: catId(cat) })) : [],
+  );
+  if (rows.length) await db.from("ingredients").insert(rows);
 }
 
 async function addLovedBonus(db: SupabaseClient, household_id: string) {
