@@ -32,6 +32,15 @@ export function makeFitContext(c: Omit<FitContext, "keywordIndex">): FitContext 
   return { ...c, keywordIndex: buildKeywordIndex(c.ingredients) };
 }
 
+/** Fit for a trip to several stores: an item counts if any of them carries it. */
+export function tripFit(ingredientNames: string[], storeIds: string[], ctx: FitContext): StoreFit {
+  if (storeIds.length <= 1) return storeFit(ingredientNames, storeIds[0] ?? "", ctx);
+  const fits = storeIds.map((id) => storeFit(ingredientNames, id, ctx));
+  const missing = fits[0].missing.filter((m) => fits.every((f) => f.missing.includes(m)));
+  const total = fits[0].total;
+  return { total, carried: total - missing.length, missing };
+}
+
 export function storeFit(ingredientNames: string[], storeId: string, ctx: FitContext): StoreFit {
   const assignCtx: AssignContext = {
     selectedStoreIds: [storeId],

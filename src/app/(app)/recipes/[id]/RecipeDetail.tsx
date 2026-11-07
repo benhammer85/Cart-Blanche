@@ -120,7 +120,7 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
         </div>
         {(tags.length > 0 || r.kid_friendly) && (
           <div className="mt-3 flex flex-wrap gap-1.5">
-            {r.kid_friendly && <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[12px] font-semibold text-accent">Kids eat it</span>}
+            {r.kid_friendly && <span className="rounded-full bg-accent-soft px-2.5 py-1 text-[12px] font-semibold text-accent">Kid-friendly</span>}
             {tags.map((t) => <span key={t} className="rounded-full bg-soft px-2.5 py-1 text-[12px]">{t}</span>)}
           </div>
         )}

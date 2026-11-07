@@ -37,7 +37,12 @@ export function inferMealTypes(title: string, tags: string[]): MealType[] {
   if (/\b(lunch|sandwich|wrap)\b/.test(text)) return ["lunch", "dinner"];
   // Breads and single-vegetable dishes are sides — never planned as a dinner.
   if (!hasProtein && /\b(rolls?|bread|biscuits?|focaccia|cornbread)\b/.test(text)) return ["side"];
-  if (/^(roasted|steamed|sauteed|sautéed|grilled|charred|glazed)\s+(broccoli|broccolini|carrots?|green beans|asparagus|brussels sprouts|cauliflower|potatoes|sweet potatoes|zucchini|squash|beets)\b(?!.*\band\b)/.test(t)) return ["side"];
+  // Vegetable dishes without a protein: "Air-Fryer Brussels Sprouts", "Broccoli Gratin", "Korean Spinach Side Dish"
+  if (/\bside dish\b/.test(text)) return ["side"];
+  // Only the dish itself counts, not "…with garlic, lemon and parmesan".
+  const dish = t.split(/\s+with\s+/)[0];
+  if (!hasProtein && /^((air[- ]fry(er|ed)|roasted|steamed|sauteed|sautéed|grilled|charred|glazed|crispy|smashed|garlicky|honey[- ]glazed)\s+)?(broccoli|broccolini|carrots?|green beans|asparagus|brussels sprouts|cauliflower|potatoes|sweet potatoes|zucchini|squash|beets|corn|spinach|kale|cabbage)\b/.test(dish) && !/\b(and|soup|pasta|pastina|orzo|couscous|rice|farro|quinoa|grains?|noodles|risotto|bowls?|salad|tacos?|curry)\b/.test(dish)) return ["side"];
+  if (!hasProtein && /\bgratin\b/.test(t)) return ["side"];
   return ["dinner"];
 }
 
@@ -45,14 +50,14 @@ export function isSoup(title: string, tags: string[]): boolean {
   return /\b(soup|stew|chowder|bisque|chili|ramen|pho|gumbo)\b/i.test(`${title} ${tags.join(" ")}`);
 }
 
-export const COOKING_STYLES = ["Instant Pot", "One pot", "Sheet pan", "Slow cooker", "Grill"] as const;
+// No slow cooker in our kitchen: the Instant Pot slow-cooks, so those recipes count as Instant Pot.
+export const COOKING_STYLES = ["Instant Pot", "One pot", "Sheet pan", "Grill"] as const;
 export type CookingStyle = (typeof COOKING_STYLES)[number];
 
 const STYLE_PATTERNS: Record<CookingStyle, RegExp> = {
-  "Instant Pot": /\b(instant pot|pressure[- ]cook(er|ed|ing)?|multicooker)\b/i,
+  "Instant Pot": /\b(instant pot|pressure[- ]cook(er|ed|ing)?|multicooker|slow[- ]cook(er)?|crock[- ]?pot)\b/i,
   "One pot": /\b(one[- ](pot|pan|skillet)|skillet|dutch oven)\b/i,
   "Sheet pan": /\b(sheet[- ]pan|traybake|tray bake)\b/i,
-  "Slow cooker": /\b(slow[- ]cook(er)?|crock[- ]?pot)\b/i,
   Grill: /\b(grill(ed|ing)?|barbecue|bbq)\b/i,
 };
 
@@ -63,6 +68,6 @@ export function cookingStyles(title: string, tags: string[], steps: { text: stri
   return COOKING_STYLES.filter((s) => {
     if (STYLE_PATTERNS[s].test(head)) return true;
     // From steps only for clear-cut equipment (skillet/grill words in steps are too common)
-    return (s === "Instant Pot" || s === "Slow cooker" || s === "Sheet pan") && STYLE_PATTERNS[s].test(body);
+    return (s === "Instant Pot" || s === "Sheet pan") && STYLE_PATTERNS[s].test(body);
   });
 }

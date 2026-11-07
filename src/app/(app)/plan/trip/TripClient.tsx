@@ -1,7 +1,8 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { StoreBadge } from "@/components/StoreBadge";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button, Chip, Empty, PageHeader, cx } from "@/components/ui";
 import { IconCheck, IconClock, IconSearch } from "@/components/icons";
 import { RecipeImage } from "@/components/RecipeImage";
@@ -25,7 +26,8 @@ export function TripClient({ household, recipes, initialStore }: { household: Ho
   const stylesOf = useMemo(() => new Map(recipes.map((r) => [r.id, cookingStyles(r.title, r.tags, r.steps ?? [])])), [recipes]);
   const [q, setQ] = useState("");
   const [picked, setPicked] = useState<string[]>([]);
-  const [seed] = useState(() => Date.now());
+  const [seed, setSeed] = useState<number | null>(null);
+  useEffect(() => setSeed(Date.now()), []);
 
   const ctx = useMemo(
     () =>
@@ -39,7 +41,7 @@ export function TripClient({ household, recipes, initialStore }: { household: Ho
   );
 
   const ranked = useMemo(() => {
-    if (!storeId) return [];
+    if (!storeId || seed == null) return [];
     const rand = rng(seed);
     const avoid = household.avoidTerms.map((t) => t.toLowerCase());
     const needle = q.toLowerCase().trim();
@@ -93,7 +95,7 @@ export function TripClient({ household, recipes, initialStore }: { household: Ho
               {(["dinner", "lunch", "breakfast"] as MealType[]).map((m) => (
                 <Chip key={m} active={mealType === m} onClick={() => setMealType(m)}>{m[0].toUpperCase() + m.slice(1)}</Chip>
               ))}
-              <Chip active={kidsOnly} onClick={() => setKidsOnly(!kidsOnly)}>Kids eat it</Chip>
+              <Chip active={kidsOnly} onClick={() => setKidsOnly(!kidsOnly)}>Kid-friendly</Chip>
             </div>
             <div className="no-scrollbar mt-2 flex gap-2 overflow-x-auto pb-1">
               {[null, 15, 30, 45].map((m) => (
@@ -106,7 +108,16 @@ export function TripClient({ household, recipes, initialStore }: { household: Ho
               ))}
             </div>
 
-            {!ranked.length && <Empty title="Nothing matches">Try another meal type or clear the search.</Empty>}
+            {!recipes.length ? (
+              <Link href="/recipes/import" className="card mt-4 flex items-center gap-3 p-4">
+                <span className="flex-1">
+                  <span className="block text-[17px] font-semibold">Import your recipes first</span>
+                  <span className="block text-[13px] text-muted">Recommendations come from your recipe library. Import your Crouton recipes to get started.</span>
+                </span>
+              </Link>
+            ) : (
+              !ranked.length && <Empty title="No matching recipes">Try another meal type, time or style.</Empty>
+            )}
             <ul className="mt-3 space-y-3 pb-36">
               {ranked.map(({ r, fit, unknownTime }) => {
                 const on = picked.includes(r.id);
@@ -126,7 +137,7 @@ export function TripClient({ household, recipes, initialStore }: { household: Ho
                         <p className="mt-0.5 flex items-center gap-1 text-[13px] text-muted">
                           {r.prep_min != null ? (<><IconClock /> {r.prep_min} min · </>) : unknownTime ? "time not listed · " : null}
                           {(stylesOf.get(r.id) ?? []).length > 0 && `${stylesOf.get(r.id)!.join(", ")} · `}
-                          {r.kid_friendly ? "kids eat it" : r.times_made ? `made ${r.times_made}×` : "not made yet"}
+                          {r.kid_friendly ? "kid-friendly" : r.times_made ? `made ${r.times_made}×` : "not made yet"}
                         </p>
                         <FitLine fit={fit} storeName={store!.name} />
                       </div>
@@ -153,7 +164,7 @@ export function TripClient({ household, recipes, initialStore }: { household: Ho
 }
 
 function FitLine({ fit, storeName }: { fit: StoreFit; storeName: string }) {
-  if (!fit.missing.length) return <p className="mt-1.5 text-[13px] font-semibold text-ok">All {storeName} things</p>;
+  if (!fit.missing.length) return <p className="mt-1.5 text-[13px] font-semibold text-ok">Everything at {storeName}</p>;
   const shown = fit.missing.slice(0, 3).join(", ");
   const more = fit.missing.length > 3 ? ` and ${fit.missing.length - 3} more` : "";
   return (

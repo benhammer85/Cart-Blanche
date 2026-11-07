@@ -138,7 +138,7 @@ export function scoreRecipe(r: PlannerRecipe, p: PlanParams, rand: () => number)
   if (r.times_made > 0) score += 0.5 * Math.log2(1 + r.times_made);
   if (r.kid_friendly) {
     score += 1.5;
-    reasons.push("kids eat it");
+    reasons.push("kid-friendly");
   }
   const tags = r.tags.map(lc);
   if (tags.includes("loved")) {

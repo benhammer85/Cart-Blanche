@@ -7,6 +7,8 @@ import { Button, Chip, Section, Segmented, Sheet, Stepper, TextField, Toast, Tog
 import { IconCart, IconChevron, IconCheck, IconLock, IconSearch, IconSparkle, IconSwap, IconUnlock, IconX, IconPlus, IconClock } from "@/components/icons";
 import { useMembership } from "@/components/AppShell";
 import { RecipeImage } from "@/components/RecipeImage";
+import { AddStoreSheet } from "@/components/AddStoreSheet";
+import { Recommend } from "./Recommend";
 import { planMeals, pickKidMeals, rng, swapMeal, type PlannerRecipe, type PlanParams } from "@/lib/planner/planner";
 import { buildShoppingList, portionsFor, type DraftListItem, type PlannedMealForList } from "@/lib/list/buildList";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -75,6 +77,7 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
   const [preview, setPreview] = useState<PreviewItem[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const [seed, setSeed] = useState(() => Date.now());
+  const [addingStore, setAddingStore] = useState(false);
 
   const byId = useMemo(() => new Map(recipes.map((r) => [r.id, r])), [recipes]);
   const plannerRecipes: PlannerRecipe[] = useMemo(
@@ -110,13 +113,13 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
     if (initial.length) {
       setSlots(assignKids(initial));
       setStep("plan");
-      if (repeat) setNote(intro ?? "Here’s that week again. Swap anything, then send it to the list.");
+      if (repeat) setNote(intro ?? "Previous week loaded. Review, then build the shopping list.");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const params = (overrides: Partial<PlanParams> = {}): PlanParams => ({
-    mealCount: p.mealCount,
+    mealCount: Math.max(p.mealCount, pinnedIds.length),
     mealTypes: p.mealTypes,
     maxPrep: p.maxPrep,
     includeTags: p.includeTags,
@@ -151,6 +154,18 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
     });
   }
 
+  /** Use only the recipes tapped in the recommendations. */
+  function useJustPicked() {
+    const picked: Slot[] = pinnedIds
+      .map((id) => byId.get(id))
+      .filter(Boolean)
+      .map((r) => ({ key: uid(), recipeId: r!.id, draft: null, title: r!.title, locked: true, reason: "picked", kid: null, skipIds: [] }));
+    setSlots(assignKids(picked));
+    setNote(null);
+    setSuggestions([]);
+    setStep("plan");
+  }
+
   async function planIt() {
     setNote(null);
     setSuggestions([]);
@@ -177,7 +192,7 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
             .filter((m: { recipeId?: string }) => !m.recipeId || !lockedIds.includes(m.recipeId))
             .map((m: { recipeId?: string; draft?: RecipeDraft; title: string }) => ({
               key: uid(), recipeId: m.recipeId ?? null, draft: m.draft ?? null, title: m.title, locked: false, kid: null, skipIds: [],
-              reason: m.draft ? "something new" : "favorite",
+              reason: m.draft ? "new recipe" : "favorite",
             }));
           setSlots(assignKids([...locked, ...fresh]));
           setStep("plan");
@@ -222,17 +237,17 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
         if (res.requestsToday) setAi((a) => ({ ...a, requestsToday: res.requestsToday }));
         setBusy(null);
         if (res.ok) {
-          replaceSlot(i, { recipeId: res.meal.recipeId ?? null, draft: res.meal.draft ?? null, title: res.meal.title, reason: res.meal.draft ? "something new" : "favorite" });
+          replaceSlot(i, { recipeId: res.meal.recipeId ?? null, draft: res.meal.draft ?? null, title: res.meal.title, reason: res.meal.draft ? "new recipe" : "favorite" });
           return;
         }
-        setToast("Picked another favorite instead");
+        setToast("Replaced with another favorite");
       } catch {
         setBusy(null);
       }
     }
     const pick = swapMeal(plannerRecipes, ids, i, params(), s.skipIds);
     if (!pick) {
-      setToast("Nothing else fits. Try loosening a filter.");
+      setToast("No other recipes match. Try adjusting the filters.");
       return;
     }
     replaceSlot(i, { recipeId: pick.recipeId, draft: null, title: pick.title, reason: pick.reason });
@@ -316,6 +331,12 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
   async function sendToList() {
     setBusy("Sending to the list…");
     try {
+      // 0. Anything from the previous plan not marked yet is assumed cooked
+      //    (keeps "last made" right for the planner without tapping Made it).
+      const { data: prev } = await db.from("meal_plans").select("id, meal_plan_items(id, made_at, for_kids)").order("created_at", { ascending: false }).limit(1).maybeSingle();
+      for (const it of ((prev?.meal_plan_items ?? []) as { id: string; made_at: string | null }[]).filter((x) => !x.made_at)) {
+        await db.rpc("mark_meal_made", { p_item_id: it.id, p_made: true });
+      }
       // 1. Save the plan (history)
       const { data: plan, error: pe } = await db
         .from("meal_plans")
@@ -422,9 +443,9 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
             ai.enabled && <span className="text-[12px] text-muted">{ai.requestsToday} idea lookups today</span>
           )}
         </div>
-        <h1 className="large-title">{step === "params" ? "Plan a trip" : step === "plan" ? "This week" : "Shopping list"}</h1>
+        <h1 className="large-title">{step === "params" ? "What’s for dinner?" : step === "plan" ? "This week" : "Shopping list"}</h1>
         <p className="mt-1 text-[15px] text-muted">
-          {step === "params" && "Pick the stores, then plan the week."}
+          {step === "params" && "Pick where you’re shopping, then tap the dinners you want."}
           {step === "plan" && `${slots.length} meals · ${orderedStoreIds.map((id) => stores.find((s) => s.id === id)?.name).join(" + ")}`}
           {step === "list" && `${preview.filter((i) => !i.have).length} items · tick what you already have`}
         </p>
@@ -433,14 +454,6 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
       <div className="px-4">
         {step === "params" && (
           <>
-            <Link href="/plan/trip" className="card mt-4 flex items-center gap-3 p-4 active:scale-[0.99]">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-soft text-xl text-accent"><IconCart /></span>
-              <span className="flex-1">
-                <span className="block text-[17px] font-semibold">Quick trip</span>
-                <span className="block text-[13px] text-muted">Heading to one store? Pick a few recipes from there.</span>
-              </span>
-              <IconChevron className="text-muted" />
-            </Link>
             <Section title="Stores">
               <div className="flex flex-wrap gap-2">
                 {stores.map((s) => (
@@ -448,6 +461,9 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
                     <span className="flex items-center gap-1.5"><StoreBadge name={s.name} size={20} />{s.name}</span>
                   </Chip>
                 ))}
+                <button onClick={() => setAddingStore(true)} className="grid h-9 w-9 place-items-center rounded-full bg-card text-lg text-accent ring-1 ring-line" aria-label="Add a store">
+                  <IconPlus />
+                </button>
               </div>
             </Section>
 
@@ -484,9 +500,21 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
               <Segmented value={p.maxPrep} onChange={(v) => setP({ ...p, maxPrep: v })} options={[{ value: 15, label: "15" }, { value: 30, label: "30" }, { value: 45, label: "45" }, { value: null, label: "60+" }]} />
             </Section>
 
-            <Button size="lg" className="mt-6 w-full" disabled={!p.storeIds.length || !!busy} onClick={planIt}>
-              {busy ?? "Plan it"}
-            </Button>
+            <Recommend
+              recipes={recipes}
+              household={household}
+              storeIds={orderedStoreIds}
+              mealTypes={p.mealTypes}
+              maxPrep={p.maxPrep}
+              picked={pinnedIds}
+              onToggle={(id) => setPinnedIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))}
+            />
+
+            {!pinnedIds.length && (
+              <Button size="lg" className="mt-6 w-full" disabled={!p.storeIds.length || !!busy} onClick={() => planIt()}>
+                {busy ?? `Plan ${p.mealCount} ${p.mealTypes.length === 1 && p.mealTypes[0] === "dinner" ? "dinners" : "meals"} for me`}
+              </Button>
+            )}
 
             <details className="group mt-6">
               <summary className="flex cursor-pointer list-none items-center justify-between px-1 py-2 text-[15px] font-semibold text-muted">
@@ -507,8 +535,8 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
               </label>
               <label className="flex items-center justify-between px-4 py-3">
                 <span>
-                  <span className="block text-[17px]">Kids’ meals</span>
-                  <span className="block text-[13px] text-muted">Add a kids’ favorite when they won’t eat dinner</span>
+                  <span className="block text-[17px]">Kids’ menu</span>
+                  <span className="block text-[13px] text-muted">Add a kids’ menu item when dinner isn’t kid-friendly</span>
                 </span>
                 <Toggle checked={p.kidMeals} onChange={(v) => setP({ ...p, kidMeals: v })} />
               </label>
@@ -544,6 +572,21 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
               <Button variant="secondary" className="mt-6 w-full" onClick={saveDefaults}>Save these as our usual settings</Button>
             </details>
             {!p.storeIds.length && <p className="mt-2 text-center text-[13px] text-muted">Pick at least one store.</p>}
+            {pinnedIds.length > 0 && (
+              <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+64px)] z-30 px-4">
+                <div className="mx-auto flex max-w-xl gap-2">
+                  <Button size="lg" variant="secondary" className="flex-1 shadow-lg" disabled={!!busy} onClick={useJustPicked}>
+                    Just these {pinnedIds.length}
+                  </Button>
+                  {pinnedIds.length < p.mealCount && (
+                    <Button size="lg" className="flex-1 shadow-lg" disabled={!!busy || !p.storeIds.length} onClick={() => planIt()}>
+                      {busy ?? `Fill to ${p.mealCount}`}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+            {pinnedIds.length > 0 && <div className="h-20" />}
           </>
         )}
 
@@ -573,14 +616,14 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
                         <p className="recipe-title text-[17px] leading-snug font-semibold">{s.title}</p>
                         <p className="mt-0.5 flex items-center gap-1 text-[13px] text-muted">
                           {(r?.prep_min ?? s.draft?.prepMin) != null && <><IconClock /> {r?.prep_min ?? s.draft?.prepMin} min · </>}
-                          {s.draft && !s.recipeId ? "something new" : s.reason}
+                          {s.draft && !s.recipeId ? "new recipe" : s.reason}
                         </p>
                         {s.kid && (
                           <button onClick={() => cycleKid(i)} className="mt-1.5 rounded-full bg-accent-soft px-2.5 py-0.5 text-[12px] font-semibold text-accent">
                             Kids: {s.kid.title} ↻
                           </button>
                         )}
-                        {!s.kid && isKidFriendly(s) && <p className="mt-1.5 text-[12px] font-semibold text-ok">Kids eat this too</p>}
+                        {!s.kid && isKidFriendly(s) && <p className="mt-1.5 text-[12px] font-semibold text-ok">Kid-friendly</p>}
                       </div>
                     </div>
                     <div className="flex border-t hairline text-[14px] font-medium">
@@ -637,6 +680,18 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
             else if (picker.mode === "add") setSlots(assignKids([...slots, { key: uid(), recipeId: r.id, draft: null, title: r.title, locked: true, reason: "picked", kid: null, skipIds: [] }]));
             else replaceSlot(picker.index, { recipeId: r.id, draft: null, title: r.title, reason: "picked", locked: true });
             setPicker(null);
+          }}
+        />
+      )}
+      {addingStore && (
+        <AddStoreSheet
+          householdId={me.householdId}
+          onClose={() => setAddingStore(false)}
+          onAdded={(id) => {
+            setAddingStore(false);
+            setP((cur) => ({ ...cur, storeIds: [...cur.storeIds, id] }));
+            setToast("Store added. Fine-tune it in Settings → Store rules.");
+            router.refresh();
           }}
         />
       )}

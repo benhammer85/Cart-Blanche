@@ -14,7 +14,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
     loadHouseholdData(db, member!.householdId),
     db
       .from("recipes")
-      .select("id, title, servings, prep_min, image_path, tags, meal_types, main_protein, kid_friendly, is_kid_meal, times_made, last_made_at, recipe_ingredients(qty, qty_max, unit, name, name_norm, raw_text, parsed_ok)")
+      .select("id, title, servings, prep_min, steps, image_path, tags, meal_types, main_protein, kid_friendly, is_kid_meal, times_made, last_made_at, recipe_ingredients(qty, qty_max, unit, name, name_norm, raw_text, parsed_ok)")
       .eq("archived", false),
     from
       ? db.from("meal_plans").select("params, store_ids, meal_plan_items(recipe_id, ai_recipe, title, for_kids, position)").eq("id", from).maybeSingle()
@@ -34,7 +34,7 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
       household={household}
       recipes={(recipes.data ?? []) as PlanRecipe[]}
       repeat={tripPlan ?? (repeat.data as RepeatPlan) ?? null}
-      intro={tripPlan ? "Here are your picks. Build the list when you're ready." : undefined}
+      intro={tripPlan ? "Your selected recipes. Review, then build the shopping list." : undefined}
     />
   );
 }

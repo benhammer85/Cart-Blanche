@@ -175,7 +175,7 @@ export function CroutonImport() {
                     <div className="mt-2 flex items-center gap-3">
                       <button className="text-[14px] font-semibold text-accent" onClick={() => setEditing(it)}>Review</button>
                       <label className="flex items-center gap-1.5 text-[13px] text-muted">
-                        Kids eat it
+                        Kid-friendly
                         <input type="checkbox" checked={it.draft.kidFriendly} onChange={(e) => setItems((cur) => cur.map((i) => (i.key === it.key ? { ...i, draft: { ...i.draft, kidFriendly: e.target.checked } } : i)))} />
                       </label>
                     </div>

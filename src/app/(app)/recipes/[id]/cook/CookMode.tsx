@@ -162,10 +162,10 @@ export function CookMode({ recipe: r }: { recipe: Recipe }) {
           <p className="text-center text-[20px] text-muted">This recipe has no steps saved.</p>
         ) : finished ? (
           <div className="text-center">
-            <p className="recipe-title text-[30px] font-semibold">Dinner’s ready</p>
-            <p className="mt-2 text-[17px] text-muted">Enjoy it.</p>
+            <p className="recipe-title text-[30px] font-semibold">All steps complete</p>
+            <p className="mt-2 text-[17px] text-muted">Mark it as made to keep your history up to date.</p>
             <Button size="lg" className="mt-8 w-full" onClick={madeIt} disabled={saved}>
-              {saved ? (<><IconCheck /> Marked as made</>) : "We made this"}
+              {saved ? (<><IconCheck /> Marked as made</>) : "Mark as made"}
             </Button>
             <Button variant="ghost" className="mt-2 w-full" onClick={() => router.back()}>Back to recipe</Button>
           </div>

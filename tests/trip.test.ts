@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { fitShare, makeFitContext, storeFit } from "@/lib/trip";
+import { fitShare, makeFitContext, storeFit, tripFit } from "@/lib/trip";
 import type { IngredientInfo } from "@/lib/types";
 
 const info = (name_norm: string, category_id: string | null, extra: Partial<IngredientInfo> = {}): [string, IngredientInfo] => [
@@ -47,6 +47,11 @@ describe("quick trip store fit", () => {
     expect(storeFit(["paper towel"], "mb", ctx).missing).toEqual([]);
   });
 
+  test("a trip to two stores: missing only if neither has it", () => {
+    expect(tripFit(["onion", "harissa"], ["tj", "costco"], ctx).missing).toEqual(["harissa"]);
+    expect(tripFit(["onion", "harissa"], ["tj", "shaws"], ctx).missing).toEqual([]);
+  });
+
   test("unknown items follow the Other category", () => {
     expect(storeFit(["dragonfruit"], "costco", ctx).missing).toEqual(["dragonfruit"]);
   });
@@ -69,7 +74,7 @@ describe("cooking styles", () => {
     expect(cookingStyles("Herby Skillet Chicken With Greens", [])).toEqual(["One pot"]);
     expect(cookingStyles("Sheet-Pan Bibimbap", [])).toEqual(["Sheet pan"]);
     expect(cookingStyles("Beef Kebabs", [], [{ text: "Grill the skewers" }])).toEqual([]);
-    expect(cookingStyles("Carnitas", [], [{ text: "Add to the slow cooker on low" }])).toEqual(["Slow cooker"]);
+    expect(cookingStyles("Carnitas", [], [{ text: "Add to the slow cooker on low" }])).toEqual(["Instant Pot"]); // IP slow-cooks
     expect(cookingStyles("Beef Kebabs", ["Grilling"])).toEqual(["Grill"]);
   });
 });

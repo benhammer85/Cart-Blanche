@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Chip, Empty, Sheet, cx } from "@/components/ui";
 import { RecipeImage } from "@/components/RecipeImage";
-import { IconBook, IconChat, IconClock, IconLink, IconPencil, IconPlus, IconSearch, IconUpload } from "@/components/icons";
+import { IconBook, IconChat, IconClock, IconLink, IconPencil, IconPlus, IconSearch, IconShare, IconUpload } from "@/components/icons";
 
 export interface RecipeCard {
   id: string;
@@ -74,15 +74,24 @@ export function RecipesClient({ recipes }: { recipes: RecipeCard[] }) {
         <h1 className="large-title">Recipes</h1>
         <div className="relative mt-3">
           <IconSearch className="absolute top-1/2 left-3.5 -translate-y-1/2 text-[18px] text-muted" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${recipes.length} recipes`} className="h-10 w-full rounded-xl bg-soft pr-3 pl-10 text-[16px] outline-none placeholder:text-muted" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${recipes.filter((r) => !r.is_kid_meal).length} recipes`} className="h-10 w-full rounded-xl bg-soft pr-3 pl-10 text-[16px] outline-none placeholder:text-muted" />
         </div>
       </header>
 
+      {recipes.length > 0 && recipes.filter((r) => !r.is_kid_meal).length < 10 && (
+        <Link href="/recipes/import" className="card mx-4 mt-3 flex items-center gap-3 p-4">
+          <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent-soft text-2xl text-accent"><IconUpload /></span>
+          <span className="flex-1">
+            <span className="block text-[17px] font-semibold">Import your Crouton library</span>
+            <span className="block text-[13px] text-muted">Bring in all your recipes with photos. Works from a phone or a laptop.</span>
+          </span>
+        </Link>
+      )}
       <div className="no-scrollbar mt-3 flex gap-2 overflow-x-auto px-5 pb-1">
         <Chip active={!tag} onClick={() => setTag(null)}>All</Chip>
         <Chip active={tag === "Loved"} onClick={() => setTag(tag === "Loved" ? null : "Loved")}>♥ Loved</Chip>
-        <Chip active={tag === "__kf"} onClick={() => setTag(tag === "__kf" ? null : "__kf")}>Kids eat it</Chip>
-        <Chip active={tag === "__kids"} onClick={() => setTag(tag === "__kids" ? null : "__kids")}>Kids’ meals</Chip>
+        <Chip active={tag === "__kf"} onClick={() => setTag(tag === "__kf" ? null : "__kf")}>Kid-friendly</Chip>
+        <Chip active={tag === "__kids"} onClick={() => setTag(tag === "__kids" ? null : "__kids")}>Kids’ menu</Chip>
         {tags.filter((t) => t !== "kids" && t !== "Loved").map((t) => (
           <Chip key={t} active={tag === t} onClick={() => setTag(tag === t ? null : t)}>{t}</Chip>
         ))}
@@ -115,7 +124,7 @@ export function RecipesClient({ recipes }: { recipes: RecipeCard[] }) {
               <div className="relative aspect-[4/5] overflow-hidden rounded-2xl bg-soft">
                 <RecipeImage src={r.image_path} title={r.title} />
                 {(r.kid_friendly || r.is_kid_meal) && (
-                  <span className="absolute top-2 left-2 rounded-full bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur">{r.is_kid_meal ? "Kids" : "Kids ✓"}</span>
+                  <span className="absolute top-2 left-2 rounded-full bg-black/45 px-2 py-0.5 text-[11px] font-semibold text-white backdrop-blur">{r.is_kid_meal ? "Kids’ menu" : "Kid-friendly"}</span>
                 )}
               </div>
               <p className="recipe-title mt-2 line-clamp-2 px-0.5 text-[16px] leading-snug font-semibold">{r.title}</p>
@@ -136,6 +145,7 @@ export function RecipesClient({ recipes }: { recipes: RecipeCard[] }) {
             { href: "/recipes/new?mode=paste", icon: <IconPencil />, label: "Type or paste", detail: "Ingredients, a blank line, then steps" },
             { href: "/recipes/import", icon: <IconUpload />, label: "Import from Crouton", detail: ".crumb files or a .zip" },
             { href: "/recipes/claude", icon: <IconChat />, label: "Find new recipes", detail: "Get fresh ideas that fit our week" },
+            { href: "/recipes/share-setup", icon: <IconShare />, label: "Share button setup", detail: "Save recipes from any website or app in one tap" },
           ].map((o) => (
             <Link key={o.href} href={o.href} className="flex min-h-[64px] items-center gap-3 px-4 py-2 active:bg-soft" onClick={() => setAdding(false)}>
               <span className="grid h-9 w-9 place-items-center rounded-full bg-accent-soft text-[18px] text-accent">{o.icon}</span>

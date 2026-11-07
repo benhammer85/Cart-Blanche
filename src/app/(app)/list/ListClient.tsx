@@ -1,11 +1,12 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
+import Link from "next/link";
 import { StoreBadge, storeBadgeStyle } from "@/components/StoreBadge";
 import { TonightCard } from "@/components/TonightCard";
 import { useMembership } from "@/components/AppShell";
 import { useSharedList } from "@/lib/offline/useSharedList";
 import { Button, Chip, Empty, Select, Sheet, TextArea, TextField, Toast, cx } from "@/components/ui";
-import { IconCart, IconCheck, IconCopy, IconPlus, IconTrash, IconWifiOff, IconChevron, IconUpload, IconPencil } from "@/components/icons";
+import { IconCart, IconCheck, IconCopy, IconPlus, IconTrash, IconWifiOff, IconChevron, IconUpload, IconPencil, IconLeaf } from "@/components/icons";
 import { resizeImage } from "@/lib/data/recipes";
 import { parseIngredientLine } from "@/lib/ingredientParser";
 import { buildVocabulary, correctSpelling } from "@/lib/spell";
@@ -244,7 +245,7 @@ export function ListClient() {
         </div>
         <h1 className="large-title">Shopping List</h1>
         <p className="mt-1 text-[15px] text-muted">
-          {loaded ? (totalTodo ? `${totalTodo} to get${totalCart ? ` · ${totalCart} in cart` : ""}` : totalCart ? `All done · ${totalCart} in cart` : "Nothing yet") : "Loading…"}
+          {loaded ? (totalTodo ? `${totalTodo} to get${totalCart ? ` · ${totalCart} in cart` : ""}` : totalCart ? `All done · ${totalCart} in cart` : "No items") : "Loading…"}
         </p>
         {groups.length > 1 && (
           <div className="no-scrollbar -mx-5 mt-3 flex gap-2 overflow-x-auto px-5">
@@ -266,7 +267,7 @@ export function ListClient() {
         <TonightCard />
         {loaded && !groups.length && (
           <Empty icon={<IconCart />} title="Your list is empty">
-            Add something below, or plan this week’s meals.
+            Add items below or plan the week’s meals.
           </Empty>
         )}
 
@@ -382,6 +383,9 @@ export function ListClient() {
           <button className="flex h-14 w-full items-center gap-3 px-4 text-left text-[17px]" onClick={() => { setMenu(false); setBulk({ text: "" }); }}>
             <IconPencil className="text-muted" /> Paste a list
           </button>
+          <Link href="/settings/pantry" className="flex h-14 w-full items-center gap-3 px-4 text-left text-[17px]" onClick={() => setMenu(false)}>
+            <IconLeaf className="text-muted" /> Pantry staples we’re out of
+          </Link>
         </div>
         <div className="card divide-y divide-line overflow-hidden">
           <button className="flex h-14 w-full items-center gap-3 px-4 text-left text-[17px]" onClick={() => { copy(groups.map(storeText).join("\n\n"), "Whole list"); setMenu(false); }}>

@@ -74,6 +74,11 @@ describe("Crouton .crumb parser (real exports)", () => {
     expect(meal("Quick Poppy Seed Rolls")).toEqual(["side"]);
     expect(meal("Roasted Broccoli With Vinegar-Mustard Glaze")).toEqual(["side"]);
     expect(meal("Roasted Cauliflower And Potatoes With Harissa")).toEqual(["dinner"]);
+    expect(meal("Air-Fryer Brussels Sprouts With Garlic, Lemon and Parmesan")).toEqual(["side"]);
+    expect(meal("Broccoli Gratin")).toEqual(["side"]);
+    expect(meal("Korean Spinach Side Dish (Sigeumchi Namul)")).toEqual(["side"]);
+    expect(meal("Creamy Cabbage Pastina")).toEqual(["dinner"]);
+    expect(meal("Broccoli and Cheese Soup")).toEqual(["dinner"]);
   });
 
   test("rejects files that aren't Crouton recipes", () => {
@@ -104,5 +109,12 @@ describe("export to Crouton", () => {
     expect(c.ingredients[1].quantity).toEqual({ amount: 2, secondaryAmount: 3, quantityType: "ITEM" });
     expect(c.duration).toBe(10);
     expect(c.tags[0].name).toBe("Loved");
+  });
+});
+
+describe("mains that start with a vegetable", () => {
+  test("grain and pasta dishes stay dinners", () => {
+    const meal = (name: string) => parseCrumb({ uuid: "x", name, ingredients: [], steps: [], tags: [], images: [] }).recipe.mealTypes;
+    expect(meal("Roasted Cauliflower Orzo With Chickpeas and Feta")).toEqual(["dinner"]);
   });
 });

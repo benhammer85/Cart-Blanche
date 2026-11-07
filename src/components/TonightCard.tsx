@@ -86,7 +86,7 @@ export function TonightCard() {
           </Link>
         )}
         <button onClick={madeIt} disabled={busy} className="flex h-11 flex-1 items-center justify-center gap-1.5 border-l hairline text-muted disabled:opacity-40">
-          <IconCheck /> Made it
+          <IconCheck /> Mark as made
         </button>
       </div>
     </section>
