@@ -4,22 +4,14 @@ import { getAuthUser, supabaseServer } from "@/lib/supabase/server";
 import { getMembershipFor } from "@/lib/household/ensure";
 import { AiError, getAiProvider } from "@/lib/ai/provider";
 import { scrubNames } from "@/lib/ai/aiPlanner";
-import { buildDiscoverPrompt, buildTasteProfile, isBlockedSite, parseDiscoverAnswer, type DiscoverFilters } from "@/lib/discover";
-import { fetchRecipePage } from "@/lib/import/fetchRecipe";
+import { buildDiscoverPrompt, buildTasteProfile, type DiscoverFilters } from "@/lib/discover";
+import { cardsFromSearch } from "@/lib/import/searchCards";
 import { normalizeUrl } from "@/lib/data/recipes.shared";
 import { ageOn } from "@/lib/list/buildList";
 
 export const maxDuration = 60;
 
-export interface DiscoverCard {
-  url: string;
-  title: string;
-  site: string;
-  image: string | null;
-  prepMin: number | null;
-  ingredientCount: number;
-  why: string;
-}
+export type { DiscoverCard } from "@/lib/import/searchCards";
 
 // Finds real recipes online that fit our taste (from recipes flagged in
 // Crouton) and the filters, then reads each page so every card is a real recipe.
@@ -95,51 +87,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: e instanceof AiError ? e.message : "Recipe search failed." });
   }
 
-  // Candidate pages: the links in the answer, plus the pages Google grounded on.
-  const picks = parseDiscoverAnswer(answer.text);
-  const grounded = await Promise.all(
-    answer.sources.slice(0, 12).map(async (s) => {
-      try {
-        const r = await fetch(s.uri, { redirect: "manual", signal: AbortSignal.timeout(5000) });
-        return r.headers.get("location") ?? s.uri;
-      } catch {
-        return null;
-      }
-    }),
-  );
-  const have = new Set(mine.map((r) => r.source_url && normalizeUrl(r.source_url)).filter(Boolean));
-  const seen = new Set<string>();
-  const candidates: { url: string; why: string; site: string }[] = [];
-  for (const c of [...picks, ...grounded.filter(Boolean).map((url) => ({ url: url!, why: "", site: "", title: "" }))]) {
-    const key = normalizeUrl(c.url);
-    if (seen.has(key) || have.has(key) || isBlockedSite(c.url) || /vertexaisearch/.test(c.url)) continue;
-    seen.add(key);
-    candidates.push({ url: c.url, why: c.why, site: c.site });
-  }
-
+  const have = new Set(mine.map((r) => r.source_url && normalizeUrl(r.source_url)).filter(Boolean) as string[]);
   const synonyms = Object.fromEntries(((syn ?? []) as { alias: string; canonical: string }[]).map((s) => [s.alias, s.canonical]));
-  const pages = await Promise.all(
-    candidates.slice(0, 14).map(async (c) => {
-      try {
-        const { recipe, finalUrl } = await fetchRecipePage(c.url, synonyms, 9000);
-        if (!recipe || recipe.ingredients.length < 3) return null;
-        if (have.has(normalizeUrl(finalUrl))) return null;
-        const card: DiscoverCard = {
-          url: finalUrl,
-          title: recipe.title,
-          site: c.site || recipe.sourceName || new URL(finalUrl).hostname.replace(/^www\./, ""),
-          image: recipe.imageUrl ?? null,
-          prepMin: recipe.prepMin,
-          ingredientCount: recipe.ingredients.length,
-          why: c.why,
-        };
-        return card;
-      } catch {
-        return null;
-      }
-    }),
-  );
-  const cards = pages.filter(Boolean).slice(0, 10) as DiscoverCard[];
+  const cards = await cardsFromSearch(answer, { have, synonyms });
   if (!cards.length) return NextResponse.json({ ok: false, error: "Didn’t find recipes we could open this time. Try again or change the filters." });
   return NextResponse.json({ ok: true, cards, basedOn: profile.favorites.slice(0, 5) });
 }

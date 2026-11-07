@@ -12,6 +12,16 @@ import { supabaseBrowser } from "@/lib/supabase/client";
 import { useMembership } from "@/components/AppShell";
 import type { RecipeDraft } from "@/lib/types";
 import { PickRecipes, type PageResult } from "./PickRecipes";
+import { socialSite } from "@/lib/import/social";
+import type { DiscoverCard } from "@/lib/import/searchCards";
+
+interface Found {
+  cards: DiscoverCard[];
+  caption: string | null;
+  captionIsRecipe: boolean;
+  needShot: boolean;
+  error: string | null;
+}
 
 type Mode = "url" | "paste" | "manual";
 
@@ -30,6 +40,7 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [page, setPage] = useState<PageResult | null>(null);
+  const [found, setFound] = useState<Found | null>(null);
 
   // Opened from the share sheet with a link: read it straight away.
   const started = useRef(false);
@@ -54,7 +65,28 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
       .slice(0, 3_800_000);
   }
 
+  /** A TikTok or Instagram video (link or screenshot) → the full recipe online. */
+  async function findOnline(body: { url?: string; image?: string; mimeType?: string }) {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/recipes-from-social", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then((x) => x.json());
+      setFound({
+        cards: r.cards ?? [],
+        caption: r.caption ?? null,
+        captionIsRecipe: !!r.captionIsRecipe,
+        needShot: !!r.needScreenshot,
+        error: r.ok ? null : (r.error ?? "Couldn’t find it."),
+      });
+    } catch {
+      setFound({ cards: [], caption: null, captionIsRecipe: false, needShot: false, error: "Check your connection and try again." });
+    } finally {
+      setBusy(false);
+    }
+  }
+
   async function fetchUrl(target = url, html?: string) {
+    if (!html && socialSite(target)) return findOnline({ url: target });
     setBusy(true);
     setError(null);
     try {
@@ -109,15 +141,21 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
     }
   }
 
-  async function readScreenshot(file: File) {
+  async function toJpegBase64(file: File) {
     const small = await resizeImage(file, 1800, 0.85);
-    const b64 = await new Promise<string>((res) => {
+    return new Promise<string>((res) => {
       const fr = new FileReader();
       fr.onload = () => res(String(fr.result).replace(/^data:[^,]+,/, ""));
       fr.readAsDataURL(small);
     });
+  }
+
+  async function readScreenshot(file: File) {
+    const b64 = await toJpegBase64(file);
     const err = await readWithAi({ image: b64, mimeType: "image/jpeg" });
-    if (err) setError(err);
+    // No recipe on the page (say, a TikTok video): look for it online by name.
+    if (err && /find a recipe/i.test(err)) await findOnline({ image: b64, mimeType: "image/jpeg" });
+    else if (err) setError(err);
   }
 
   async function readPaste() {
@@ -164,7 +202,42 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
       />
       <div className="px-4">
         {page && !draft && <PickRecipes page={page} onCancel={() => { setPage(null); setUrl(""); }} />}
-        {!draft && !page && (
+        {found && !draft && !page && (
+          <div className="mt-4">
+            {found.cards.length > 0 && (
+              <ul className="card divide-y divide-line overflow-hidden">
+                {found.cards.map((c) => (
+                  <li key={c.url}>
+                    <button className="flex min-h-[72px] w-full items-center gap-3 px-3 py-2 text-left active:bg-soft" disabled={busy} onClick={() => { setFound(null); setUrl(c.url); fetchUrl(c.url); }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      {c.image ? <img src={c.image} alt="" className="h-14 w-14 shrink-0 rounded-lg object-cover" /> : <span className="h-14 w-14 shrink-0 rounded-lg bg-soft" />}
+                      <span className="min-w-0 flex-1">
+                        <span className="block text-[16px] leading-snug font-semibold">{c.title}</span>
+                        <span className="block truncate text-[13px] text-muted">{[c.site, c.why].filter(Boolean).join(" · ")}</span>
+                      </span>
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+            {found.captionIsRecipe && found.caption && (
+              <Button variant="secondary" size="lg" className="mt-3 w-full" disabled={busy} onClick={async () => { const cap = found.caption!; setFound(null); const err = await readWithAi({ text: cap }); if (err) setError(err); }}>
+                Use the recipe in the caption
+              </Button>
+            )}
+            {!found.cards.length && !found.captionIsRecipe && !found.error && <p className="card p-4 text-[15px]">Couldn’t find it online.</p>}
+            {found.error && <p className="card p-4 text-[15px] text-[#d23c3c]">{found.error}</p>}
+            {(found.needShot || !found.cards.length) && (
+              <label className={cx("card mt-3 flex min-h-[64px] cursor-pointer items-center gap-4 px-4 py-3 active:bg-soft", busy && "pointer-events-none opacity-60")}>
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-ink text-[22px] text-bg"><IconCamera /></span>
+                <span className="flex-1 text-[17px] font-semibold">{busy ? "Looking…" : "Add a screenshot"}</span>
+                <input type="file" accept="image/*" className="hidden" onChange={async (e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) findOnline({ image: await toJpegBase64(f), mimeType: "image/jpeg" }); }} />
+              </label>
+            )}
+            <button type="button" className="mt-2 w-full py-2 text-[15px] text-accent" onClick={() => { setFound(null); setUrl(""); setPaste(""); }}>Start over</button>
+          </div>
+        )}
+        {!draft && !page && !found && (
           <>
             {mode !== "manual" && (
               <div className="mt-4 space-y-3">
