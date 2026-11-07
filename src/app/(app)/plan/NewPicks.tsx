@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMembership } from "@/components/AppShell";
 import { saveRecipe } from "@/lib/data/recipes";
@@ -67,6 +67,21 @@ function useSaveToRecipes() {
     }
   }
   return { saved, save };
+}
+
+/** When results arrive, scroll down just enough to show them above the tab bar (never up). */
+function useRevealBelow(on: boolean, content: unknown) {
+  const ref = useRef<HTMLElement>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!on || !el) return;
+    const t = setTimeout(() => {
+      const hidden = el.getBoundingClientRect().bottom - (window.innerHeight - 96);
+      if (hidden > 0) window.scrollBy({ top: Math.min(hidden, el.getBoundingClientRect().top - 16), behavior: "smooth" });
+    }, 50);
+    return () => clearTimeout(t);
+  }, [on, content]);
+  return ref;
 }
 
 /** A recipe's details before you add it to the week. */
@@ -137,6 +152,7 @@ export function NewRecipes({ storeNames, maxPrep, picked, onPick, onUnpick, bare
   const key = `cb:trip-new:${today()}:${storeNames.join("+")}:${maxPrep ?? ""}`;
   const [cards, setCards] = useState<WebCard[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const sectionRef = useRevealBelow(bare, cards ?? busy);
   const [opening, setOpening] = useState<string | null>(null);
   const [drafts, setDrafts] = useState<Record<string, RecipeDraft>>({});
   const [viewing, setViewing] = useState<WebCard | null>(null);
@@ -205,7 +221,7 @@ export function NewRecipes({ storeNames, maxPrep, picked, onPick, onUnpick, bare
   }
 
   return (
-    <section className={bare ? "mt-4" : "mt-8"}>
+    <section ref={sectionRef} className={cx("scroll-mt-4", bare ? "mt-4" : "mt-8")}>
       {bare ? (
         <h4 className="menu-label px-1 text-muted">New recipes</h4>
       ) : (
@@ -281,6 +297,7 @@ export function QuickIdeas({ request, storeNames, picked, onPick, onUnpick, bare
   const [viewing, setViewing] = useState<{ title: string; draft: RecipeDraft } | null>(null);
   const { saved, save } = useSaveToRecipes();
   const [busy, setBusy] = useState(false);
+  const sectionRef = useRevealBelow(bare, ideas ?? busy);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
     const hit = read<{ title: string; draft: RecipeDraft }[]>(key);
@@ -311,7 +328,7 @@ export function QuickIdeas({ request, storeNames, picked, onPick, onUnpick, bare
   }
 
   return (
-    <section className={bare ? "mt-4" : "mt-8"}>
+    <section ref={sectionRef} className={cx("scroll-mt-4", bare ? "mt-4" : "mt-8")}>
       {bare ? (
         <h4 className="menu-label px-1 text-muted">Quick ideas</h4>
       ) : (

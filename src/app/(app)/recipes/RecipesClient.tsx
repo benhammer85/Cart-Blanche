@@ -69,7 +69,7 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
       if (tag === "__kids") return r.is_kid_meal;
       if (tag === "__kf") return r.kid_friendly && !r.is_kid_meal;
       if (r.is_kid_meal && tag !== "kids") return false;
-      if (tag && !r.tags.includes(tag)) return false;
+      if (tag && tag !== "__new" && !r.tags.includes(tag)) return false;
       if (maxPrep && r.prep_min != null && r.prep_min > maxPrep) return false;
       return !needle || r.title.toLowerCase().includes(needle) || r.tags.some((t) => t.toLowerCase().includes(needle)) || !!usesIngredient(r, needle);
     });
@@ -81,7 +81,9 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
         .filter((r) => !r.is_kid_meal && r.meal_types.some((t) => t === "dinner" || t === "lunch"))
         .sort((a, b) => fitRank(b) - fitRank(a) || a.title.localeCompare(b.title));
     }
-    list = [...list].sort((a, b) => b.times_made - a.times_made || a.title.localeCompare(b.title));
+    list = [...list].sort((a, b) =>
+      tag === "__new" ? b.created_at.localeCompare(a.created_at) : b.times_made - a.times_made || a.title.localeCompare(b.title),
+    );
     return list;
   }, [recipes, q, tag, maxPrep, fits, special, storeFocus]);
 
@@ -105,6 +107,7 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
           <span className="flex items-center gap-1.5"><IconSliders /> {filterCount ? `Filter · ${filterCount}` : "Filter"}</span>
         </Chip>
         <Chip active={!tag} onClick={() => setTag(null)}>All</Chip>
+        <Chip active={tag === "__new"} onClick={() => setTag(tag === "__new" ? null : "__new")}>Recently added</Chip>
         <Chip active={tag === "Loved"} onClick={() => setTag(tag === "Loved" ? null : "Loved")}>Loved</Chip>
         <Chip active={tag === "__kf"} onClick={() => setTag(tag === "__kf" ? null : "__kf")}>Kid-friendly</Chip>
         <Chip active={tag === "__kids"} onClick={() => setTag(tag === "__kids" ? null : "__kids")}>Kids’ menu</Chip>

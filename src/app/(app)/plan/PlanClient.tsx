@@ -12,13 +12,8 @@ import { RecipeImage } from "@/components/RecipeImage";
 import { AddStoreSheet } from "@/components/AddStoreSheet";
 import { Recommend } from "./Recommend";
 import { StorePicker } from "./StorePicker";
-import type { PickedDraft } from "./NewPicks";
-import dynamic from "next/dynamic";
-
-// Loaded only when used, so the page opens faster.
-const DayList = dynamic(() => import("./DayList"));
-const NewRecipes = dynamic(() => import("./NewPicks").then((m) => m.NewRecipes));
-const QuickIdeas = dynamic(() => import("./NewPicks").then((m) => m.QuickIdeas));
+import { NewRecipes, QuickIdeas, type PickedDraft } from "./NewPicks";
+import DayList from "./DayList";
 import { planMeals, pickKidMeals, rng, swapMeal, type PlannerRecipe, type PlanParams } from "@/lib/planner/planner";
 import { buildShoppingList, portionsFor, type DraftListItem, type PlannedMealForList } from "@/lib/list/buildList";
 import { supabaseBrowser } from "@/lib/supabase/client";
