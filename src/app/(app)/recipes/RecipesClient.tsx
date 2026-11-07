@@ -2,7 +2,8 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Chip, Empty, Sheet, cx } from "@/components/ui";
+import { Chip, Empty, Segmented, Sheet, cx } from "@/components/ui";
+import { Discover } from "./Discover";
 import { RecipeImage } from "@/components/RecipeImage";
 import { StoreBadge } from "@/components/StoreBadge";
 import { fitShare, makeFitContext, storeFit, type StoreFit } from "@/lib/trip";
@@ -44,6 +45,7 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
   const [maxPrep, setMaxPrep] = useState<number | null>(null);
   const [sort, setSort] = useState<Sort>("az");
   const [adding, setAdding] = useState(false);
+  const [view, setView] = useState<"ours" | "discover">("ours");
   // "Best at <store>": sort by how much of each recipe that store usually carries.
   const [storeFocus, setStoreFocus] = useState<string | null>(null);
   const stores = household.stores.filter((s) => !s.archived);
@@ -112,6 +114,13 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
         </div>
       </header>
 
+      <div className="mt-3 px-4">
+        <Segmented value={view} onChange={setView} options={[{ value: "ours", label: "Our recipes" }, { value: "discover", label: "Discover" }]} />
+      </div>
+      {view === "discover" ? (
+        <Discover stores={stores} />
+      ) : (
+      <>
       {recipes.length > 0 && recipes.filter((r) => !r.is_kid_meal).length < 10 && (
         <Link href="/recipes/import" className="card mx-4 mt-3 flex items-center gap-3 p-4">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent-soft text-2xl text-accent"><IconUpload /></span>
@@ -180,6 +189,9 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
         </div>
       )}
       {recipes.length > 0 && !shown.length && <Empty title="Nothing matches">Try a different search or filter.</Empty>}
+
+      </>
+      )}
 
       <Sheet open={adding} onClose={() => setAdding(false)} title="Add recipes">
         <div className="card divide-y divide-line overflow-hidden">

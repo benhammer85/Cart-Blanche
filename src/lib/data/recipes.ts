@@ -22,14 +22,8 @@ export async function loadExistingKeys(db: SupabaseClient): Promise<ExistingKeys
   };
 }
 
-export function normalizeUrl(u: string): string {
-  try {
-    const url = new URL(u);
-    return `${url.hostname.replace(/^www\./, "")}${url.pathname.replace(/\/$/, "")}`.toLowerCase();
-  } catch {
-    return u.toLowerCase();
-  }
-}
+import { normalizeUrl } from "./recipes.shared";
+export { normalizeUrl };
 
 /** Re-imports must not duplicate: match on Crouton id, source URL, or normalized title. */
 export function isDuplicate(d: RecipeDraft, keys: ExistingKeys): string | null {

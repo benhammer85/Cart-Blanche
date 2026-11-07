@@ -9,8 +9,16 @@ export interface AiImage {
   data: string;
 }
 
+export interface AiSearchResult {
+  text: string;
+  /** web pages Google Search grounded the answer on (may be redirect links) */
+  sources: { uri: string; title: string }[];
+}
+
 export interface AiProvider {
   name: string;
+  /** Answer using live Google Search results (grounding). */
+  searchWeb(prompt: string): Promise<AiSearchResult>;
   /** Returns the raw JSON text the model produced. Throws AiError on failure. */
   generateJson(prompt: string, opts?: { temperature?: number; images?: AiImage[] }): Promise<string>;
 }
@@ -57,6 +65,42 @@ class GeminiProvider implements AiProvider {
     autoModel = pickModel(models);
     if (!autoModel) throw new AiError("No suitable free model found for this key.", "failed");
     return autoModel;
+  }
+
+  async searchWeb(prompt: string): Promise<AiSearchResult> {
+    // Search grounding isn't on every model; try the chosen model, then the 2.5 Flash-Lite family.
+    const first = await this.resolveModel();
+    const tries = [...new Set([first, "gemini-2.5-flash-lite", "gemini-2.5-flash"])];
+    let lastStatus = 0;
+    for (const model of tries) {
+      const res = await fetch(`${API}/models/${encodeURIComponent(model)}:generateContent`, {
+        method: "POST",
+        headers: { "content-type": "application/json", "x-goog-api-key": this.apiKey },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: prompt }] }],
+          tools: [{ google_search: {} }],
+          generationConfig: { temperature: 0.7 },
+        }),
+        signal: AbortSignal.timeout(45_000),
+        cache: "no-store",
+      }).catch(() => null);
+      if (!res) throw new AiError("Couldn’t reach Gemini", "failed");
+      if (res.status === 429) throw new AiError("Today’s free recipe searches are used up. Try again tomorrow.", "rate_limited");
+      if (!res.ok) {
+        lastStatus = res.status;
+        continue; // model may not support search; try the next
+      }
+      const data = (await res.json()) as {
+        candidates?: { content?: { parts?: { text?: string }[] }; groundingMetadata?: { groundingChunks?: { web?: { uri?: string; title?: string } }[] } }[];
+      };
+      const c = data.candidates?.[0];
+      const text = c?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+      const sources = (c?.groundingMetadata?.groundingChunks ?? [])
+        .map((g) => ({ uri: g.web?.uri ?? "", title: g.web?.title ?? "" }))
+        .filter((x) => x.uri);
+      return { text, sources };
+    }
+    throw new AiError(`Recipe search isn’t available with this key (${lastStatus}).`, "failed");
   }
 
   async generateJson(prompt: string, opts: { temperature?: number; images?: AiImage[] } = {}): Promise<string> {
