@@ -349,7 +349,8 @@ export function ListClient() {
 
   const totalTodo = groups.reduce((n, g) => n + g.todoCount, 0);
   // Show one store only if it still has something on the list.
-  const shown = viewing && groups.some((g) => g.storeId === viewing) ? viewing : null;
+  // Every store has a tab, even with nothing on its list yet, so its usual items are a tap away.
+  const shown = viewing;
   const totalCart = groups.reduce((n, g) => n + g.inCart.length, 0);
 
   function storeText(g: (typeof groups)[number]) {
@@ -417,9 +418,15 @@ export function ListClient() {
         <p className="mt-1 text-[15px] text-muted">
           {loaded ? (totalTodo ? `${totalTodo} to get${totalCart ? ` · ${totalCart} in cart` : ""}` : totalCart ? `All done · ${totalCart} in cart` : "No items") : "Loading…"}
         </p>
-        {groups.length > 1 && (
+        {stores.length > 1 && (
           <div className="no-scrollbar -mx-5 mt-2 flex gap-5 overflow-x-auto border-b hairline px-5" role="tablist">
-            {[{ id: null as string | null, name: "All", count: totalTodo }, ...groups.map((g) => ({ id: g.storeId as string | null, name: g.name, count: g.todoCount }))].map((t) => {
+            {[
+              { id: null as string | null, name: "All", count: totalTodo, has: groups.length > 0 },
+              ...stores.map((st) => {
+                const g = groups.find((x) => x.storeId === st.id);
+                return { id: st.id as string | null, name: st.name, count: g?.todoCount ?? 0, has: !!g };
+              }),
+            ].map((t) => {
               const on = (shown ?? null) === t.id;
               return (
                 <button
@@ -430,7 +437,7 @@ export function ListClient() {
                   className={cx("-mb-px flex h-11 shrink-0 items-center gap-1.5 border-b-2 text-[15px] transition-colors", on ? "border-accent font-semibold text-ink" : "border-transparent text-muted")}
                 >
                   {t.name}
-                  <span className="text-[13px] font-normal text-muted tabular-nums">{t.count || "✓"}</span>
+                  {(t.count > 0 || t.has) && <span className="text-[13px] font-normal text-muted tabular-nums">{t.count || "✓"}</span>}
                 </button>
               );
             })}
@@ -440,7 +447,7 @@ export function ListClient() {
 
       <div className="px-4">
         <TonightCard key={tonightKey} />
-        {loaded && !groups.length && (
+        {loaded && !groups.length && !shown && (
           <Empty icon={<IconCart />} title="Your list is empty">
             Add items below or plan the week’s meals.
           </Empty>
@@ -500,25 +507,36 @@ export function ListClient() {
             )}
           </section>
         ))}
+        {shown && loaded && (
+          <section className="card mt-4 overflow-hidden">
+            <div className="flex items-baseline justify-between px-4 pt-4 pb-1">
+              <h2 className="recipe-title text-[20px] font-semibold">Usually at {stores.find((x) => x.id === shown)?.name}</h2>
+              {storeFavs.length > 8 && (
+                <button onClick={() => { setFavPicked(new Set()); setFavSheet(true); }} className="-mr-1 h-9 px-1 text-[15px] text-accent">See all</button>
+              )}
+            </div>
+            {storeFavs.filter((f) => !f.onList).length ? (
+              <ul className="divide-y divide-line">
+                {storeFavs.filter((f) => !f.onList).slice(0, 8).map((f) => (
+                  <li key={f.key}>
+                    <button onClick={() => addQuick(f.label, shown)} className="flex min-h-[50px] w-full items-center gap-3 px-4 text-left text-[16px] active:bg-soft">
+                      <IconPlus className="shrink-0 text-accent" />
+                      {f.label}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="px-4 pb-4 text-[14px] text-muted">{storeFavs.length ? "Everything you usually buy here is on the list." : "Items you add for this store show up here next time."}</p>
+            )}
+          </section>
+        )}
         <div className="h-52" />
       </div>
 
       {/* Add bar */}
       <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+58px)] z-30 border-t hairline bg-bg px-3 pt-2 pb-2">
         <div className="mx-auto max-w-xl">
-          {!text.trim() && favStore && storeFavs.length > 0 && listId && (
-            <div className="no-scrollbar mb-2 flex items-center gap-2 overflow-x-auto px-1">
-              <span className="menu-label shrink-0 text-muted">Usually</span>
-              {storeFavs.filter((f) => !f.onList).slice(0, 10).map((f) => (
-                <button key={f.key} onClick={() => addQuick(f.label, favStore)} className="h-9 shrink-0 rounded-full px-3 text-[14px] text-ink ring-1 ring-line active:scale-95 active:bg-soft">
-                  + {f.label}
-                </button>
-              ))}
-              <button onClick={() => { setFavPicked(new Set()); setFavSheet(true); }} className="h-9 shrink-0 rounded-full bg-ink px-3.5 text-[14px] font-semibold text-bg">
-                See all
-              </button>
-            </div>
-          )}
           {!text.trim() && !favStore && quickAdd.length > 0 && listId && (
             <div className="no-scrollbar mb-2 flex gap-2 overflow-x-auto px-1">
               {quickAdd.map((n) => (

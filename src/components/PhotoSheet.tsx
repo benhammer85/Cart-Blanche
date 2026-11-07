@@ -37,7 +37,11 @@ export function PhotoSheet({ recipe, open, onClose }: { recipe: { id: string; ti
 
   useEffect(() => {
     if (!open || photos) return;
-    ask(false).then((r) => setPhotos(r.photos ?? []));
+    ask(false).then((r) => {
+      setPhotos(r.photos ?? []);
+      // Nothing on the recipe's own page: look on recipe sites straight away.
+      if (!r.photos?.length) searchWeb();
+    });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
@@ -67,6 +71,21 @@ export function PhotoSheet({ recipe, open, onClose }: { recipe: { id: string; ti
     router.refresh();
   }
 
+  /** A photo copied anywhere (Safari, Photos, Messages): paste it straight in. */
+  async function pastePhoto() {
+    setError(null);
+    try {
+      const items = await navigator.clipboard.read();
+      for (const it of items) {
+        const type = it.types.find((t) => t.startsWith("image/"));
+        if (type) return save(await it.getType(type), "paste");
+      }
+      setError("No photo copied. Press and hold a photo, choose Copy, then try again.");
+    } catch {
+      setError("Couldn’t read a copied photo. Press and hold a photo, choose Copy, then try again.");
+    }
+  }
+
   async function choose(p: Photo) {
     try {
       const res = await fetch(`/api/photo-proxy?url=${encodeURIComponent(p.image)}`);
@@ -80,21 +99,8 @@ export function PhotoSheet({ recipe, open, onClose }: { recipe: { id: string; ti
 
   return (
     <Sheet open={open} onClose={onClose} title="Change photo">
-      <div className="grid grid-cols-2 gap-2">
-        <label className={cx("card flex min-h-[64px] cursor-pointer items-center gap-2.5 px-3 active:bg-soft", saving && "pointer-events-none opacity-60")}>
-          <IconCamera className="shrink-0 text-[20px] text-accent" />
-          <span className="text-[15px] leading-tight font-semibold">Camera or photos</span>
-          <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) save(f, "file"); }} />
-        </label>
-        <a href={`https://www.google.com/search?tbm=isch&q=${encodeURIComponent(recipe.title)}`} target="_blank" rel="noopener noreferrer" className="card flex min-h-[64px] items-center gap-2.5 px-3 active:bg-soft">
-          <IconSearch className="shrink-0 text-[20px] text-accent" />
-          <span className="text-[15px] leading-tight font-semibold">Google Images ↗</span>
-        </a>
-      </div>
-      <p className="mt-2 px-1 text-[13px] text-muted">From Google Images: press and hold a photo, choose Save to Photos, then use Camera or photos.</p>
-
-      <h3 className="menu-label mt-5 mb-2 px-1 text-muted">{recipe.source_url && !searched ? "From the recipe’s page" : "Photos of this dish"}</h3>
-      {photos == null ? (
+      <h3 className="menu-label mb-2 px-1 text-muted">{searching ? "Looking on recipe sites…" : recipe.source_url && !searched ? "From the recipe’s page" : "Photos of this dish"}</h3>
+      {photos == null || (searching && !photos.length) ? (
         <div className="grid grid-cols-2 gap-2">{[0, 1].map((n) => <div key={n} className="skeleton aspect-[4/3]" />)}</div>
       ) : photos.length ? (
         <ul className="grid grid-cols-2 gap-2">
@@ -112,11 +118,24 @@ export function PhotoSheet({ recipe, open, onClose }: { recipe: { id: string; ti
       ) : (
         <p className="px-1 text-[14px] text-muted">{recipe.source_url ? "No photo on the recipe’s page." : "This recipe has no web page."}</p>
       )}
-      {!searched && (
+      {!searched && !searching && (
         <Button variant="secondary" className="mt-3 w-full" onClick={searchWeb} disabled={searching || !!saving}>
-          {searching ? "Searching recipe sites…" : "Find photos of this dish online"}
+          {searching ? "Searching recipe sites…" : "More photos from recipe sites"}
         </Button>
       )}
+      <div className="mt-5 grid grid-cols-2 gap-2">
+        <button onClick={pastePhoto} disabled={!!saving} className="card flex min-h-[56px] items-center justify-center gap-2 text-[15px] font-semibold active:bg-soft disabled:opacity-60">
+          Paste photo
+        </button>
+        <label className={cx("card flex min-h-[56px] cursor-pointer items-center justify-center gap-2 text-[15px] font-semibold active:bg-soft", saving && "pointer-events-none opacity-60")}>
+          <IconCamera className="text-[18px] text-accent" /> Camera or photos
+          <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) save(f, "file"); }} />
+        </label>
+      </div>
+      <a href={`https://www.bing.com/images/search?q=${encodeURIComponent(recipe.title)}`} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center gap-2 px-1 text-[15px] text-accent">
+        <IconSearch /> Search images in Safari ↗
+      </a>
+      <p className="mt-1 px-1 text-[13px] text-muted">Tap a photo to open it, press and hold, choose Copy, then come back and tap Paste photo.</p>
       {note && <p className="mt-2 px-1 text-[13px] text-muted">{note}</p>}
       {error && <p className="mt-2 px-1 text-[13px] text-[#d23c3c]">{error}</p>}
     </Sheet>

@@ -229,12 +229,18 @@ export function siteName(html: string, url: string): string {
 /** A page's own photos, best first: the recipe's photos, then og:image / twitter:image. */
 export function pageImages(html: string, pageUrl: string): string[] {
   const out: string[] = [];
+  const seen = new Set<string>();
   const add = (u: unknown) => {
     const s = typeof u === "string" ? u : u && typeof u === "object" ? ((u as { url?: string; contentUrl?: string }).url ?? (u as { contentUrl?: string }).contentUrl) : null;
     if (!s) return;
     try {
       const abs = new URL(decode(s), pageUrl).href;
-      if (/^https?:/.test(abs) && !out.includes(abs) && !/\.(svg|gif)(\?|$)/i.test(abs) && !/logo|avatar|icon|sprite|placeholder/i.test(abs)) out.push(abs);
+      // The same photo in several sizes (-1200x800, ?w=600) counts once.
+      const stem = abs.replace(/\?.*$/, "").replace(/-\d+x\d+(?=\.\w+$)/, "").replace(/-(scaled|large|medium|small)(?=\.\w+$)/, "");
+      if (/^https?:/.test(abs) && !seen.has(stem) && !/\.(svg|gif)(\?|$)/i.test(abs) && !/logo|avatar|icon|sprite|placeholder/i.test(abs)) {
+        seen.add(stem);
+        out.push(abs);
+      }
     } catch {
       /* skip */
     }

@@ -58,4 +58,8 @@ describe("a page's photos", () => {
       <script type="application/ld+json">{"@graph":[{"@type":"Recipe","name":"A","image":[{"@type":"ImageObject","url":"https://x.test/big.jpg"},"https://x.test/sq.jpg"]}]}</script></head>`;
     expect(pageImages(html, "https://x.test/r/")).toEqual(["https://x.test/big.jpg", "https://x.test/sq.jpg", "https://x.test/og.jpg"]);
   });
+  test("one photo in several sizes counts once", () => {
+    const html = `<script type="application/ld+json">{"@type":"Recipe","name":"A","image":["https://x.test/p.jpg","https://x.test/p-500x500.jpg","https://x.test/p-1200x800.jpg?w=1"]}</script>`;
+    expect(pageImages(html, "https://x.test/r/")).toEqual(["https://x.test/p.jpg"]);
+  });
 });
