@@ -122,7 +122,6 @@ export function ReceiptsSettings() {
       <PageHeader
         title="Learn from receipts"
         back="/settings"
-        subtitle="Add receipts from a store and we’ll learn what you buy there, so the list puts those items in the right place."
       />
       <div className="px-4">
         <Section title="Store">

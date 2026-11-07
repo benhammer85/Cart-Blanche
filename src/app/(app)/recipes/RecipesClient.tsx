@@ -134,7 +134,7 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent-soft text-2xl text-accent"><IconUpload /></span>
           <span className="flex-1">
             <span className="block text-[17px] font-semibold">Import your Crouton library</span>
-            <span className="block text-[13px] text-muted">Bring in all your recipes with photos. Works from a phone or a laptop.</span>
+            
           </span>
         </Link>
       )}

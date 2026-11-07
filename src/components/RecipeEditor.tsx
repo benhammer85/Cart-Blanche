@@ -58,14 +58,14 @@ export function RecipeEditor({ draft, onChange, synonyms = {} }: { draft: Recipe
         <label className="flex items-center justify-between px-4 py-3">
           <span>
             <span className="block text-[17px]">Kid-friendly</span>
-            <span className="block text-[13px] text-muted">Suitable for the whole family</span>
+            
           </span>
           <Toggle checked={draft.kidFriendly} onChange={(v) => set({ kidFriendly: v })} label="Kid friendly" />
         </label>
         <label className="flex items-center justify-between px-4 py-3">
           <span>
             <span className="block text-[17px]">Kids’ menu item</span>
-            <span className="block text-[13px] text-muted">Served to the children when dinner isn’t kid-friendly</span>
+            
           </span>
           <Toggle checked={draft.isKidMeal} onChange={(v) => set({ isKidMeal: v, kidFriendly: v || draft.kidFriendly })} label="Kids' meal" />
         </label>

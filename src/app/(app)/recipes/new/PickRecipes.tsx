@@ -75,7 +75,7 @@ export function PickRecipes({ page, onCancel }: { page: PageResult; onCancel: ()
         <p className="recipe-title text-[22px] font-semibold">
           {done.saved ? `Saved ${done.saved} ${done.saved === 1 ? "recipe" : "recipes"}` : "Nothing new saved"}
         </p>
-        {done.skipped.length > 0 && <p className="mt-2 text-[14px] text-muted">Already in your recipes: {done.skipped.join(", ")}</p>}
+        {done.skipped.length > 0 && <p className="mt-2 text-[14px] text-muted">Already saved: {done.skipped.join(", ")}</p>}
         {done.failed.length > 0 && (
           <p className="mt-2 text-[14px] text-muted">
             No recipe found on: {done.failed.join(", ")}. These may be articles rather than recipes, or the site may not allow apps to read them.
@@ -102,7 +102,7 @@ export function PickRecipes({ page, onCancel }: { page: PageResult; onCancel: ()
           {picked.size === items.length ? "Clear" : "Select all"}
         </button>
       </div>
-      {page.kind === "links" && <p className="mt-1 px-1 text-[13px] text-muted">Tick the recipes you want. Each is read from its own page.</p>}
+      
       <ul className="card mt-3 divide-y divide-line overflow-hidden">
         {items.map((it) => {
           const on = picked.has(it.key);

@@ -59,7 +59,7 @@ export function AddStoreSheet({ householdId, onClose, onAdded }: { householdId: 
         <label className="card flex items-center justify-between px-4 py-3">
           <span>
             <span className="block text-[17px]">Full grocery store</span>
-            <span className="block text-[13px] text-muted">Carries a bit of everything. Off for specialty shops.</span>
+            
           </span>
           <Toggle checked={full} onChange={setFull} label="Full grocery store" />
         </label>

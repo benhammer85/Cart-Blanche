@@ -113,7 +113,7 @@ export function Recommend({
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent-soft text-2xl text-accent"><IconUpload /></span>
         <span className="flex-1">
           <span className="block text-[17px] font-semibold">Import your recipes</span>
-          <span className="block text-[13px] text-muted">Import your Crouton library and recommendations for each store show up here.</span>
+          
         </span>
       </Link>
     );

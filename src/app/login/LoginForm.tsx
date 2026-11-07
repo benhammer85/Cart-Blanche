@@ -14,7 +14,7 @@ export function LoginForm({ next }: { next?: string }) {
       <Button size="lg" className="w-full" disabled={pending}>
         {pending ? "Signing in…" : "Sign in"}
       </Button>
-      <p className="pt-2 text-center text-[13px] text-muted">Only our household’s accounts can sign in.</p>
+      
     </form>
   );
 }

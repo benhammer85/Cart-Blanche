@@ -152,7 +152,7 @@ function IngredientSheet({ row, categories, stores, onClose, onDelete }: {
           </Select>
         </label>
         <label className="block">
-          <span className="mb-1 block px-1 text-[13px] text-muted">Always buy at (when it’s on the trip)</span>
+          <span className="mb-1 block px-1 text-[13px] text-muted">Always buy at</span>
           <Select value={store} onChange={(e) => setStore(e.target.value)}>
             <option value="">Follow category rules</option>
             {stores.map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
@@ -162,7 +162,7 @@ function IngredientSheet({ row, categories, stores, onClose, onDelete }: {
           <div className="card flex items-center justify-between px-4 py-3">
             <span>
               <span className="block text-[17px]">Only sold there</span>
-              <span className="block text-[13px] text-muted">Goes to {stores.find((s) => s.id === store)?.name} even when it isn’t on the trip</span>
+              
             </span>
             <Toggle checked={onlyAt} onChange={setOnlyAt} label="Only sold there" />
           </div>

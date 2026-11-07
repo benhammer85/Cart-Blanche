@@ -7,6 +7,7 @@ import { OUR_KITCHEN } from "../kitchen";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { inferMealTypes } from "../infer";
 import { normalizeName } from "../normalize";
+import { cleanListLine } from "../list/paste";
 
 // One-time additions to households created before a feature existed.
 // Each step checks whether it already ran, so this is safe to call often;
@@ -42,6 +43,7 @@ export async function applyUpgrades(db: SupabaseClient, householdId: string): Pr
     await addShawsHistory(db, householdId);
     await addCostcoCounts(db, householdId);
     await addFamilyWords(db, householdId);
+    await cleanPastedNames(db, householdId);
     done.add(householdId);
   } catch (e) {
     console.error("household upgrade failed", e);
@@ -353,4 +355,22 @@ async function addFamilyWords(db: SupabaseClient, household_id: string) {
   if (!settings || d._familyWordsV1) return;
   await db.from("synonyms").upsert([{ household_id, alias: "white chicken", canonical: "rotisserie chicken" }], { onConflict: "household_id,alias" });
   await db.from("household_settings").update({ planner_defaults: { ...d, _familyWordsV1: true } }).eq("household_id", household_id);
+}
+
+/** Items pasted before the cleanup ("[ ] White chicken"): fix their names once. */
+async function cleanPastedNames(db: SupabaseClient, household_id: string) {
+  const { data: settings } = await db.from("household_settings").select("planner_defaults").eq("household_id", household_id).maybeSingle();
+  const d = (settings?.planner_defaults ?? {}) as Record<string, unknown>;
+  if (!settings || d._cleanNamesV1) return;
+  const { data: syn } = await db.from("synonyms").select("alias, canonical").eq("household_id", household_id);
+  const synonyms = Object.fromEntries(((syn ?? []) as { alias: string; canonical: string }[]).map((x) => [x.alias, x.canonical]));
+  const { data: rows } = await db.from("shopping_list_items").select("id, name").eq("household_id", household_id).like("name", "%[%");
+  for (const r of (rows ?? []) as { id: string; name: string }[]) {
+    const name = cleanListLine(r.name);
+    if (!name || name === r.name) continue;
+    const name_norm = normalizeName(name, synonyms);
+    const shown = synonyms[normalizeName(name, {})] ? name_norm : name;
+    await db.from("shopping_list_items").update({ name: shown.charAt(0).toUpperCase() + shown.slice(1), name_norm, client_updated_at: new Date().toISOString() }).eq("id", r.id);
+  }
+  await db.from("household_settings").update({ planner_defaults: { ...d, _cleanNamesV1: true } }).eq("household_id", household_id);
 }

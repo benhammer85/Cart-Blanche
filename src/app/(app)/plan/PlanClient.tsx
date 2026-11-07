@@ -565,7 +565,7 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
             <h2 className="menu-label mt-8 mb-2 px-1 text-muted">2 · Pick your dinners</h2>
             <div className="card px-4 py-3">
               <p className="text-[15px] font-semibold">I have…</p>
-              <p className="mb-2 text-[13px] text-muted">Ingredients to use up. Recipes that use them come first.</p>
+              
               <FreeChips values={useUp} onChange={setUseUp} placeholder="Ingredient" />
             </div>
 
@@ -582,7 +582,7 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
 
             <section className="mt-8">
               <h3 className="recipe-title px-1 text-[22px] font-semibold">Something new</h3>
-              <p className="px-1 text-[13px] text-muted">Recipes from trusted sites for these stores, or quick dinners from what you buy there.</p>
+              
               <div className="mt-3 grid grid-cols-2 gap-2">
                 <button onClick={() => setShowNew(true)} className={cx("card h-14 text-[16px] font-semibold", showNew ? "text-muted" : "text-accent")} disabled={showNew}>New recipes</button>
                 {ai.enabled && <button onClick={() => setShowIdeas(true)} className={cx("card h-14 text-[16px] font-semibold", showIdeas ? "text-muted" : "text-accent")} disabled={showIdeas}>Quick ideas</button>}
@@ -752,7 +752,7 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
                 </section>
               );
             })}
-            <p className="mt-3 px-1 text-[13px] text-muted">Tick anything we already have. Items the freezer already covers are ticked for you. Use Move to switch stores and it will stick next time.</p>
+            
             <Button size="lg" className="mt-4 w-full" onClick={() => sendToList()} disabled={!!busy}>{busy ?? `Send ${preview.filter((i) => !i.have).length} items to the list`}</Button>
           </>
         )}

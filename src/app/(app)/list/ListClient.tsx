@@ -6,14 +6,14 @@ import { TonightCard } from "@/components/TonightCard";
 import { useMembership } from "@/components/AppShell";
 import { useSharedList } from "@/lib/offline/useSharedList";
 import { Button, Chip, Empty, Select, Sheet, TextArea, TextField, Toast, Toggle, cx } from "@/components/ui";
-import { IconCart, IconCheck, IconCopy, IconPlus, IconTrash, IconWifiOff, IconChevron, IconUpload, IconPencil, IconLeaf, IconSnow, IconMinus } from "@/components/icons";
+import { IconCart, IconCheck, IconCopy, IconPlus, IconTrash, IconWifiOff, IconUpload, IconPencil, IconLeaf, IconSnow, IconMinus } from "@/components/icons";
 import { resizeImage } from "@/lib/data/recipes";
 import { parseIngredientLine } from "@/lib/ingredientParser";
 import { buildVocabulary, correctSpelling } from "@/lib/spell";
 import { assignStore, buildKeywordIndex } from "@/lib/list/storeAssign";
 import { buildCandidates, suggestItems } from "@/lib/list/suggest";
 import { learnWalkOrder } from "@/lib/list/walkOrder";
-import { splitPastedList } from "@/lib/list/paste";
+import { cleanListLine, splitPastedList } from "@/lib/list/paste";
 import { normalizeName } from "@/lib/normalize";
 import { QtySheet } from "@/components/QtySheet";
 import { addQty, formatAmount } from "@/lib/units";
@@ -50,7 +50,6 @@ export function ListClient() {
   const [qtyItem, setQtyItem] = useState<ListItem | null>(null);
   // Amount for the item being typed in the add box (− 1 +).
   const [addCount, setAddCount] = useState(1);
-  const [openCart, setOpenCart] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
   const [pull, setPull] = useState(0);
@@ -128,8 +127,12 @@ export function ListClient() {
       for (const [k, n] of Object.entries(household.plannerDefaults.storeCounts?.[st.id] ?? {})) bump(k, labels[k] ?? k.charAt(0).toUpperCase() + k.slice(1), n);
       for (const h of history) {
         if (h.store_id !== st.id) continue;
-        const name = h.name.replace(/^\s*[\d½¼¾⅓⅔/.]+\s*/, "").trim();
-        if (name) bump(h.name_norm ?? name.toLowerCase(), name.charAt(0).toUpperCase() + name.slice(1), 1);
+        // Old pasted names ("[ ] White chicken", "2 milk"): clean them and use our word for it.
+        const name = cleanListLine(h.name).replace(/^\s*[\d½¼¾⅓⅔/.]+\s*/, "").trim();
+        if (!name) continue;
+        const key = normalizeName(name, household.synonyms);
+        const label = labels[key] ?? (household.synonyms[normalizeName(name, {})] ? key : name);
+        bump(key, label.charAt(0).toUpperCase() + label.slice(1), 1);
       }
       for (const ing of household.ingredients) if (ing.learned_store_id === st.id && !score.has(ing.name_norm)) bump(ing.name_norm, labels[ing.name_norm] ?? ing.name_norm.charAt(0).toUpperCase() + ing.name_norm.slice(1), 0.5);
       out.set(
@@ -508,7 +511,14 @@ export function ListClient() {
                 </ul>
               </div>
             ))}
-            {!g.sections.length && <p className="px-4 py-3 text-[15px] text-muted">Everything’s in the cart.</p>}
+            {/* Got it: stays visible, crossed out, at the bottom of the store. */}
+            {g.inCart.length > 0 && (
+              <ul className={cx(g.sections.length > 0 && "mt-2 border-t hairline")}>
+                {g.inCart.map((i) => (
+                  <ItemRow key={i.id} item={i} onToggle={() => toggle(i)} onEdit={() => setEditing(i)} onQty={() => setQtyItem(i)} />
+                ))}
+              </ul>
+            )}
             {(() => {
               const usual = (favsByStore.get(g.storeId) ?? []).filter((f) => !f.onList);
               if (!usual.length) return null;
@@ -531,26 +541,6 @@ export function ListClient() {
               );
             })()}
 
-            {g.inCart.length > 0 && (
-              <div className="border-t hairline">
-                <button
-                  className="flex w-full items-center justify-between px-4 py-3 text-[15px] text-muted"
-                  onClick={() => setOpenCart((o) => ({ ...o, [g.storeId]: !o[g.storeId] }))}
-                >
-                  <span className="flex items-center gap-2">
-                    <IconCheck className="text-ok" /> In cart ({g.inCart.length})
-                  </span>
-                  <IconChevron className={cx("transition", openCart[g.storeId] && "rotate-90")} />
-                </button>
-                {openCart[g.storeId] && (
-                  <ul className="pb-2">
-                    {g.inCart.map((i) => (
-                      <ItemRow key={i.id} item={i} onToggle={() => toggle(i)} onEdit={() => setEditing(i)} onQty={() => setQtyItem(i)} />
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
           </section>
         ))}
         {shown && loaded && !groups.some((g) => g.storeId === shown) && (
@@ -693,7 +683,7 @@ export function ListClient() {
             <IconTrash /> Clear the whole list
           </button>
         </div>
-        <p className="mt-3 px-1 text-[13px] text-muted">Tip: copy a store’s list to paste into Apple Reminders or AnyList as a backup.</p>
+        
       </Sheet>
 
       {bulk && (
@@ -733,7 +723,7 @@ export function ListClient() {
               <Button size="lg" className="w-full" disabled={!bulkLines.length || !listId} onClick={addBulk}>
                 Add {bulkLines.length || ""} {bulkLines.length === 1 ? "item" : "items"}
               </Button>
-              <p className="px-1 text-[13px] text-muted">{bulkStore ? `Everything goes to ${stores.find((x) => x.id === bulkStore)?.name}.` : "Each item goes to the store you usually buy it at."}</p>
+              
             </div>
           )}
         </Sheet>
@@ -771,7 +761,7 @@ export function ListClient() {
         />
       )}
       <Sheet open={favSheet} onClose={() => { setFavSheet(false); setFavSheetStore(null); }} title={`Usually at ${stores.find((x) => x.id === (favSheetStore ?? favStore))?.name ?? "this store"}`}>
-        <p className="px-1 text-[14px] text-muted">Most bought first. Tick what you need.</p>
+        
         <ul className="card mt-3 divide-y divide-line overflow-hidden">
           {storeFavs.map((f) => {
             const on = favPicked.has(f.key);
@@ -954,12 +944,12 @@ function EditItemSheet({
           <div className="card flex items-center justify-between px-4 py-3">
             <span>
               <span className="block text-[17px]">Only sold at {stores.find((s) => s.id === storeId)?.name}</span>
-              <span className="block text-[13px] text-muted">Always goes here, even when we aren’t planning a trip</span>
+              
             </span>
             <Toggle checked={onlyAt} onChange={setOnlyAt} label="Only sold at this store" />
           </div>
         )}
-        {moved && <p className="px-1 text-[13px] text-muted">We’ll remember this store for “{item.name_norm ?? name}” next time.</p>}
+        
         <div className="flex gap-2 pt-2">
           <Button variant="danger" onClick={onDelete} aria-label="Delete item">
             <IconTrash />

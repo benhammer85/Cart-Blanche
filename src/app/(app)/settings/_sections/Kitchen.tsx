@@ -37,7 +37,7 @@ export function KitchenSettings() {
 
   return (
     <div>
-      <PageHeader title="Kitchen" back="/settings" subtitle="Ideas, recipe search and cooking tips follow what you have." />
+      <PageHeader title="Kitchen" back="/settings" />
       <div className="px-4">
         <Section title="Our week">
           <div className="card divide-y divide-line overflow-hidden">
@@ -48,7 +48,7 @@ export function KitchenSettings() {
             <div className="flex items-center justify-between px-4 py-3">
               <span>
                 <span className="block text-[17px]">Family dinners</span>
-                <span className="block text-[13px] text-muted">Everyone eats the same dinner</span>
+                
               </span>
               <Stepper value={family} min={0} max={meals} onChange={(v) => { setFamily(v); save({ familyNights: v }); }} label="Family dinners" />
             </div>
@@ -59,7 +59,7 @@ export function KitchenSettings() {
             <label className="flex items-center justify-between px-4 py-3">
               <span>
                 <span className="block text-[17px]">Kids’ menu</span>
-                <span className="block text-[13px] text-muted">A kids’ dinner on nights that aren’t family dinners</span>
+                
               </span>
               <Toggle checked={kidsMenu} onChange={(v) => { setKidsMenu(v); save({ kidMeals: v }); }} label="Kids’ menu" />
             </label>

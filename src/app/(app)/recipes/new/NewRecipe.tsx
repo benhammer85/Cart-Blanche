@@ -182,7 +182,7 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
                   </span>
                   <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) readScreenshot(f); }} />
                 </label>
-                <p className="px-1 pt-2 text-[14px] text-muted">Or paste a recipe page (select all, copy), or type one out.</p>
+                
                 <button
                   type="button"
                   className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-soft text-[15px] font-semibold"

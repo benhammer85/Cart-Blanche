@@ -15,7 +15,7 @@ const STEPS = [
 export default function ShareSetupPage() {
   return (
     <div>
-      <PageHeader title="Share button setup" back="/recipes" subtitle="Save a recipe from any site in Safari, in one tap." />
+      <PageHeader title="Share button setup" back="/recipes" />
       <div className="px-4">
         <ol className="card mt-5 divide-y divide-line overflow-hidden">
           {STEPS.map((s, i) => (

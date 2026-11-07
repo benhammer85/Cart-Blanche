@@ -135,7 +135,7 @@ export function PhotoSheet({ recipe, open, onClose }: { recipe: { id: string; ti
       <a href={`https://www.bing.com/images/search?q=${encodeURIComponent(recipe.title)}`} target="_blank" rel="noopener noreferrer" className="mt-3 flex items-center gap-2 px-1 text-[15px] text-accent">
         <IconSearch /> Search images in Safari ↗
       </a>
-      <p className="mt-1 px-1 text-[13px] text-muted">Tap a photo to open it, press and hold, choose Copy, then come back and tap Paste photo.</p>
+      <p className="mt-1 px-1 text-[13px] text-muted">Copy a photo there, then tap Paste photo.</p>
       {note && <p className="mt-2 px-1 text-[13px] text-muted">{note}</p>}
       {error && <p className="mt-2 px-1 text-[13px] text-[#d23c3c]">{error}</p>}
     </Sheet>

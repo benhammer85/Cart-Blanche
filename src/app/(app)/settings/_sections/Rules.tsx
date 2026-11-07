@@ -16,7 +16,7 @@ export function RulesSettings() {
 
   return (
     <div>
-      <PageHeader title="Store rules" back="/settings" subtitle="For each kind of item, the first store on your trip in this order wins." />
+      <PageHeader title="Store rules" back="/settings" />
       <div className="px-4">
         <Section>
           <ul className="card divide-y divide-line overflow-hidden">
@@ -75,7 +75,7 @@ function RuleSheet({
   const done = () => onClose(order.map((o) => o.id), enabled, section);
   return (
     <Sheet open onClose={done} title={category.name}>
-      <p className="mb-3 text-[14px] text-muted">Drag to set preference. Tap a store to skip it for this category.</p>
+      <p className="mb-3 text-[14px] text-muted">Drag to reorder. Tap to skip.</p>
       <SortableList
         items={order}
         onReorder={setOrder}

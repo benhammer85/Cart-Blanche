@@ -63,7 +63,7 @@ export function PeopleSettings() {
             </div>
           </Section>
         ))}
-        <p className="mt-4 px-2 text-[13px] text-muted">Names stay private. Only ages and portion sizes are used to plan.</p>
+        
       </div>
       <Toast message={toast} onDone={() => setToast(null)} />
     </div>

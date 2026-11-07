@@ -20,7 +20,7 @@ export function PantrySettings() {
   }
   return (
     <div>
-      <PageHeader title="Pantry" back="/settings" subtitle="We always have these, so they stay off the list. Flip “We’re out” when we run low." />
+      <PageHeader title="Pantry" back="/settings" subtitle="Kept off the list until you’re out." />
       <div className="px-4">
         <Section>
           <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); add(); }}>

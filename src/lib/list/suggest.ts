@@ -4,6 +4,8 @@
 // receipts taught us) and things we've put on the list before. Ranked by how
 // well the words match, then how often we buy it.
 
+import { cleanListLine } from "./paste";
+
 export interface SuggestCandidate {
   nameNorm: string;
   /** how we write it on the list ("Rotisserie chicken") */
@@ -53,10 +55,10 @@ export function buildCandidates(known: (string | { name: string; bought?: boolea
   }
   for (let h of history) {
     // An amount typed into the name ("2 milk") isn't part of the item.
-    const name = h.name.replace(/^\s*[\d½¼¾⅓⅔/.]+\s*(x\s*)?/i, "").trim();
+    const name = cleanListLine(h.name).replace(/^\s*[\d½¼¾⅓⅔/.]+\s*(x\s*)?/i, "").trim();
     if (!name) continue;
     h = { ...h, name: name.charAt(0).toUpperCase() + name.slice(1) };
-    const key = (h.name_norm ?? h.name.toLowerCase()).replace(/^\s*[\d½¼¾⅓⅔/.]+\s*/, "");
+    const key = cleanListLine(h.name_norm ?? h.name.toLowerCase()).replace(/^\s*[\d½¼¾⅓⅔/.]+\s*/, "").toLowerCase();
     const cur = map.get(key);
     map.set(key, { nameNorm: key, label: cur && cur.label.toLowerCase() !== key ? cur.label : h.name, count: (cur?.count ?? 0) + 1 });
   }

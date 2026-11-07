@@ -147,7 +147,7 @@ export function AddToListSheet({ recipe: r, scale, open, onClose }: { recipe: Re
               );
             })}
           </ul>
-          {pantry.length > 0 && <p className="mt-2 px-1 text-[13px] text-muted">Left off because they’re in the pantry: {pantry.join(", ")}.</p>}
+          {pantry.length > 0 && <p className="mt-2 px-1 text-[13px] text-muted">In the pantry: {pantry.join(", ")}</p>}
           <Button size="lg" className="mt-4 w-full" disabled={!chosen.length || busy} onClick={add}>
             {busy ? "Adding…" : `Add ${chosen.length} ${chosen.length === 1 ? "item" : "items"}`}
           </Button>

@@ -221,9 +221,7 @@ export function CookMode({ recipe: r }: { recipe: Recipe }) {
           ))}
         </div>
       )}
-      {timers.some((t) => !t.done) && (
-        <p className="px-5 pt-1.5 text-[12px] text-muted">Keep Cart Blanche open so the timer can ring. If the phone locks, it tells you when you come back.</p>
-      )}
+
 
       <div className="min-h-0 flex-1 overflow-y-auto px-6">
         <div className="flex min-h-full flex-col justify-center py-6">
@@ -232,7 +230,7 @@ export function CookMode({ recipe: r }: { recipe: Recipe }) {
         ) : finished ? (
           <div className="text-center">
             <p className="recipe-title text-[30px] font-semibold">All steps complete</p>
-            <p className="mt-2 text-[17px] text-muted">Mark it as made to keep your history up to date.</p>
+            
             <Button size="lg" className="mt-8 w-full" onClick={madeIt} disabled={saved}>
               {saved ? (<><IconCheck /> Marked as made</>) : "Mark as made"}
             </Button>

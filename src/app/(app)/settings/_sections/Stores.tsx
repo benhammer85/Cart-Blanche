@@ -33,7 +33,7 @@ export function StoresSettings() {
 
   return (
     <div>
-      <PageHeader title="Stores" back="/settings" subtitle="Drag to set priority. Tap a store for its aisle order." />
+      <PageHeader title="Stores" back="/settings" />
       <div className="px-4">
         <Section>
           <SortableList
@@ -111,7 +111,7 @@ function StoreSheet({ store, sections: initial, onClose }: { store: Store; secti
         <div className="card flex items-center justify-between px-4 py-3">
           <span>
             <span className="block text-[17px]">Bulk store</span>
-            <span className="block text-[13px] text-muted">Shows a “bulk pack” note on items</span>
+            
           </span>
           <Toggle checked={bulk} onChange={setBulk} label="Bulk store" />
         </div>
@@ -124,7 +124,7 @@ function StoreSheet({ store, sections: initial, onClose }: { store: Store; secti
             placeholder="Products, sauces, specialty items"
             aria-label="What we buy here"
           />
-          <span className="mt-1 block px-1 text-[12px] text-muted">Used by Discover to find recipes that suit this store.</span>
+          
         </label>
         <Section title="Aisle order (the way we walk the store)">
           <SortableList

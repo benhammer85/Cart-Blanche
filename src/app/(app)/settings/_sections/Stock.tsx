@@ -65,7 +65,6 @@ export function StockSettings() {
       <PageHeader
         title="Freezer"
         back="/settings"
-        subtitle="What’s left from Costco packs and what’s in the freezer. Plans use it first and only the rest goes on the list."
       />
       <div className="px-4">
         {missing ? (
@@ -90,9 +89,6 @@ export function StockSettings() {
                   ))}
                 </ul>
               )}
-              <p className="mt-3 px-1 text-[13px] text-muted">
-                Leftovers from bulk packs are added here automatically.
-              </p>
             </Section>
           </>
         )}
@@ -108,7 +104,6 @@ function StockLine({ row, onSave, onRemove }: { row: StockRow; onSave: (text: st
     <li className="flex min-h-[56px] items-center gap-2 px-4 py-1.5">
       <span className="flex-1">
         <span className="block text-[16px] capitalize">{row.name_norm}</span>
-        <span className="block text-[12px] text-muted">Updated {new Date(row.updated_at).toLocaleDateString(undefined, { month: "short", day: "numeric" })}</span>
       </span>
       <input
         value={text}

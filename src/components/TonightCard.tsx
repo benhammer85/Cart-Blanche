@@ -130,7 +130,7 @@ export function TonightCard() {
               </li>
             ))}
           </ul>
-          <p className="mt-3 px-1 text-[13px] text-muted">The two dinners swap days.</p>
+          
         </Sheet>
       )}
     </section>

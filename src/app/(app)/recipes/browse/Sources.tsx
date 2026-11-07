@@ -29,7 +29,7 @@ export function Sources() {
           </li>
         ))}
       </ul>
-      <p className="mt-2 px-1 text-[13px] text-muted">Found a good one? In Safari, tap Share, then Send page to Cart Blanche.</p>
+      
     </>
   );
 }

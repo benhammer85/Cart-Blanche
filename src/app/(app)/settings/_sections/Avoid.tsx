@@ -36,7 +36,7 @@ export function AvoidSettings() {
             <Button aria-label="Add"><IconPlus /></Button>
           </form>
           <ChipList items={data.avoidTerms} onRemove={(t) => save({ avoid_terms: data.avoidTerms.filter((x) => x !== t) })} />
-          <p className="mt-2 px-1 text-[13px] text-muted">Recipes containing these are skipped by the planner.</p>
+          
         </Section>
         <Section title="Favorite tags (planner bonus)">
           <form className="flex gap-2" onSubmit={(e) => { e.preventDefault(); if (bonus.trim()) save({ bonus_tags: [...new Set([...data.bonusTags, bonus.trim()])] }); setBonus(""); }}>
