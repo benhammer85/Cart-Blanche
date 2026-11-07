@@ -37,9 +37,11 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
     img.src = r.image_path;
   }, [r.image_path]);
   const loved = tags.includes("Loved");
+  const [kiss, setKiss] = useState(0);
   async function toggleLoved() {
     const next = loved ? tags.filter((t) => t !== "Loved") : [...tags, "Loved"];
     setTags(next);
+    if (!loved) setKiss(Date.now());
     await supabaseBrowser().from("recipes").update({ tags: next }).eq("id", r.id);
     router.refresh();
   }
@@ -60,9 +62,16 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
             <IconBack />
           </Link>
           <div className="flex gap-2">
-            <button onClick={toggleLoved} className={cx("grid h-10 w-10 place-items-center rounded-full text-xl backdrop-blur", loved ? "bg-white text-accent" : "bg-black/35 text-white")} aria-label={loved ? "Remove from Loved" : "Mark as Loved"} aria-pressed={loved}>
-              <IconHeart filled={loved} />
-            </button>
+            <span className="relative">
+              <button onClick={toggleLoved} className={cx("grid h-10 w-10 place-items-center rounded-full text-xl backdrop-blur", loved ? "bg-white text-accent" : "bg-black/35 text-white")} aria-label={loved ? "Remove from Loved" : "Mark as Loved"} aria-pressed={loved}>
+                <IconHeart key={kiss} filled={loved} className={kiss ? "check-pop" : undefined} />
+              </button>
+              {kiss > 0 && (
+                <span key={kiss} className="kiss pointer-events-none absolute top-12 left-1/2 -translate-x-1/2 rounded-full bg-white px-3 py-1.5 text-[14px] font-semibold whitespace-nowrap text-ink shadow-lg" aria-live="polite" onAnimationEnd={() => setKiss(0)}>
+                  🤌 Chef’s kiss
+                </span>
+              )}
+            </span>
             {r.image_path && (
               <button onClick={() => setPhotoOpen(true)} className="grid h-10 w-10 place-items-center rounded-full bg-black/35 text-xl text-white backdrop-blur" aria-label="Change photo">
                 <IconCamera />
