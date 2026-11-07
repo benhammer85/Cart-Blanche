@@ -24,7 +24,7 @@ const STYLES = ["Instant Pot", "One pot", "Sheet pan", "Grill"];
 const CACHE = "cb:discover:";
 
 /**
- * Real recipes from sites like NYT Cooking and Serious Eats, chosen to match
+ * Real recipes from sites like NYT Cooking and Gimme Some Oven, chosen to match
  * the recipes we flagged in Crouton (Loved, Molly/Asa and Saul favorites).
  * Results are kept for the day so browsing doesn't spend searches.
  */

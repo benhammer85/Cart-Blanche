@@ -91,9 +91,17 @@ export function storeStyle(name: string | null | undefined): string | null {
   return STORE_STYLES[name.toLowerCase().replace(/[^a-z]/g, "")] ?? `${name}: a regular grocery store.`;
 }
 
-export const PREFERRED_SITES = ["cooking.nytimes.com", "seriouseats.com", "budgetbytes.com", "bonappetit.com", "smittenkitchen.com"];
+/** Sites we trust that also let the app read their recipes (checked November 2026). */
+export const PREFERRED_SITES = ["cooking.nytimes.com", "gimmesomeoven.com", "budgetbytes.com", "bonappetit.com", "smittenkitchen.com", "cookieandkate.com", "recipetineats.com"];
+/** Store-specific blogs with recipes the app can read. */
+export const STORE_SITES: Record<string, string[]> = {
+  traderjoes: ["getonmyplate.com", "gimmesomeoven.com"],
+};
 /** Sites that block apps from reading recipes. */
-export const BLOCKED_SITES = ["traderjoes.com", "instagram.com", "tiktok.com", "pinterest.com", "youtube.com", "facebook.com"];
+export const BLOCKED_SITES = [
+  "traderjoes.com", "seriouseats.com", "allrecipes.com", "simplyrecipes.com", "eatingwell.com", "thekitchn.com", "damndelicious.net",
+  "instagram.com", "tiktok.com", "pinterest.com", "youtube.com", "facebook.com",
+];
 
 export interface DiscoverFilters {
   store?: string | null;
@@ -110,6 +118,7 @@ export interface DiscoverFilters {
 export function buildDiscoverPrompt(p: TasteProfile, f: DiscoverFilters, kidAges: number[], avoid: string[], have: string[]): string {
   const wants = [
     f.store && `ingredients that are easy to buy at ${f.store} in one trip. ${storeStyle(f.store)}`,
+    f.store && STORE_SITES[f.store.toLowerCase().replace(/[^a-z]/g, "")] && `good sources for ${f.store} recipes: ${STORE_SITES[f.store.toLowerCase().replace(/[^a-z]/g, "")].join(", ")}`,
     f.store && f.storeNotes && `what we usually buy at ${f.store}: ${f.storeNotes.slice(0, 400)}`,
     f.store && f.storeOnly?.length && `recipes that use products we get only at ${f.store} are especially welcome: ${f.storeOnly.slice(0, 15).join(", ")}`,
     f.maxMinutes && `about ${f.maxMinutes} minutes of hands-on time or less`,

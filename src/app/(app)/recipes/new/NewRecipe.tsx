@@ -10,6 +10,7 @@ import { isDuplicate, loadExistingKeys, resizeImage, saveRecipe } from "@/lib/da
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { useMembership } from "@/components/AppShell";
 import type { RecipeDraft } from "@/lib/types";
+import { PickRecipes, type PageResult } from "./PickRecipes";
 
 type Mode = "url" | "paste" | "manual";
 
@@ -25,6 +26,7 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
   const [warning, setWarning] = useState<string | null>(null);
   const [photo, setPhoto] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [page, setPage] = useState<PageResult | null>(null);
 
   // Opened from the share sheet with a link: read it straight away.
   const started = useRef(false);
@@ -40,11 +42,15 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
     setBusy(true);
     setError(null);
     try {
-      const res = await fetch("/api/recipe-from-url", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: target }) });
+      const res = await fetch("/api/recipes-from-page", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: target }) });
       const body = await res.json();
       if (!res.ok) {
         if (body.blocked) setMode("paste");
         throw new Error(body.error ?? "Couldn’t read that page");
+      }
+      if (body.kind === "several" || body.kind === "links") {
+        setPage(body as PageResult);
+        return;
       }
       setDraft(body.recipe);
       const dup = isDuplicate(body.recipe, await loadExistingKeys(supabaseBrowser()));
@@ -141,15 +147,16 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
         right={draft && <Button size="sm" onClick={save} disabled={busy || !draft.title.trim()}>Save</Button>}
       />
       <div className="px-4">
-        {!draft && (
+        {page && !draft && <PickRecipes page={page} onCancel={() => { setPage(null); setUrl(""); }} />}
+        {!draft && !page && (
           <>
             <div className="mt-4">
               <Segmented value={mode} onChange={(m) => { setMode(m); setError(null); if (m === "manual") setDraft(emptyDraft()); }} options={[{ value: "url", label: "Link" }, { value: "paste", label: "Paste" }, { value: "manual", label: "Blank" }]} />
             </div>
             {mode === "url" && (
               <form className="mt-4 space-y-3" onSubmit={(e) => { e.preventDefault(); fetchUrl(); }}>
-                <TextField value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://www.seriouseats.com/…" inputMode="url" autoFocus />
-                <Button size="lg" className="w-full" disabled={busy || !url.trim()}>{busy ? "Reading the page…" : "Get recipe"}</Button>
+                <TextField value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Recipe or roundup link" inputMode="url" autoFocus />
+                <Button size="lg" className="w-full" disabled={busy || !url.trim()}>{busy ? "Reading the page…" : "Get recipes"}</Button>
               </form>
             )}
             {mode === "paste" && (

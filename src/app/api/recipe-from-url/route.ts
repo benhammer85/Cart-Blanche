@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { getAuthUser, supabaseServer } from "@/lib/supabase/server";
 import { recipeFromHtml } from "@/lib/import/jsonld";
+import { fetchPage } from "@/lib/import/fetchRecipe";
 
 // Fetches a recipe page server-side and extracts schema.org Recipe JSON-LD.
 export async function POST(request: NextRequest) {
@@ -20,15 +21,7 @@ export async function POST(request: NextRequest) {
 
   let html: string;
   try {
-    const res = await fetch(target, {
-      headers: {
-        "user-agent": "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Mobile/15E148 Safari/604.1",
-        accept: "text/html,application/xhtml+xml",
-      },
-      redirect: "follow",
-      signal: AbortSignal.timeout(12_000),
-      cache: "no-store",
-    });
+    const res = await fetchPage(target);
     if (res.status === 403 || res.status === 401)
       return NextResponse.json({ error: "This site blocks apps from reading its recipes. Open the page, select all, copy, and paste it here instead (or paste a screenshot).", blocked: true }, { status: 422 });
     if (!res.ok) return NextResponse.json({ error: `The site answered ${res.status}. Paste the recipe text instead.` }, { status: 422 });
