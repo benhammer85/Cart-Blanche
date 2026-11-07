@@ -35,7 +35,7 @@ export function nowIso(): string {
   return new Date().toISOString();
 }
 
-export type SyncStatus = "synced" | "syncing" | "offline";
+export type SyncStatus = "synced" | "syncing" | "offline" | "error";
 
 export function useSharedList(householdId: string) {
   const db = supabaseBrowser();
@@ -45,6 +45,8 @@ export function useSharedList(householdId: string) {
   const [status, setStatus] = useState<SyncStatus>("syncing");
   const [pending, setPending] = useState(0);
   const [loaded, setLoaded] = useState(false);
+  // Why the last save failed while online (shown with a Retry button).
+  const [syncError, setSyncError] = useState<string | null>(null);
 
   const itemsRef = useRef(items);
   itemsRef.current = items;
@@ -52,6 +54,8 @@ export function useSharedList(householdId: string) {
   listIdRef.current = listId;
   const queueRef = useRef<Map<string, ListItem>>(new Map());
   const flushing = useRef(false);
+  const refetchRef = useRef<(() => Promise<void>) | null>(null);
+  const syncErrorRef = useRef<string | null>(null);
 
   const persist = useCallback(
     (map: Map<string, ListItem>) => {
@@ -93,18 +97,46 @@ export function useSharedList(householdId: string) {
     }
     flushing.current = true;
     setStatus("syncing");
+    const done = (sent: ListItem) => {
+      const cur = queueRef.current.get(sent.id);
+      if (cur && cur.client_updated_at === sent.client_updated_at) queueRef.current.delete(sent.id);
+    };
+    // A failure with a database code is the server saying no; without one, we never reached it.
+    const isServerNo = (e: { code?: string; message?: string } | null) => !!e && (!!e.code || /permission|violates|invalid|jwt/i.test(e.message ?? ""));
+    const isAuth = (e: { code?: string; message?: string } | null) => !!e && (e.code === "PGRST301" || e.code === "42501" || /jwt|expired|not authenticated/i.test(e.message ?? ""));
     try {
       const batch = [...queueRef.current.values()];
-      const { error } = await db.from("shopping_list_items").upsert(batch, { onConflict: "id" });
-      if (error) throw error;
-      for (const sent of batch) {
-        const cur = queueRef.current.get(sent.id);
-        if (cur && cur.client_updated_at === sent.client_updated_at) queueRef.current.delete(sent.id);
+      let { error } = await db.from("shopping_list_items").upsert(batch, { onConflict: "id" });
+      // Signed out in the background: refresh once and try again.
+      if (isAuth(error)) {
+        await db.auth.refreshSession().catch(() => {});
+        ({ error } = await db.from("shopping_list_items").upsert(batch, { onConflict: "id" }));
+      }
+      if (!error) {
+        batch.forEach(done);
+        setSyncError(null);
+      } else if (!isServerNo(error) || !navigator.onLine) {
+        throw error; // a network problem: keep everything and try again later
+      } else {
+        // One bad change shouldn't hold up the rest: send them one by one.
+        let lastNo: string | null = null;
+        for (const row of batch) {
+          const { error: e } = await db.from("shopping_list_items").upsert([row], { onConflict: "id" });
+          if (!e) done(row);
+          else if (isServerNo(e)) {
+            lastNo = e.message || "The server turned this change down.";
+            console.error("list sync rejected", row.name, e);
+            queueRef.current.delete(row.id); // drop it so the rest can sync; the list refetches below
+          } else throw e;
+        }
+        setSyncError(lastNo ? `Some changes couldn’t be saved (${lastNo}). Your list was refreshed.` : null);
+        if (lastNo) refetchRef.current?.();
       }
       persistQueue();
-      setStatus(queueRef.current.size ? "syncing" : "synced");
+      setStatus(queueRef.current.size ? "syncing" : syncErrorRef.current ? "error" : "synced");
     } catch {
-      setStatus("offline");
+      setStatus(navigator.onLine ? "error" : "offline");
+      if (navigator.onLine) setSyncError((m) => m ?? "Couldn’t reach the server. Retrying.");
     } finally {
       flushing.current = false;
     }
@@ -266,5 +298,11 @@ export function useSharedList(householdId: string) {
     [flush, persist, persistQueue],
   );
 
-  return { listId, items: [...items.values()], household, status, pending, loaded, write, refetch };
+  syncErrorRef.current = syncError;
+  refetchRef.current = refetch;
+  const retry = useCallback(() => {
+    setSyncError(null);
+    flush().then(refetch);
+  }, [flush, refetch]);
+  return { listId, items: [...items.values()], household, status, pending, loaded, write, refetch, syncError, retry };
 }

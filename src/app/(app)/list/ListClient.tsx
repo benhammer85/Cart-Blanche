@@ -24,7 +24,7 @@ const NO_STORE = "__none";
 
 export function ListClient() {
   const me = useMembership();
-  const { listId, items, household, status, pending, loaded, write, refetch } = useSharedList(me.householdId);
+  const { listId, items, household, status, pending, loaded, write, refetch, syncError, retry } = useSharedList(me.householdId);
 
   // Past list items: what we buy at each store, and suggestions while typing.
   const [history, setHistory] = useState<{ name: string; name_norm: string | null; store_id: string | null }[]>([]);
@@ -435,7 +435,7 @@ export function ListClient() {
       )}
       <header className="pt-safe sticky top-0 z-30 bg-bg/90 px-5 pb-3 backdrop-blur-xl">
         <div className="flex h-11 items-center justify-end gap-2">
-          <SyncBadge status={status} pending={pending} />
+          <SyncBadge status={status} pending={pending} onRetry={() => { setToast(syncError ?? "Trying again…"); retry(); }} />
           <button onClick={() => setMenu(true)} className="-mr-2 h-11 px-2 text-[16px] text-accent">
             More
           </button>
@@ -978,8 +978,15 @@ function EditItemSheet({
   );
 }
 
-function SyncBadge({ status, pending }: { status: "synced" | "syncing" | "offline"; pending: number }) {
+function SyncBadge({ status, pending, onRetry }: { status: "synced" | "syncing" | "offline" | "error"; pending: number; onRetry: () => void }) {
   if (status === "synced") return null; // all good: say nothing
+  // Online, but the server didn't take the changes: say so, and offer to try again.
+  if (status === "error")
+    return (
+      <button onClick={onRetry} className="flex h-8 items-center gap-1.5 rounded-full bg-[#fde3dc] px-3 text-[13px] font-semibold text-[#a3341c] dark:bg-[#3a1f1a] dark:text-[#f2a08c]">
+        Couldn’t save{pending ? ` ${pending}` : ""} · Retry
+      </button>
+    );
   if (status === "offline")
     return (
       <span className="flex h-8 items-center gap-1.5 rounded-full bg-[#fff3d6] px-3 text-[13px] font-medium text-[#8a5a00] dark:bg-[#3a2e10] dark:text-[#f0c060]">
