@@ -24,6 +24,7 @@
 //      (hot dogs, nuggets…) rotating least-recently-made first, no repeats
 //      until all have been used.
 
+import { familyFriendly } from "../infer";
 import { lastMadeShort } from "../history";
 import { isSoup } from "../infer";
 import type { MealType } from "../types";
@@ -59,6 +60,8 @@ export interface PlanParams {
   /** recipes already in the plan that must stay (locked), by id */
   lockedIds?: string[];
   kidMeals: boolean;
+  /** how many dinners the whole family eats together (kid-friendly, no separate kids' meal) */
+  familyNights?: number;
   seed?: number;
   today?: Date;
 }
@@ -168,6 +171,9 @@ export function violatesVariety(r: PlannerRecipe, chosen: PlannerRecipe[]): bool
   return false;
 }
 
+/** Kid-friendly by our own tag, or a familiar, mild dinner the kids will likely eat with us. */
+export const forFamily = (r: Pick<PlannerRecipe, "kid_friendly" | "title" | "ingredientNames">) => r.kid_friendly || familyFriendly(r.title, r.ingredientNames);
+
 export function planMeals(all: PlannerRecipe[], p: PlanParams): PlanResult {
   const rand = rng(p.seed ?? Date.now());
   const adultPool = all.filter((r) => !r.is_kid_meal && !r.archived);
@@ -206,6 +212,13 @@ export function planMeals(all: PlannerRecipe[], p: PlanParams): PlanResult {
     if (chosen.some((c) => c.tags.map(lc).includes(lc(tag)))) continue;
     const best = eligible.find((r) => r.tags.map(lc).includes(lc(tag)) && canAdd(r));
     if (best) add(best, best.score, false, best.reason);
+  }
+
+  // Family dinners first: the best kid-friendly dinners everyone can eat together.
+  const wantFamily = Math.min(p.familyNights ?? 0, p.mealCount);
+  for (const r of eligible) {
+    if (meals.length >= p.mealCount || chosen.filter(forFamily).length >= wantFamily) break;
+    if (forFamily(r) && canAdd(r)) add(r, r.score, false, r.reason);
   }
 
   for (const r of eligible) {

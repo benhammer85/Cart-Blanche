@@ -1,4 +1,5 @@
 import "server-only";
+import { kitchenSummary } from "../kitchen";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { AiError, getAiProvider } from "./provider";
 import { aiPlanSchema, aiSwapSchema, buildPlanPrompt, type AiNewMeal, type AiPlanContext } from "./planSchema";
@@ -39,7 +40,7 @@ export async function buildContext(db: SupabaseClient, req: AiPlanRequest): Prom
     db.from("household_people").select("kind, birthdate"),
     db.from("stores").select("*"),
     db.from("ingredients").select("name_norm").eq("is_staple", true).eq("is_out", false),
-    db.from("household_settings").select("avoid_terms").maybeSingle(),
+    db.from("household_settings").select("avoid_terms, planner_defaults").maybeSingle(),
     db.from("meal_plan_items").select("title, meal_plans!inner(created_at)").gte("meal_plans.created_at", since),
     db.from("synonyms").select("alias, canonical"),
   ]);
@@ -91,6 +92,7 @@ export async function buildContext(db: SupabaseClient, req: AiPlanRequest): Prom
       stores: ((stores.data ?? []) as { id: string; name: string }[]).filter((s) => req.storeIds.includes(s.id)).map((s) => s.name),
       storeProducts: await confirmedStoreProducts(db, ((stores.data ?? []) as { id: string; name: string; notes?: string | null }[]).filter((s) => req.storeIds.includes(s.id)), scrub),
       staples: ((staples.data ?? []) as { name_norm: string }[]).map((s) => s.name_norm),
+      kitchen: kitchenSummary((settings.data?.planner_defaults as { kitchen?: string[] } | null)?.kitchen),
       favorites,
       recentTitles: [...new Set(((recent.data ?? []) as { title: string }[]).map((r) => scrub(r.title)))],
       pinnedIds: req.pinnedIds.map((id) => reverse.get(id)).filter(Boolean) as string[],

@@ -1,4 +1,5 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { kitchenSummary } from "@/lib/kitchen";
 import { getAuthUser, supabaseServer } from "@/lib/supabase/server";
 import { getMembershipFor } from "@/lib/household/ensure";
 import { AiError, getAiProvider } from "@/lib/ai/provider";
@@ -36,7 +37,7 @@ export async function POST(request: NextRequest) {
   const [{ data: recipes }, { data: people }, { data: settings }, { data: syn }, { data: members }] = await Promise.all([
     db.from("recipes").select("title, tags, main_protein, kid_friendly, times_made, source_url, is_kid_meal").eq("archived", false),
     db.from("household_people").select("name, kind, birthdate"),
-    db.from("household_settings").select("avoid_terms, bonus_tags").maybeSingle(),
+    db.from("household_settings").select("avoid_terms, bonus_tags, planner_defaults").maybeSingle(),
     db.from("synonyms").select("alias, canonical"),
     db.from("household_members").select("display_name"),
   ]);
@@ -52,6 +53,7 @@ export async function POST(request: NextRequest) {
     mine.map((r) => ({ ...r, title: scrub(r.title), tags: r.tags })),
     (settings?.bonus_tags as string[] | undefined) ?? [],
   );
+  filters.kitchen = kitchenSummary((settings?.planner_defaults as { kitchen?: string[] } | null)?.kitchen);
   if (filters.store) {
     const { data: st } = await db.from("stores").select("*").eq("name", filters.store).eq("archived", false).maybeSingle();
     if (st) {

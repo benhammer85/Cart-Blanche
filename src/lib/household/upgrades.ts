@@ -1,4 +1,5 @@
 import "server-only";
+import { OUR_KITCHEN } from "../kitchen";
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { inferMealTypes } from "../infer";
 import { normalizeName } from "../normalize";
@@ -31,6 +32,7 @@ export async function applyUpgrades(db: SupabaseClient, householdId: string): Pr
     await addEverydayItems(db, householdId);
     await reclassifyMeals(db, householdId);
     await addCostcoFavorites(db, householdId);
+    await setUpKitchen(db, householdId);
     done.add(householdId);
   } catch (e) {
     console.error("household upgrade failed", e);
@@ -185,4 +187,20 @@ async function addCostcoFavorites(db: SupabaseClient, household_id: string) {
   // Store notes feed Discover and AI ideas; only if we haven't written our own.
   if ("notes" in costco && !costco.notes?.trim()) await db.from("stores").update({ notes: COSTCO_NOTES }).eq("id", costco.id);
   await db.from("household_settings").update({ planner_defaults: { ...defaults, _costcoReceiptsV1: true } }).eq("household_id", household_id);
+}
+
+/** What Ben told us (Nov 2026): our equipment, 4 dinners a week with leftovers, 2 family dinners. */
+async function setUpKitchen(db: SupabaseClient, household_id: string) {
+  const { data: settings } = await db.from("household_settings").select("planner_defaults").eq("household_id", household_id).maybeSingle();
+  const d = (settings?.planner_defaults ?? {}) as Record<string, unknown>;
+  if (!settings || d._kitchenV1) return;
+  const next = {
+    ...d,
+    kitchen: Array.isArray(d.kitchen) && d.kitchen.length ? d.kitchen : OUR_KITCHEN,
+    mealCount: 4,
+    makeExtra: true,
+    familyNights: typeof d.familyNights === "number" ? d.familyNights : 2,
+    _kitchenV1: true,
+  };
+  await db.from("household_settings").update({ planner_defaults: next }).eq("household_id", household_id);
 }

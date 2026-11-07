@@ -1,4 +1,5 @@
 "use client";
+import { familyFriendly } from "@/lib/infer";
 import { isIdea } from "@/lib/ideas";
 import { useEffect, useMemo, useState } from "react";
 import { DndContext, PointerSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
@@ -153,11 +154,17 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
     useUp,
     pinnedIds,
     kidMeals: p.kidMeals,
+    familyNights: p.familyNights ?? 0,
     seed,
     ...overrides,
   });
 
-  const isKidFriendly = (s: Slot) => (s.recipeId ? byId.get(s.recipeId)?.kid_friendly : s.draft?.kidFriendly) ?? false;
+  // Kid-friendly by tag, or a familiar, mild dinner (pasta, meatballs, tacos…): the whole family eats it.
+  const isKidFriendly = (s: Slot) => {
+    const r = s.recipeId ? byId.get(s.recipeId) : null;
+    if (r) return r.kid_friendly || familyFriendly(r.title, r.recipe_ingredients.map((i) => i.name_norm));
+    return s.draft?.kidFriendly ?? false;
+  };
 
   /** Give each non-kid-friendly dinner a kids' favorite (keeps existing picks). */
   function assignKids(list: Slot[]): Slot[] {
@@ -593,6 +600,13 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
                 <span className="text-[17px]">Make extra for leftovers</span>
                 <Toggle checked={p.makeExtra} onChange={(v) => setP({ ...p, makeExtra: v })} />
               </label>
+              <div className="flex items-center justify-between px-4 py-3">
+                <span>
+                  <span className="block text-[17px]">Family dinners</span>
+                  <span className="block text-[13px] text-muted">Nights everyone eats the same dinner together</span>
+                </span>
+                <Stepper value={Math.min(p.familyNights ?? 0, p.mealCount)} min={0} max={p.mealCount} onChange={(v) => setP({ ...p, familyNights: v })} label="Family dinners" />
+              </div>
               <label className="flex items-center justify-between px-4 py-3">
                 <span>
                   <span className="block text-[17px]">Kids’ menu</span>
@@ -711,7 +725,7 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
                           <span className="text-muted">Kids:</span> {s.kid.title} <span className="text-accent">↻</span>
                         </button>
                       ) : (
-                        isKidFriendly(s) && <p className="text-[15px] text-muted">Kid-friendly</p>
+                        isKidFriendly(s) && <p className="text-[15px] font-semibold text-ok">Family dinner</p>
                       )}
                       <p className="mt-0.5 text-[13px] text-muted">
                         {[prep != null && `${prep} min`, s.draft && !s.recipeId ? "not cooked yet" : s.reason].filter(Boolean).join(" · ")}

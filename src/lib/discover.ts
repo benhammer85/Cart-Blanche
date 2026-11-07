@@ -113,6 +113,8 @@ export interface DiscoverFilters {
   storeNotes?: string | null;
   /** filled in on the server: products we can only get at the chosen store */
   storeOnly?: string[];
+  /** filled in on the server: our cookware, in a sentence */
+  kitchen?: string | null;
 }
 
 export function buildDiscoverPrompt(p: TasteProfile, f: DiscoverFilters, kidAges: number[], avoid: string[], have: string[]): string {
@@ -131,7 +133,7 @@ export function buildDiscoverPrompt(p: TasteProfile, f: DiscoverFilters, kidAges
 Our taste (recipes we love): ${p.favorites.slice(0, 20).join("; ")}.
 We cook a lot of ${p.cuisines.join(", ") || "varied"} food, mostly with ${p.proteins.join(", ") || "chicken"}${p.styles.length ? `, often ${p.styles.join(" or ")}` : ""}.
 ${wants.length ? `This time we want: ${wants.join("; ")}.\n` : ""}${avoid.length ? `Never use: ${avoid.join(", ")}.\n` : ""}${have.length ? `We already have these, so suggest different dishes: ${have.slice(0, 40).join("; ")}.\n` : ""}
-Prefer recipes from ${PREFERRED_SITES.join(", ")}; other reputable recipe sites are fine. Do not use ${BLOCKED_SITES.join(", ")}.
+${f.kitchen ? `${f.kitchen} Skip recipes that need equipment we don't have.\n` : ""}Prefer recipes from ${PREFERRED_SITES.join(", ")}; other reputable recipe sites are fine. Do not use ${BLOCKED_SITES.join(", ")}.
 Each must be a single recipe page (not a roundup or list). Use the exact URL of the recipe page.
 
 Reply with only a JSON array, no other text:

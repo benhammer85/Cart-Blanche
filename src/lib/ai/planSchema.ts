@@ -42,6 +42,8 @@ export interface AiPlanContext {
   pinnedIds: string[];
   /** Products we've confirmed at each store on the trip: our notes, "only sold here" items, receipts. */
   storeProducts?: { store: string; notes: string | null; onlyHere: string[]; buyHere: string[] }[];
+  /** cookware and appliances, in a sentence */
+  kitchen?: string | null;
 }
 
 function confirmedProducts(c: AiPlanContext): string {
@@ -70,7 +72,7 @@ Household: ${c.adults} adults, kids aged ${c.kidAges.join(", ") || "none"} (kids
 Max active prep: ${c.maxPrep ? `${c.maxPrep} min` : "any"}.
 ${c.includeTags.length ? `Must include: ${c.includeTags.join(", ")}.\n` : ""}${c.exclude.length ? `Never use: ${c.exclude.join(", ")}.\n` : ""}${c.useUp.length ? `Use up: ${c.useUp.join(", ")}.\n` : ""}${c.variety ? "Variety: no two meals with the same main protein; at most one soup.\n" : ""}${c.pinnedIds.length ? `Must include these favorite ids: ${c.pinnedIds.join(", ")}.\n` : ""}Stores: ${c.stores.join(", ")}. Pantry staples we always have: ${c.staples.slice(0, 40).join(", ")}.
 Avoid repeating these recent meals: ${c.recentTitles.slice(0, 30).join("; ") || "none"}.
-${confirmedProducts(c)}
+${c.kitchen ? `${c.kitchen} Only suggest dishes this kitchen can make.\n` : ""}${confirmedProducts(c)}
 New ideas: quick dinners built mostly from what these stores sell, often a shortcut product plus a few fresh things.
 Only name a store-brand or signature product (a specific sauce, frozen item or kit) if it is listed under "Confirmed products". Otherwise use generic ingredients ("teriyaki sauce", "frozen potstickers", "rotisserie chicken"). Never invent or guess product names.
 

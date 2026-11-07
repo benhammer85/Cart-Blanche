@@ -1,10 +1,11 @@
 import Link from "next/link";
 import { PageHeaderStatic } from "./_sections/Header";
-import { IconChevron, IconLeaf, IconStore, IconUsers, IconX, IconBook, IconSettings, IconSnow, IconReceipt } from "@/components/icons";
+import { IconChevron, IconLeaf, IconStore, IconUsers, IconX, IconBook, IconSettings, IconSnow, IconReceipt, IconPot } from "@/components/icons";
 import type { ReactNode } from "react";
 
 const ITEMS: { href: string; label: string; detail: string; icon: ReactNode; tint: string }[] = [
   { href: "/settings/people", label: "People", detail: "Who we cook for, portion sizes", icon: <IconUsers />, tint: "#5b8def" },
+  { href: "/settings/kitchen", label: "Kitchen", detail: "Equipment, dinners a week, family dinners", icon: <IconPot />, tint: "" },
   { href: "/settings/stores", label: "Stores & aisles", detail: "Stores, order, section walk order", icon: <IconStore />, tint: "#e2553a" },
   { href: "/settings/rules", label: "Store rules", detail: "Which store gets which category", icon: <IconSettings />, tint: "#8a6de9" },
   { href: "/settings/pantry", label: "Pantry staples", detail: "Never added unless we’re out", icon: <IconLeaf />, tint: "#3a9a5b" },

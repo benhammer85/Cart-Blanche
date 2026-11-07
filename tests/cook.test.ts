@@ -42,3 +42,21 @@ describe("headings saved as ingredients", () => {
     expect(isProseLine("Freshly ground black pepper", null)).toBe(false);
   });
 });
+
+import { kitchenSummary, kitchenTips, OUR_KITCHEN } from "@/lib/kitchen";
+describe("our kitchen", () => {
+  test("tips only where they help", () => {
+    expect(kitchenTips("Cook on low in a slow cooker for 8 hours.", OUR_KITCHEN)[0]).toContain("Instant Pot");
+    expect(kitchenTips("Air fry at 400°F for 12 minutes.", OUR_KITCHEN)[0]).toContain("Air Fry mode");
+    expect(kitchenTips("Heat a cast-iron skillet over high heat.", OUR_KITCHEN)).toEqual(["Carbon steel works the same as cast iron here."]);
+    expect(kitchenTips("Roast at 425°F for 25 minutes.", OUR_KITCHEN)[0]).toContain("25°F lower");
+    expect(kitchenTips("Stir in the garlic.", OUR_KITCHEN)).toEqual([]);
+    expect(kitchenTips("Grill the chicken.", OUR_KITCHEN)).toEqual([]);
+  });
+  test("summary for ideas and search", () => {
+    const s = kitchenSummary(OUR_KITCHEN)!;
+    expect(s).toContain("induction cooktop");
+    expect(s).toContain("no slow cooker");
+    expect(s).toContain("oven's air-fry mode");
+  });
+});

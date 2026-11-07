@@ -1,4 +1,5 @@
 "use client";
+import { kitchenTips } from "@/lib/kitchen";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button, Chip, Sheet, cx } from "@/components/ui";
@@ -71,6 +72,14 @@ export function CookMode({ recipe: r }: { recipe: Recipe }) {
   const [finished, setFinished] = useState(false);
   const [saved, setSaved] = useState(false);
   const [missed, setMissed] = useState<string | null>(null);
+  const [kitchen, setKitchen] = useState<string[]>([]);
+  useEffect(() => {
+    supabaseBrowser()
+      .from("household_settings")
+      .select("planner_defaults")
+      .maybeSingle()
+      .then(({ data }) => setKitchen(((data?.planner_defaults as { kitchen?: string[] } | null)?.kitchen) ?? []));
+  }, []);
   const touch = useRef<number | null>(null);
   const total = pages.length;
   const page = pages[i];
@@ -236,6 +245,9 @@ export function CookMode({ recipe: r }: { recipe: Recipe }) {
               {page.section && ` · ${page.section}`}
             </p>
             <p className={cx("mt-4 leading-[1.45] font-medium", page.text.length > 260 ? "text-[21px]" : page.text.length > 160 ? "text-[23px]" : "text-[26px]")}>{page.text}</p>
+            {kitchenTips(page.text, kitchen).map((tip) => (
+              <p key={tip} className="mt-4 rounded-xl bg-soft px-4 py-3 text-[15px] leading-snug">{tip}</p>
+            ))}
             {inStep.length > 0 && (
               <ul className="mt-6 border-t hairline pt-3">
                 {inStep.map((g) => (

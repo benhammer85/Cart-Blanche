@@ -107,6 +107,9 @@ export const IconSliders = (p: SVGProps<SVGSVGElement>) => (
 export const IconCamera = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}><path d="M4 8.5A2.5 2.5 0 0 1 6.5 6h1.8l1.4-2h4.6l1.4 2h1.8A2.5 2.5 0 0 1 20 8.5v8a2.5 2.5 0 0 1-2.5 2.5h-11A2.5 2.5 0 0 1 4 16.5Z" /><circle cx="12" cy="12.5" r="3.5" /></svg>
 );
+export const IconPot = (p: SVGProps<SVGSVGElement>) => (
+  <svg {...base(p)}><path d="M4 10h16v6a4 4 0 0 1-4 4H8a4 4 0 0 1-4-4Z" /><path d="M2 10h2M20 10h2M9 6.5c0-1 1-1.5 1-2.5M14 6.5c0-1 1-1.5 1-2.5" /></svg>
+);
 export const IconChat = (p: SVGProps<SVGSVGElement>) => (
   <svg {...base(p)}><path d="M5 18.5V6.5A2.5 2.5 0 0 1 7.5 4h9A2.5 2.5 0 0 1 19 6.5v7a2.5 2.5 0 0 1-2.5 2.5H8l-3 2.5Z" /></svg>
 );

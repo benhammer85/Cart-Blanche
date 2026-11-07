@@ -83,3 +83,17 @@ export function cookingStyles(title: string, tags: string[], steps: { text: stri
     return (s === "Instant Pot" || s === "Sheet pan") && STYLE_PATTERNS[s].test(body);
   });
 }
+
+const FAMILY_YES = /\b(pasta|spaghetti|mac(aroni)?( and| &| \+)? cheese|meatballs?|tacos?|quesadillas?|burritos?|pizza|nuggets|tenders|fried rice|teriyaki|orange chicken|lo mein|noodles|chicken and rice|roast(ed)? chicken|rotisserie|chicken (breasts?|thighs?|cutlets?)|meatloaf|sloppy|burgers?|sliders|pierogi|gnocchi|ravioli|tortellini|lasagna|chowder|pot pie|enchiladas?|shepherd'?s pie|salmon|risotto|grilled cheese|sandwich(es)?|pastina|orzo|chicken soup|noodle soup|stir[- ]fry|fajitas?|nachos)\b/;
+const FAMILY_NO = /\b(spicy|mushrooms?|kale|miso|chil[ei]|harissa|gochujang|sriracha|jalape|curry|vindaloo|szechuan|sichuan|buffalo|hot honey|kimchi|anchov|blue cheese|olives?|capers|eggplant|beets?|liver|chili crisp|chile crisp|habanero|chipotle)\b/;
+
+/**
+ * A dinner the kids will likely eat with us: familiar (pasta, meatballs, tacos,
+ * plain chicken) and not spicy. A guess; recipes marked kid-friendly always count.
+ */
+export function familyFriendly(title: string, ingredientNames: string[] = []): boolean {
+  const t = title.toLowerCase();
+  if (FAMILY_NO.test(t)) return false;
+  if (ingredientNames.some((n) => /\b(gochujang|sriracha|harissa|jalape|chili crisp|chile crisp|habanero|cayenne|red pepper flake)\b/.test(n))) return false;
+  return FAMILY_YES.test(t);
+}

@@ -17,3 +17,12 @@ describe("not every recipe is a dinner", () => {
     ]) expect(dinner(t), t).toBe(true);
   });
 });
+
+describe("family dinners", () => {
+  test("familiar and mild", async () => {
+    const { familyFriendly } = await import("@/lib/infer");
+    for (const t of ["Instant Pot Spaghetti", "Fried Rice", "One-Pot Chicken and Rice With Caramelized Lemon", "Foolproof Pan Pizza", "The Best Baked Salmon"]) expect(familyFriendly(t), t).toBe(true);
+    for (const t of ["Spicy Gochujang Noodles", "Chicken Chile Verde Pressure Cooker", "Mushroom Lasagna", "Harira Soup"]) expect(familyFriendly(t), t).toBe(false);
+    expect(familyFriendly("Sesame Noodles", ["chili crisp"])).toBe(false);
+  });
+});

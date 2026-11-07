@@ -136,20 +136,26 @@ export interface PlannerDefaults {
   makeExtra: boolean;
   kidMeals: boolean;
   aiFavoritesPct: number;
+  /** dinners a week the whole family eats together */
+  familyNights?: number;
+  /** cookware and appliances we have (used for ideas, Discover and cooking tips) */
+  kitchen?: string[];
 }
 
 export const DEFAULT_PLANNER: PlannerDefaults = {
   storeIds: [],
-  mealCount: 6,
+  mealCount: 4,
   mealTypes: ["dinner"],
   maxPrep: 30,
   includeTags: [],
   excludeTags: [],
   excludeIngredients: [],
   variety: true,
-  makeExtra: false,
+  makeExtra: true,
   kidMeals: true,
   aiFavoritesPct: 70,
+  familyNights: 2,
+  kitchen: [],
 };
 
 export interface ListItem {

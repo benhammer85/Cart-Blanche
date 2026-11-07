@@ -6,6 +6,7 @@ import { PantrySettings } from "../_sections/Pantry";
 import { IngredientsSettings } from "../_sections/Ingredients";
 import { AvoidSettings } from "../_sections/Avoid";
 import { StockSettings } from "../_sections/Stock";
+import { KitchenSettings } from "../_sections/Kitchen";
 import { ReceiptsSettings } from "../_sections/Receipts";
 
 const SECTIONS = {
@@ -16,6 +17,7 @@ const SECTIONS = {
   ingredients: IngredientsSettings,
   avoid: AvoidSettings,
   stock: StockSettings,
+  kitchen: KitchenSettings,
   receipts: ReceiptsSettings,
 };
 
