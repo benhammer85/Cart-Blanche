@@ -1,8 +1,10 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { StoreBadge } from "@/components/StoreBadge";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { Button, Chip, Section, Segmented, Sheet, Stepper, TextField, Toast, Toggle, cx } from "@/components/ui";
-import { IconCheck, IconLock, IconSearch, IconSparkle, IconSwap, IconUnlock, IconX, IconPlus, IconClock } from "@/components/icons";
+import { IconCart, IconChevron, IconCheck, IconLock, IconSearch, IconSparkle, IconSwap, IconUnlock, IconX, IconPlus, IconClock } from "@/components/icons";
 import { useMembership } from "@/components/AppShell";
 import { RecipeImage } from "@/components/RecipeImage";
 import { planMeals, pickKidMeals, rng, swapMeal, type PlannerRecipe, type PlanParams } from "@/lib/planner/planner";
@@ -52,7 +54,7 @@ type PreviewItem = DraftListItem & { have: boolean; moved: boolean };
 
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-export function PlanClient({ household, recipes, repeat }: { household: HouseholdData; recipes: PlanRecipe[]; repeat: RepeatPlan | null }) {
+export function PlanClient({ household, recipes, repeat, intro }: { household: HouseholdData; recipes: PlanRecipe[]; repeat: RepeatPlan | null; intro?: string }) {
   const router = useRouter();
   const me = useMembership();
   const db = supabaseBrowser();
@@ -108,7 +110,7 @@ export function PlanClient({ household, recipes, repeat }: { household: Househol
     if (initial.length) {
       setSlots(assignKids(initial));
       setStep("plan");
-      if (repeat) setNote("Here’s that week again. Swap anything, then send it to the list.");
+      if (repeat) setNote(intro ?? "Here’s that week again. Swap anything, then send it to the list.");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -427,10 +429,20 @@ export function PlanClient({ household, recipes, repeat }: { household: Househol
       <div className="px-4">
         {step === "params" && (
           <>
+            <Link href="/plan/trip" className="card mt-4 flex items-center gap-3 p-4 active:scale-[0.99]">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-accent-soft text-xl text-accent"><IconCart /></span>
+              <span className="flex-1">
+                <span className="block text-[17px] font-semibold">Quick trip</span>
+                <span className="block text-[13px] text-muted">Heading to one store? Pick a few recipes from there.</span>
+              </span>
+              <IconChevron className="text-muted" />
+            </Link>
             <Section title="Stores">
               <div className="flex flex-wrap gap-2">
                 {stores.map((s) => (
-                  <Chip key={s.id} active={p.storeIds.includes(s.id)} onClick={() => setP({ ...p, storeIds: toggleIn(p.storeIds, s.id) })}>{s.name}</Chip>
+                  <Chip key={s.id} active={p.storeIds.includes(s.id)} onClick={() => setP({ ...p, storeIds: toggleIn(p.storeIds, s.id) })}>
+                    <span className="flex items-center gap-1.5"><StoreBadge name={s.name} size={20} />{s.name}</span>
+                  </Chip>
                 ))}
               </div>
             </Section>
@@ -594,7 +606,7 @@ export function PlanClient({ household, recipes, repeat }: { household: Househol
               if (!items.length) return null;
               return (
                 <section key={sid} className="card mt-4 overflow-hidden">
-                  <h2 className="px-4 pt-4 pb-1 text-[20px] font-bold">{stores.find((s) => s.id === sid)?.name}</h2>
+                  <h2 className="flex items-center gap-3 px-4 pt-4 pb-1 text-[20px] font-bold"><StoreBadge name={stores.find((s) => s.id === sid)?.name ?? ""} size={32} />{stores.find((s) => s.id === sid)?.name}</h2>
                   <ul>
                     {items.map((it) => (
                       <PreviewRow key={it.key} item={it} storeIds={orderedStoreIds} stores={stores} onHave={(v) => setPreview(preview.map((x) => (x.key === it.key ? { ...x, have: v } : x)))} onMove={(st) => moveItem(it.key, st)} />

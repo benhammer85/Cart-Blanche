@@ -44,3 +44,25 @@ export function inferMealTypes(title: string, tags: string[]): MealType[] {
 export function isSoup(title: string, tags: string[]): boolean {
   return /\b(soup|stew|chowder|bisque|chili|ramen|pho|gumbo)\b/i.test(`${title} ${tags.join(" ")}`);
 }
+
+export const COOKING_STYLES = ["Instant Pot", "One pot", "Sheet pan", "Slow cooker", "Grill"] as const;
+export type CookingStyle = (typeof COOKING_STYLES)[number];
+
+const STYLE_PATTERNS: Record<CookingStyle, RegExp> = {
+  "Instant Pot": /\b(instant pot|pressure[- ]cook(er|ed|ing)?|multicooker)\b/i,
+  "One pot": /\b(one[- ](pot|pan|skillet)|skillet|dutch oven)\b/i,
+  "Sheet pan": /\b(sheet[- ]pan|traybake|tray bake)\b/i,
+  "Slow cooker": /\b(slow[- ]cook(er)?|crock[- ]?pot)\b/i,
+  Grill: /\b(grill(ed|ing)?|barbecue|bbq)\b/i,
+};
+
+/** Cooking styles from the title and tags first, then the steps. */
+export function cookingStyles(title: string, tags: string[], steps: { text: string }[] = []): CookingStyle[] {
+  const head = `${title} ${tags.join(" ")}`;
+  const body = steps.map((s) => s.text).join(" ");
+  return COOKING_STYLES.filter((s) => {
+    if (STYLE_PATTERNS[s].test(head)) return true;
+    // From steps only for clear-cut equipment (skillet/grill words in steps are too common)
+    return (s === "Instant Pot" || s === "Slow cooker" || s === "Sheet pan") && STYLE_PATTERNS[s].test(body);
+  });
+}

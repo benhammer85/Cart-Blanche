@@ -1,5 +1,6 @@
 "use client";
 import { useState } from "react";
+import { StoreBadge } from "@/components/StoreBadge";
 import { useHousehold } from "@/lib/data/useHousehold";
 import { Button, PageHeader, Section, Sheet, TextField, Toggle } from "@/components/ui";
 import { SortableList } from "@/components/SortableList";
@@ -39,6 +40,7 @@ export function StoresSettings() {
             onReorder={reorder}
             render={(s) => (
               <button className="flex min-h-[60px] w-full items-center gap-3 pl-4 text-left" onClick={() => setOpen(s)}>
+                <StoreBadge name={s.name} size={32} />
                 <span className="flex-1">
                   <span className="block text-[17px]">{s.name}</span>
                   <span className="block text-[13px] text-muted">{[s.location, s.is_bulk && "bulk store"].filter(Boolean).join(" · ")}</span>

@@ -1,5 +1,6 @@
 "use client";
 import { useMemo, useState } from "react";
+import { StoreBadge } from "@/components/StoreBadge";
 import { useMembership } from "@/components/AppShell";
 import { useSharedList } from "@/lib/offline/useSharedList";
 import { Button, Chip, Empty, Select, Sheet, TextField, Toast, cx } from "@/components/ui";
@@ -178,9 +179,12 @@ export function ListClient() {
         {groups.map((g) => (
           <section key={g.storeId} className="card mt-4 overflow-hidden">
             <div className="flex items-center justify-between px-4 pt-4 pb-1">
-              <div>
-                <h2 className="text-[20px] font-bold leading-tight">{g.name}</h2>
-                {g.location && <p className="text-[13px] text-muted">{g.location}</p>}
+              <div className="flex items-center gap-3">
+                <StoreBadge name={g.name} size={36} />
+                <div>
+                  <h2 className="text-[20px] font-bold leading-tight">{g.name}</h2>
+                  {g.location && <p className="text-[13px] text-muted">{g.location}</p>}
+                </div>
               </div>
               <div className="flex items-center gap-2">
                 {g.todoCount ? (
@@ -243,7 +247,7 @@ export function ListClient() {
             <div className="no-scrollbar mb-2 flex gap-2 overflow-x-auto px-1">
               {stores.map((s) => (
                 <Chip key={s.id} active={addStoreId === s.id} onClick={() => setStoreOverride(s.id)}>
-                  {s.name}
+                  <span className="flex items-center gap-1.5"><StoreBadge name={s.name} size={18} />{s.name}</span>
                 </Chip>
               ))}
             </div>

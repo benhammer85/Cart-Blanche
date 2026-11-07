@@ -4,8 +4,8 @@ import { PlanClient, type PlanRecipe, type RepeatPlan } from "./PlanClient";
 
 export const metadata = { title: "Plan · Cart Blanche" };
 
-export default async function PlanPage({ searchParams }: { searchParams: Promise<{ from?: string }> }) {
-  const { from } = await searchParams;
+export default async function PlanPage({ searchParams }: { searchParams: Promise<{ from?: string; trip?: string; recipes?: string }> }) {
+  const { from, trip, recipes: tripRecipes } = await searchParams;
   const db = await supabaseServer();
   const {
     data: { user },
@@ -21,5 +21,21 @@ export default async function PlanPage({ searchParams }: { searchParams: Promise
       ? db.from("meal_plans").select("params, store_ids, meal_plan_items(recipe_id, ai_recipe, title, for_kids, position)").eq("id", from).maybeSingle()
       : Promise.resolve({ data: null }),
   ]);
-  return <PlanClient household={household} recipes={(recipes.data ?? []) as PlanRecipe[]} repeat={(repeat.data as RepeatPlan) ?? null} />;
+  // Quick trip: one store and the recipes picked on /plan/trip, loaded like a repeated week.
+  const tripPlan: RepeatPlan | null =
+    trip && tripRecipes
+      ? {
+          params: { mealCount: tripRecipes.split(",").length },
+          store_ids: [trip],
+          meal_plan_items: tripRecipes.split(",").filter(Boolean).map((id, position) => ({ recipe_id: id, ai_recipe: null, title: "", for_kids: false, position })),
+        }
+      : null;
+  return (
+    <PlanClient
+      household={household}
+      recipes={(recipes.data ?? []) as PlanRecipe[]}
+      repeat={tripPlan ?? (repeat.data as RepeatPlan) ?? null}
+      intro={tripPlan ? "Here are your picks. Build the list when you're ready." : undefined}
+    />
+  );
 }

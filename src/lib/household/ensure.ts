@@ -11,6 +11,7 @@ import {
 } from "../seed/defaults";
 
 import type { Membership } from "./types";
+import { applyUpgrades } from "./upgrades";
 export type { Membership };
 
 function initialsOf(name: string): string {
@@ -33,13 +34,17 @@ export async function ensureMembership(user: User): Promise<Membership | null> {
   const admin = supabaseAdmin();
 
   const { data: existing } = await admin.from("household_members").select("household_id, display_name, initials").eq("user_id", user.id).maybeSingle();
-  if (existing) return { householdId: existing.household_id, displayName: existing.display_name, initials: existing.initials };
+  if (existing) {
+    await applyUpgrades(admin, existing.household_id);
+    return { householdId: existing.household_id, displayName: existing.display_name, initials: existing.initials };
+  }
 
   const { data: hh } = await admin.from("households").select("id").order("created_at").limit(1).maybeSingle();
   const householdId = hh?.id ?? (await createHousehold());
   const initials = initialsOf(allowed.name);
   const { error } = await admin.from("household_members").insert({ user_id: user.id, household_id: householdId, display_name: allowed.name, initials });
   if (error) throw error;
+  await applyUpgrades(admin, householdId);
   return { householdId, displayName: allowed.name, initials };
 }
 
