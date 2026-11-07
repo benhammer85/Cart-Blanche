@@ -577,9 +577,18 @@ export function ListClient() {
                   setAddCount(1);
                 }
               }}
+              onPaste={(e) => {
+                // A whole list pasted in (Molly's text): one item per line or comma, reviewed before adding.
+                const t = e.clipboardData.getData("text");
+                if (/\n/.test(t.trim()) || (t.match(/,/g)?.length ?? 0) >= 2) {
+                  e.preventDefault();
+                  setText("");
+                  setBulk({ text: t });
+                }
+              }}
               autoCorrect="on"
               spellCheck
-              placeholder="Add an item"
+              placeholder="Add an item or paste a list"
               className="h-11 min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted"
               enterKeyHint="done"
               autoCapitalize="sentences"
@@ -745,7 +754,6 @@ export function ListClient() {
 }
 
 function ItemRow({ item, onToggle, onEdit, onQty }: { item: ListItem; onToggle: () => void; onEdit: () => void; onQty: () => void }) {
-  const meals = item.source_meals?.map((m) => m.title).join(", ");
   // Swipe right to check off (or un-check). Taps still work as before.
   const [dx, setDxState] = useState(0);
   const dxRef = useRef(0); // latest distance, readable even before React re-renders
@@ -800,9 +808,7 @@ function ItemRow({ item, onToggle, onEdit, onQty }: { item: ListItem; onToggle: 
             <span className={cx("block text-[17px] leading-snug", item.checked && "text-muted line-through decoration-1")}>
               {item.name}
             </span>
-            {(meals || item.note) && (
-              <span className="block truncate text-[13px] text-muted">{[item.note, meals && `for ${meals}`].filter(Boolean).join(" · ")}</span>
-            )}
+            {item.note && <span className="block truncate text-[13px] text-muted">{item.note}</span>}
           </span>
         </button>
         {!item.checked && (
@@ -816,9 +822,6 @@ function ItemRow({ item, onToggle, onEdit, onQty }: { item: ListItem; onToggle: 
         )}
         {item.checked && item.display_qty && <span className="my-auto shrink-0 text-[14px] text-muted">{item.display_qty}</span>}
         <button onClick={onEdit} className="flex shrink-0 items-center gap-2 pr-4 pl-2 text-muted" aria-label={`Edit ${item.name}`}>
-          {item.is_manual && item.added_by && (
-            <span className="grid h-6 min-w-6 place-items-center rounded-full bg-soft px-1.5 text-[11px] font-semibold">{item.added_by}</span>
-          )}
           <span className="text-[20px] leading-none">⋯</span>
         </button>
       </div>
@@ -907,6 +910,7 @@ function EditItemSheet({
 }
 
 function SyncBadge({ status, pending }: { status: "synced" | "syncing" | "offline"; pending: number }) {
+  if (status === "synced") return null; // all good: say nothing
   if (status === "offline")
     return (
       <span className="flex h-8 items-center gap-1.5 rounded-full bg-[#fff3d6] px-3 text-[13px] font-medium text-[#8a5a00] dark:bg-[#3a2e10] dark:text-[#f0c060]">
@@ -915,8 +919,8 @@ function SyncBadge({ status, pending }: { status: "synced" | "syncing" | "offlin
     );
   return (
     <span className="flex h-8 items-center gap-1.5 px-1 text-[13px] text-muted" aria-live="polite">
-      <span className={cx("h-2 w-2 rounded-full", status === "synced" ? "bg-ok" : "animate-pulse bg-warn")} />
-      {status === "synced" ? "Live" : "Syncing"}
+      <span className="h-2 w-2 animate-pulse rounded-full bg-warn" />
+      Syncing
     </span>
   );
 }

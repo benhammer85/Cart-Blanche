@@ -68,7 +68,7 @@ describe("store assignment", () => {
       [{ key: "a", title: "A", recipeId: "a", baseServings: 4, servings: 4, ingredients: [{ qty: 2, qty_max: null, unit: "lb", name: "chicken thigh", name_norm: "chicken thigh", raw_text: "", parsed_ok: true }] }],
       { ...c, stores: [{ id: "costco", name: "Costco", location: null, sort_order: 0, is_bulk: true, archived: false }], synonyms: {} },
     );
-    expect(items[0].note).toBe("Pack ≈ 6 lb, 4 lb left to freeze");
+    expect(items[0].note).toBe("1 pack (6 lb), freeze 4 lb");
     expect(items[0].leftover).toEqual({ qty: 4, unit: "lb" });
   });
 

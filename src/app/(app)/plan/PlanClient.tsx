@@ -79,6 +79,9 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
   const [p, setP] = useState<PlannerDefaults>(() => ({ ...household.plannerDefaults, ...(repeat?.params ?? {}), storeIds: repeat?.store_ids?.length ? repeat.store_ids : household.plannerDefaults.storeIds }));
   const [useUp, setUseUp] = useState<string[]>([]);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+  const [moreKey, setMoreKey] = useState<string | null>(null);
+  const [showNew, setShowNew] = useState(false);
+  const [showIdeas, setShowIdeas] = useState(false);
   // New recipes from sites and quick ideas picked on this trip (not in our library yet).
   const [pickedDrafts, setPickedDrafts] = useState<PickedDraft[]>([]);
   const chosenCount = pinnedIds.length + pickedDrafts.length;
@@ -577,16 +580,25 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
               onToggle={(id) => setPinnedIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))}
             />
 
-            <NewRecipes storeNames={orderedStoreIds.map((id) => stores.find((x) => x.id === id)?.name ?? "")} maxPrep={p.maxPrep} picked={pickedDrafts.map((d) => d.key)} onPick={pickDraft} onUnpick={unpickDraft} />
-            {ai.enabled && (
-              <QuickIdeas
-                request={{ mealTypes: p.mealTypes, maxPrep: p.maxPrep, includeTags: [], excludeTags: p.excludeTags, excludeIngredients: p.excludeIngredients, useUp, variety: p.variety, storeIds: p.storeIds }}
-                storeNames={orderedStoreIds.map((id) => stores.find((x) => x.id === id)?.name ?? "")}
-                picked={pickedDrafts.map((d) => d.key)}
-                onPick={pickDraft}
-                onUnpick={unpickDraft}
-              />
-            )}
+            <section className="mt-8">
+              <h3 className="recipe-title px-1 text-[22px] font-semibold">Something new</h3>
+              <p className="px-1 text-[13px] text-muted">Recipes from trusted sites for these stores, or quick dinners from what you buy there.</p>
+              <div className="mt-3 grid grid-cols-2 gap-2">
+                <button onClick={() => setShowNew(true)} className={cx("card h-14 text-[16px] font-semibold", showNew ? "text-muted" : "text-accent")} disabled={showNew}>New recipes</button>
+                {ai.enabled && <button onClick={() => setShowIdeas(true)} className={cx("card h-14 text-[16px] font-semibold", showIdeas ? "text-muted" : "text-accent")} disabled={showIdeas}>Quick ideas</button>}
+              </div>
+              {showNew && <NewRecipes bare storeNames={orderedStoreIds.map((id) => stores.find((x) => x.id === id)?.name ?? "")} maxPrep={p.maxPrep} picked={pickedDrafts.map((d) => d.key)} onPick={pickDraft} onUnpick={unpickDraft} />}
+              {showIdeas && ai.enabled && (
+                <QuickIdeas
+                  bare
+                  request={{ mealTypes: p.mealTypes, maxPrep: p.maxPrep, includeTags: [], excludeTags: p.excludeTags, excludeIngredients: p.excludeIngredients, useUp, variety: p.variety, storeIds: p.storeIds }}
+                  storeNames={orderedStoreIds.map((id) => stores.find((x) => x.id === id)?.name ?? "")}
+                  picked={pickedDrafts.map((d) => d.key)}
+                  onPick={pickDraft}
+                  onUnpick={unpickDraft}
+                />
+              )}
+            </section>
             </>
             )}
 
@@ -610,77 +622,8 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
                 <span className="mb-2 block text-[15px] text-muted">Hands-on time</span>
                 <Segmented value={p.maxPrep} onChange={(v) => setP({ ...p, maxPrep: v })} options={[{ value: 15, label: "15 min" }, { value: 30, label: "30 min" }, { value: 45, label: "45 min" }, { value: null, label: "Any" }]} />
               </div>
-              <div className="px-4 py-3">
-                <span className="mb-2 block text-[15px] text-muted">Also plan</span>
-                <div className="flex gap-2">
-                  {(["lunch", "breakfast"] as MealType[]).map((m) => (
-                    <Chip key={m} active={p.mealTypes.includes(m)} onClick={() => setP({ ...p, mealTypes: toggleIn(p.mealTypes, m).length ? toggleIn(p.mealTypes, m) : p.mealTypes })}>
-                      {m[0].toUpperCase() + m.slice(1)}
-                    </Chip>
-                  ))}
-                </div>
               </div>
-              {ai.enabled && (
-                <label className="flex items-center justify-between px-4 py-3">
-                  <span>
-                    <span className="block text-[17px]">Add new ideas</span>
-                    <span className="block text-[13px] text-muted">Quick dinners built from products you buy, marked Idea</span>
-                  </span>
-                  <Toggle checked={useAi} onChange={setUseAi} label="Add new ideas" />
-                </label>
-              )}
-              <div className="flex items-center justify-between px-4 py-3">
-                <span>
-                  <span className="block text-[17px]">Portions per meal</span>
-                  <span className="block text-[13px] text-muted">{portions.adults} adults + {portions.kids} kids{servingsOverride == null ? " (auto)" : ""}</span>
-                </span>
-                <Stepper value={everyone} min={1} max={12} step={0.5} onChange={setServingsOverride} />
-              </div>
-              <label className="flex items-center justify-between px-4 py-3">
-                <span className="text-[17px]">Make extra for leftovers</span>
-                <Toggle checked={p.makeExtra} onChange={(v) => setP({ ...p, makeExtra: v })} />
-              </label>
-              <div className="flex items-center justify-between px-4 py-3">
-                <span>
-                  <span className="block text-[17px]">Family dinners</span>
-                  <span className="block text-[13px] text-muted">Nights everyone eats the same dinner together</span>
-                </span>
-                <Stepper value={Math.min(p.familyNights ?? 0, p.mealCount)} min={0} max={p.mealCount} onChange={(v) => setP({ ...p, familyNights: v })} label="Family dinners" />
-              </div>
-              <label className="flex items-center justify-between px-4 py-3">
-                <span>
-                  <span className="block text-[17px]">Kids’ menu</span>
-                  <span className="block text-[13px] text-muted">Add a kids’ menu item when dinner isn’t kid-friendly</span>
-                </span>
-                <Toggle checked={p.kidMeals} onChange={(v) => setP({ ...p, kidMeals: v })} />
-              </label>
-              <label className="flex items-center justify-between px-4 py-3">
-                <span>
-                  <span className="block text-[17px]">Variety</span>
-                  <span className="block text-[13px] text-muted">No repeated protein, at most one soup</span>
-                </span>
-                <Toggle checked={p.variety} onChange={(v) => setP({ ...p, variety: v })} />
-              </label>
-              </div>
-            <Section title="Must include">
-              <TagPicker tags={allTags} selected={p.includeTags} onChange={(v) => setP({ ...p, includeTags: v })} />
-            </Section>
-            <Section title="Exclude tags">
-              <TagPicker tags={allTags} selected={p.excludeTags} onChange={(v) => setP({ ...p, excludeTags: v })} />
-            </Section>
-            <Section title="Exclude ingredients">
-              <FreeChips values={p.excludeIngredients} onChange={(v) => setP({ ...p, excludeIngredients: v })} placeholder="Ingredient" />
-              {household.avoidTerms.length > 0 && <p className="mt-2 px-1 text-[13px] text-muted">Always avoided: {household.avoidTerms.join(", ")}</p>}
-            </Section>
-            <Section title="Pinned meals" action={<button className="text-[15px] text-accent" onClick={() => setPicker({ mode: "pin", index: -1 })}>Add</button>}>
-              <div className="flex flex-wrap gap-2">
-                {pinnedIds.map((id) => (
-                  <Chip key={id} active onClick={() => setPinnedIds(pinnedIds.filter((x) => x !== id))}>{byId.get(id)?.title} ✕</Chip>
-                ))}
-                {!pinnedIds.length && <span className="px-1 text-[14px] text-muted">None</span>}
-              </div>
-            </Section>
-              <Button variant="secondary" className="mt-6 w-full" onClick={saveDefaults}>Save these as our usual settings</Button>
+              <Button variant="secondary" className="mt-3 w-full" onClick={saveDefaults}>Save as our usual</Button>
             </details>
             {!p.storeIds.length && <p className="mt-2 text-center text-[13px] text-muted">Pick at least one store.</p>}
             {chosenCount > 0 && (
@@ -771,9 +714,14 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
                     <div className="mt-1 flex px-2 pb-1 text-[15px]">
                       <button className="h-11 px-2 text-accent disabled:opacity-40" onClick={() => swap(i)} disabled={s.locked || !!busy}>Swap</button>
                       <button className="h-11 px-2 text-accent" onClick={() => setPicker({ mode: "replace", index: i })}>Change</button>
-                      <button className="h-11 px-2 text-muted" aria-pressed={s.locked} onClick={() => setSlots(slots.map((x, j) => (j === i ? { ...x, locked: !x.locked } : x)))}>{s.locked ? "Unlock" : "Lock"}</button>
-                      <button className="h-11 px-2 text-muted" onClick={() => setSlots(slots.filter((_, j) => j !== i))}>Remove</button>
-                      {s.draft && !s.recipeId && <button className="ml-auto h-11 px-2 font-semibold text-accent" onClick={() => saveDraftToFavorites(i)}>Save</button>}
+                      {moreKey === s.key ? (
+                        <>
+                          <button className="h-11 px-2 text-muted" aria-pressed={s.locked} onClick={() => { setSlots(slots.map((x, j) => (j === i ? { ...x, locked: !x.locked } : x))); setMoreKey(null); }}>{s.locked ? "Unlock" : "Lock"}</button>
+                          <button className="h-11 px-2 text-[#d23c3c]" onClick={() => { setSlots(slots.filter((_, j) => j !== i)); setMoreKey(null); }}>Remove</button>
+                        </>
+                      ) : (
+                        <button className="ml-auto h-11 px-3 text-[20px] leading-none text-muted" onClick={() => setMoreKey(s.key)} aria-label={`More for ${s.title}`}>⋯</button>
+                      )}
                     </div>
                   </div>
                 );

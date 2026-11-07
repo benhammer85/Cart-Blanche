@@ -173,8 +173,8 @@ export function buildShoppingList(meals: PlannedMealForList[], opts: BuildListOp
       if (plan && pack) {
         leftover = plan.leftover;
         notes.push(
-          `${plan.packs > 1 ? `${plan.packs} packs` : "Pack"} ≈ ${formatAmount(pack.qty * plan.packs, pack.unit)}` +
-            (leftover ? `, ${formatAmount(leftover.qty, leftover.unit)} left to freeze` : ""),
+          `${plan.packs > 1 ? `${plan.packs} packs` : "1 pack"} (${formatAmount(pack.qty * plan.packs, pack.unit)})` +
+            (leftover ? `, freeze ${formatAmount(leftover.qty, leftover.unit)}` : ""),
         );
       } else notes.push(`Bulk pack: ${info.pack_size}`);
     }

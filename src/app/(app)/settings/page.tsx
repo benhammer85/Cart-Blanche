@@ -10,7 +10,6 @@ const GROUPS: { title: string; items: Item[] }[] = [
     title: "Stores",
     items: [
       { href: "/settings/stores", label: "Stores & aisles", detail: "Your stores, what you buy there, aisle order", icon: <IconStore /> },
-      { href: "/settings/receipts", label: "Learn from receipts", detail: "Which store you buy each item at", icon: <IconReceipt /> },
     ],
   },
   {
@@ -19,7 +18,6 @@ const GROUPS: { title: string; items: Item[] }[] = [
       { href: "/settings/kitchen", label: "Kitchen", detail: "Equipment, dinners a week, family dinners", icon: <IconPot /> },
       { href: "/settings/pantry", label: "Pantry staples", detail: "Never added unless you’re out", icon: <IconLeaf /> },
       { href: "/settings/stock", label: "Freezer", detail: "What’s frozen or left from Costco packs", icon: <IconSnow /> },
-      { href: "/settings/ingredients", label: "Ingredients", detail: "Categories, pack sizes, only-at items", icon: <IconBook /> },
     ],
   },
   {
@@ -27,6 +25,13 @@ const GROUPS: { title: string; items: Item[] }[] = [
     items: [
       { href: "/settings/people", label: "People", detail: "Who you cook for, portion sizes", icon: <IconUsers /> },
       { href: "/settings/avoid", label: "Avoid & favorites", detail: "Never-use list, favorite tags", icon: <IconX /> },
+    ],
+  },
+  {
+    title: "Advanced",
+    items: [
+      { href: "/settings/ingredients", label: "Ingredients", detail: "Aisles, pack sizes, only-at items, synonyms", icon: <IconBook /> },
+      { href: "/settings/receipts", label: "Learn from receipts", detail: "Teach which store you buy things at", icon: <IconReceipt /> },
     ],
   },
 ];

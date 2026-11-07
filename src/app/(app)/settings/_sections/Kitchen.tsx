@@ -13,6 +13,7 @@ export function KitchenSettings() {
   const [meals, setMeals] = useState(4);
   const [family, setFamily] = useState(2);
   const [extra, setExtra] = useState(true);
+  const [kidsMenu, setKidsMenu] = useState(true);
 
   useEffect(() => {
     if (!data) return;
@@ -20,6 +21,7 @@ export function KitchenSettings() {
     setMeals(data.plannerDefaults.mealCount);
     setFamily(data.plannerDefaults.familyNights ?? 0);
     setExtra(data.plannerDefaults.makeExtra);
+    setKidsMenu(data.plannerDefaults.kidMeals);
   }, [data]);
 
   async function save(patch: Record<string, unknown>) {
@@ -53,6 +55,13 @@ export function KitchenSettings() {
             <label className="flex items-center justify-between px-4 py-3">
               <span className="text-[17px]">Make extra for leftovers</span>
               <Toggle checked={extra} onChange={(v) => { setExtra(v); save({ makeExtra: v }); }} label="Make extra for leftovers" />
+            </label>
+            <label className="flex items-center justify-between px-4 py-3">
+              <span>
+                <span className="block text-[17px]">Kids’ menu</span>
+                <span className="block text-[13px] text-muted">A kids’ dinner on nights that aren’t family dinners</span>
+              </span>
+              <Toggle checked={kidsMenu} onChange={(v) => { setKidsMenu(v); save({ kidMeals: v }); }} label="Kids’ menu" />
             </label>
           </div>
         </Section>

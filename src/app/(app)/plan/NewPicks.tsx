@@ -45,13 +45,19 @@ function Check({ on }: { on: boolean }) {
 }
 
 /** New recipes to try: real recipes from trusted sites that suit the stores on this trip. */
-export function NewRecipes({ storeNames, maxPrep, picked, onPick, onUnpick }: { storeNames: string[]; maxPrep: number | null; picked: string[]; onPick: (p: PickedDraft) => void; onUnpick: (key: string) => void }) {
+export function NewRecipes({ storeNames, maxPrep, picked, onPick, onUnpick, bare = false }: { storeNames: string[]; maxPrep: number | null; picked: string[]; onPick: (p: PickedDraft) => void; onUnpick: (key: string) => void; bare?: boolean }) {
   const key = `cb:trip-new:${today()}:${storeNames.join("+")}:${maxPrep ?? ""}`;
   const [cards, setCards] = useState<WebCard[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [opening, setOpening] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => setCards(read<WebCard[]>(key)), [key]);
+  useEffect(() => {
+    const hit = read<WebCard[]>(key);
+    setCards(hit);
+    // Opened from "Something new": start right away.
+    if (bare && !hit) find();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 
   async function find() {
     setBusy(true);
@@ -87,9 +93,15 @@ export function NewRecipes({ storeNames, maxPrep, picked, onPick, onUnpick }: { 
   }
 
   return (
-    <section className="mt-8">
-      <h3 className="recipe-title px-1 text-[22px] font-semibold">New recipes to try</h3>
-      <p className="px-1 text-[13px] text-muted">From trusted recipe sites, for {storeNames.join(" and ")}</p>
+    <section className={bare ? "mt-4" : "mt-8"}>
+      {bare ? (
+        <h4 className="menu-label px-1 text-muted">New recipes</h4>
+      ) : (
+        <>
+          <h3 className="recipe-title px-1 text-[22px] font-semibold">New recipes to try</h3>
+          <p className="px-1 text-[13px] text-muted">From trusted recipe sites, for {storeNames.join(" and ")}</p>
+        </>
+      )}
       {!cards ? (
         <button onClick={find} disabled={busy} className="card mt-3 flex h-14 w-full items-center justify-center text-[16px] font-semibold text-accent disabled:opacity-60">
           {busy ? "Searching recipe sites… about 20 seconds" : "Find new recipes"}
@@ -127,12 +139,17 @@ export function NewRecipes({ storeNames, maxPrep, picked, onPick, onUnpick }: { 
 }
 
 /** Quick ideas: dinners built from products we buy at these stores (marked Idea until cooked). */
-export function QuickIdeas({ request, storeNames, picked, onPick, onUnpick }: { request: Record<string, unknown>; storeNames: string[]; picked: string[]; onPick: (p: PickedDraft) => void; onUnpick: (key: string) => void }) {
+export function QuickIdeas({ request, storeNames, picked, onPick, onUnpick, bare = false }: { request: Record<string, unknown>; storeNames: string[]; picked: string[]; onPick: (p: PickedDraft) => void; onUnpick: (key: string) => void; bare?: boolean }) {
   const key = `cb:trip-ideas:${today()}:${storeNames.join("+")}`;
   const [ideas, setIdeas] = useState<{ title: string; draft: RecipeDraft }[] | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  useEffect(() => setIdeas(read(key)), [key]);
+  useEffect(() => {
+    const hit = read<{ title: string; draft: RecipeDraft }[]>(key);
+    setIdeas(hit);
+    if (bare && !hit) suggest();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [key]);
 
   async function suggest() {
     setBusy(true);
@@ -153,9 +170,15 @@ export function QuickIdeas({ request, storeNames, picked, onPick, onUnpick }: { 
   }
 
   return (
-    <section className="mt-8">
-      <h3 className="recipe-title px-1 text-[22px] font-semibold">Quick ideas</h3>
-      <p className="px-1 text-[13px] text-muted">Simple dinners from what you buy at {storeNames.join(" and ")}, marked Idea until you’ve made them</p>
+    <section className={bare ? "mt-4" : "mt-8"}>
+      {bare ? (
+        <h4 className="menu-label px-1 text-muted">Quick ideas</h4>
+      ) : (
+        <>
+          <h3 className="recipe-title px-1 text-[22px] font-semibold">Quick ideas</h3>
+          <p className="px-1 text-[13px] text-muted">Simple dinners from what you buy at {storeNames.join(" and ")}, marked Idea until you’ve made them</p>
+        </>
+      )}
       {!ideas ? (
         <button onClick={suggest} disabled={busy} className="card mt-3 flex h-14 w-full items-center justify-center text-[16px] font-semibold text-accent disabled:opacity-60">
           {busy ? "Thinking…" : "Suggest quick ideas"}
