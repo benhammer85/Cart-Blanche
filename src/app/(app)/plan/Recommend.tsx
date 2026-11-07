@@ -23,8 +23,10 @@ type R = PlanRecipe & { steps?: { text: string }[] };
  * there first, then the usual planner picks (Loved, kid-friendly, not made lately).
  */
 export function Recommend({
-  recipes, household, storeIds, mealTypes, maxPrep, picked, onToggle, onFocusStore,
+  recipes, household, storeIds, mealTypes, maxPrep, picked, onToggle, onFocusStore, have = [],
 }: {
+  /** "I have…": ingredients to use up; recipes using more of them rank first */
+  have?: string[];
   recipes: R[];
   household: HouseholdData;
   storeIds: string[];
@@ -56,6 +58,7 @@ export function Recommend({
     () => makeFitContext({ categories: household.categories, rules: household.rules, ingredients: new Map<string, IngredientInfo>(household.ingredients.map((i) => [i.name_norm, i])), synonyms: household.synonyms }),
     [household],
   );
+  const haveTerms = useMemo(() => have.map((h) => h.toLowerCase().trim().replace(/(es|s)$/, "")).filter((h) => h.length > 2), [have]);
   const special = useMemo(() => new Map(recipes.map((r) => [r.id, onlyAtStores(r.recipe_ingredients.map((i) => i.name_norm), ctx)])), [recipes, ctx]);
   const stylesOf = useMemo(() => new Map(recipes.map((r) => [r.id, cookingStyles(r.title, r.tags, r.steps ?? [])])), [recipes]);
 
@@ -82,11 +85,14 @@ export function Recommend({
         const unknownTime = maxPrep != null && r.prep_min == null;
         // Recipes built around something only this store sells are what a trip there is for.
         const signature = (special.get(r.id) ?? []).some((x) => shownIds.includes(x.storeId)) ? 150 : 0;
-        return { r, fit, rank: Math.round(fitShare(fit) * 10) * 100 + score + signature - (unknownTime ? 50 : 0) };
+        // "I have…": every ingredient it uses counts more than store fit.
+        const uses = haveTerms.filter((h) => names.some((n) => n.includes(h) || h.includes(n)));
+        return { r, fit, uses, rank: uses.length * 1200 + Math.round(fitShare(fit) * 10) * 100 + score + signature - (unknownTime ? 50 : 0) };
       })
+      .filter((x) => !haveTerms.length || x.uses.length > 0)
       .sort((a, b) => b.rank - a.rank);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [recipes, focus, storeIds, mealTypes, maxPrep, kidsOnly, lovedOnly, styles, ctx, household, seed, stylesOf, special]);
+  }, [recipes, focus, storeIds, mealTypes, maxPrep, kidsOnly, lovedOnly, styles, ctx, household, seed, stylesOf, special, haveTerms.join("|")]);
 
   /** Pick a random dinner from the best matches that isn't picked yet. */
   function surprise() {
@@ -136,7 +142,7 @@ export function Recommend({
         />
       )}
       <div className="mb-3 px-1">
-        <h2 className="recipe-title text-[22px] font-semibold">Suggested dinners</h2>
+        <h2 className="recipe-title text-[22px] font-semibold">Your recipes</h2>
         <div className="flex items-center justify-between gap-3">
           <p className="truncate text-[13px] text-muted">Best for {storeNames.length > 2 ? "your stores" : storeNames.join(" & ")}</p>
           <div className="-mr-2 flex shrink-0 items-center">
@@ -151,35 +157,25 @@ export function Recommend({
       </div>
       <div className="no-scrollbar -mx-4 mb-2 flex gap-2 overflow-x-auto px-4 pb-1">
         <Chip active={filterCount > 0} onClick={() => setFiltering(true)}>
-          <span className="flex items-center gap-1.5"><IconSliders /> {filterCount ? `Filter · ${filterCount}` : "Filter"}</span>
+          <span className="flex items-center gap-1.5"><IconSliders /> {styles.length ? `Filter · ${styles.length}` : "Filter"}</span>
         </Chip>
-        <Chip active={!focus} onClick={() => setFocus(null)}>Your stores</Chip>
-        {allStores.map((st) => (
-          <Chip key={st.id} active={focus === st.id} onClick={() => {
-            const next = focus === st.id ? null : st.id;
-            setFocus(next);
-            if (next && !storeIds.includes(next)) onFocusStore?.(next);
-          }}>
-            <span className="flex items-center gap-1.5"><StoreBadge name={st.name} size={18} />{st.name}</span>
-          </Chip>
-        ))}
+        <Chip active={lovedOnly} onClick={() => setLovedOnly(!lovedOnly)}>Loved</Chip>
+        <Chip active={kidsOnly} onClick={() => setKidsOnly(!kidsOnly)}>Kid-friendly</Chip>
       </div>
-      <Sheet open={filtering} onClose={() => setFiltering(false)} title="Filter">
+      <Sheet open={filtering} onClose={() => setFiltering(false)} title="Cooking style">
         <div className="flex flex-wrap gap-2">
-          <Chip active={lovedOnly} onClick={() => setLovedOnly(!lovedOnly)}>Loved</Chip>
-          <Chip active={kidsOnly} onClick={() => setKidsOnly(!kidsOnly)}>Kid-friendly</Chip>
           {COOKING_STYLES.map((st) => (
             <Chip key={st} active={styles.includes(st)} onClick={() => setStyles(styles.includes(st) ? styles.filter((x) => x !== st) : [...styles, st])}>{st}</Chip>
           ))}
         </div>
         <div className="mt-5 flex gap-2">
-          <Button variant="secondary" className="flex-1" onClick={() => { setLovedOnly(false); setKidsOnly(false); setStyles([]); }}>Clear</Button>
+          <Button variant="secondary" className="flex-1" onClick={() => setStyles([])}>Clear</Button>
           <Button className="flex-1" onClick={() => setFiltering(false)}>Show {ranked.length}</Button>
         </div>
       </Sheet>
-      {seed != null && !ranked.length && <p className="px-1 py-6 text-center text-[15px] text-muted">No recipes match those filters.</p>}
+      {seed != null && !ranked.length && <p className="px-1 py-6 text-center text-[15px] text-muted">{haveTerms.length ? "None of your recipes use those. Try fewer ingredients." : "No recipes match those filters."}</p>}
       <ul className="mt-3 grid grid-cols-2 gap-3">
-        {ranked.slice(0, limit).map(({ r, fit }) => {
+        {ranked.slice(0, limit).map(({ r, fit, uses }) => {
           const on = picked.includes(r.id);
           return (
             <li key={r.id} id={`rec-${r.id}`} className={cx(flash === r.id && "animate-pulse")}>
@@ -200,6 +196,7 @@ export function Recommend({
                   {r.prep_min != null && (<><IconClock /> {r.prep_min} min · </>)}
                   {r.kid_friendly ? "kid-friendly" : (stylesOf.get(r.id) ?? [])[0] ?? lastMadeShort(r.times_made, r.last_made_at)}
                 </p>
+                {uses.length > 0 && <p className="truncate px-0.5 text-[12px] font-semibold text-ok">Uses {uses.join(", ")}</p>}
                 <FitBadge fit={fit} />
               </button>
             </li>

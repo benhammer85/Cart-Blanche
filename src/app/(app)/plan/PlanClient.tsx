@@ -14,6 +14,8 @@ import { useMembership } from "@/components/AppShell";
 import { RecipeImage } from "@/components/RecipeImage";
 import { AddStoreSheet } from "@/components/AddStoreSheet";
 import { Recommend } from "./Recommend";
+import { StorePicker } from "./StorePicker";
+import { NewRecipes, QuickIdeas, type PickedDraft } from "./NewPicks";
 import { planMeals, pickKidMeals, rng, swapMeal, type PlannerRecipe, type PlanParams } from "@/lib/planner/planner";
 import { buildShoppingList, portionsFor, type DraftListItem, type PlannedMealForList } from "@/lib/list/buildList";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -77,6 +79,13 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
   const [p, setP] = useState<PlannerDefaults>(() => ({ ...household.plannerDefaults, ...(repeat?.params ?? {}), storeIds: repeat?.store_ids?.length ? repeat.store_ids : household.plannerDefaults.storeIds }));
   const [useUp, setUseUp] = useState<string[]>([]);
   const [pinnedIds, setPinnedIds] = useState<string[]>([]);
+  // New recipes from sites and quick ideas picked on this trip (not in our library yet).
+  const [pickedDrafts, setPickedDrafts] = useState<PickedDraft[]>([]);
+  const chosenCount = pinnedIds.length + pickedDrafts.length;
+  const pickDraft = (d: PickedDraft) => setPickedDrafts((cur) => (cur.some((x) => x.key === d.key) ? cur : [...cur, d]));
+  const unpickDraft = (key: string) => setPickedDrafts((cur) => cur.filter((x) => x.key !== key));
+  const draftSlots = (): Slot[] =>
+    pickedDrafts.map((d) => ({ key: uid(), recipeId: null, draft: d.draft, title: d.title, locked: true, reason: d.kind === "idea" ? "not cooked yet" : "new recipe", kid: null, skipIds: [] }));
   const [servingsOverride, setServingsOverride] = useState<number | null>(null);
   const [useAi, setUseAi] = useState(false);
   const [ai, setAi] = useState<{ enabled: boolean; requestsToday: number }>({ enabled: false, requestsToday: 0 });
@@ -195,7 +204,7 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
       .map((id) => byId.get(id))
       .filter(Boolean)
       .map((r) => ({ key: uid(), recipeId: r!.id, draft: null, title: r!.title, locked: true, reason: "picked", kid: null, skipIds: [] }));
-    setSlots(assignKids(picked));
+    setSlots(assignKids([...picked, ...draftSlots()]));
     setNote(null);
     setSuggestions([]);
     setStep("plan");
@@ -206,7 +215,8 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
     setSuggestions([]);
     const newSeed = Date.now();
     setSeed(newSeed);
-    const locked = slots.filter((s) => s.locked);
+    const drafts = draftSlots();
+    const locked = [...slots.filter((s) => s.locked && !drafts.some((d) => d.title === s.title)), ...drafts];
     const lockedIds = locked.map((s) => s.recipeId).filter(Boolean) as string[];
     const freeCount = Math.max(0, p.mealCount - locked.length);
 
@@ -377,6 +387,22 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
       for (const it of ((prev?.meal_plan_items ?? []) as { id: string; made_at: string | null }[]).filter((x) => !x.made_at)) {
         await db.rpc("mark_meal_made", { p_item_id: it.id, p_made: true });
       }
+      // New recipes and ideas we're cooking this week join our recipes (so they
+      // open in cook mode and count in history). Ideas keep their Idea tag.
+      const weekSlots: Slot[] = [];
+      for (const s of slots) {
+        if (s.recipeId || !s.draft) {
+          weekSlots.push(s);
+          continue;
+        }
+        try {
+          const id = await saveRecipe(db, me.householdId, s.draft);
+          weekSlots.push({ ...s, recipeId: id });
+        } catch {
+          weekSlots.push(s); // already saved, or offline: keep it as a one-off
+        }
+      }
+
       // 1. Save the plan (history)
       const { data: plan, error: pe } = await db
         .from("meal_plans")
@@ -384,7 +410,7 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
         .select("id")
         .single();
       if (pe) throw pe;
-      const planItems = slots.flatMap((s, i) => {
+      const planItems = weekSlots.flatMap((s, i) => {
         const kf = isKidFriendly(s);
         const rows = [{
           household_id: me.householdId, plan_id: plan.id, position: i * 2, recipe_id: s.recipeId, ai_recipe: s.recipeId ? null : s.draft,
@@ -528,20 +554,20 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
         {step === "params" && (
           <>
             {current && current.items.length > 0 && <h2 className="recipe-title mt-8 px-1 text-[24px] font-semibold">Plan next week</h2>}
-            <Section title="Stores">
-              <div className="flex flex-wrap gap-2">
-                {stores.map((s) => (
-                  <Chip key={s.id} active={p.storeIds.includes(s.id)} onClick={() => setP({ ...p, storeIds: toggleIn(p.storeIds, s.id) })}>
-                    <span className="flex items-center gap-1.5"><StoreBadge name={s.name} size={20} />{s.name}</span>
-                  </Chip>
-                ))}
-                <button onClick={() => setAddingStore(true)} className="grid h-9 w-9 place-items-center rounded-full bg-card text-lg text-accent ring-1 ring-line" aria-label="Add a store">
-                  <IconPlus />
-                </button>
-              </div>
-            </Section>
+            <h2 className="menu-label mt-6 mb-2 px-1 text-muted">1 · Where are you going?</h2>
+            <StorePicker stores={stores} selected={p.storeIds} onToggle={(id) => setP({ ...p, storeIds: toggleIn(p.storeIds, id) })} onAdd={() => setAddingStore(true)} />
+
+            {p.storeIds.length > 0 && (
+            <>
+            <h2 className="menu-label mt-8 mb-2 px-1 text-muted">2 · Pick your dinners</h2>
+            <div className="card px-4 py-3">
+              <p className="text-[15px] font-semibold">I have…</p>
+              <p className="mb-2 text-[13px] text-muted">Ingredients to use up. Recipes that use them come first.</p>
+              <FreeChips values={useUp} onChange={setUseUp} placeholder="Ingredient" />
+            </div>
 
             <Recommend
+              have={useUp}
               recipes={recipes}
               household={household}
               storeIds={orderedStoreIds}
@@ -549,11 +575,23 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
               maxPrep={p.maxPrep}
               picked={pinnedIds}
               onToggle={(id) => setPinnedIds((cur) => (cur.includes(id) ? cur.filter((x) => x !== id) : [...cur, id]))}
-              onFocusStore={(id) => setP((cur) => (cur.storeIds.includes(id) ? cur : { ...cur, storeIds: [...cur.storeIds, id] }))}
             />
 
-            {!pinnedIds.length && (
-              <Button size="lg" className="mt-6 w-full" disabled={!p.storeIds.length || !!busy} onClick={() => planIt()}>
+            <NewRecipes storeNames={orderedStoreIds.map((id) => stores.find((x) => x.id === id)?.name ?? "")} maxPrep={p.maxPrep} picked={pickedDrafts.map((d) => d.key)} onPick={pickDraft} onUnpick={unpickDraft} />
+            {ai.enabled && (
+              <QuickIdeas
+                request={{ mealTypes: p.mealTypes, maxPrep: p.maxPrep, includeTags: [], excludeTags: p.excludeTags, excludeIngredients: p.excludeIngredients, useUp, variety: p.variety, storeIds: p.storeIds }}
+                storeNames={orderedStoreIds.map((id) => stores.find((x) => x.id === id)?.name ?? "")}
+                picked={pickedDrafts.map((d) => d.key)}
+                onPick={pickDraft}
+                onUnpick={unpickDraft}
+              />
+            )}
+            </>
+            )}
+
+            {!chosenCount && p.storeIds.length > 0 && (
+              <Button size="lg" className="mt-8 w-full" disabled={!p.storeIds.length || !!busy} onClick={() => planIt()}>
                 {busy ?? `Plan ${p.mealCount} ${p.mealTypes.length === 1 && p.mealTypes[0] === "dinner" ? "dinners" : "meals"} for me`}
               </Button>
             )}
@@ -634,9 +672,6 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
               <FreeChips values={p.excludeIngredients} onChange={(v) => setP({ ...p, excludeIngredients: v })} placeholder="Ingredient" />
               {household.avoidTerms.length > 0 && <p className="mt-2 px-1 text-[13px] text-muted">Always avoided: {household.avoidTerms.join(", ")}</p>}
             </Section>
-            <Section title="Use up what we have">
-              <FreeChips values={useUp} onChange={setUseUp} placeholder="Ingredient" />
-            </Section>
             <Section title="Pinned meals" action={<button className="text-[15px] text-accent" onClick={() => setPicker({ mode: "pin", index: -1 })}>Add</button>}>
               <div className="flex flex-wrap gap-2">
                 {pinnedIds.map((id) => (
@@ -648,21 +683,21 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
               <Button variant="secondary" className="mt-6 w-full" onClick={saveDefaults}>Save these as our usual settings</Button>
             </details>
             {!p.storeIds.length && <p className="mt-2 text-center text-[13px] text-muted">Pick at least one store.</p>}
-            {pinnedIds.length > 0 && (
+            {chosenCount > 0 && (
               <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+64px)] z-30 px-4">
                 <div className="card mx-auto max-w-xl p-3 shadow-xl">
                   <p className="px-1 pb-2 text-[14px]">
-                    <span className="font-semibold">{pinnedIds.length} of {Math.max(p.mealCount, pinnedIds.length)} dinners chosen.</span>{" "}
-                    <span className="text-muted">{pinnedIds.length < p.mealCount ? "Tap more, or let the app fill the rest." : "Ready to plan."}</span>
+                    <span className="font-semibold">{chosenCount} of {Math.max(p.mealCount, chosenCount)} dinners chosen.</span>{" "}
+                    <span className="text-muted">{chosenCount < p.mealCount ? "Pick more, or let the app fill the rest." : "Ready to plan."}</span>
                   </p>
                   <div className="flex gap-2">
-                    {pinnedIds.length < p.mealCount ? (
+                    {chosenCount < p.mealCount ? (
                       <>
                         <Button variant="secondary" className="flex-1 whitespace-nowrap" disabled={!!busy} onClick={useJustPicked}>
-                          Plan just {pinnedIds.length === 1 ? "this one" : `these ${pinnedIds.length}`}
+                          Plan just {chosenCount === 1 ? "this one" : `these ${chosenCount}`}
                         </Button>
                         <Button className="flex-1 whitespace-nowrap" disabled={!!busy || !p.storeIds.length} onClick={() => planIt()}>
-                          {busy ?? `Choose ${p.mealCount - pinnedIds.length} more`}
+                          {busy ?? `Choose ${p.mealCount - chosenCount} more`}
                         </Button>
                       </>
                     ) : (
@@ -672,7 +707,7 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
                 </div>
               </div>
             )}
-            {pinnedIds.length > 0 && <div className="h-36" />}
+            {chosenCount > 0 && <div className="h-36" />}
           </>
         )}
 

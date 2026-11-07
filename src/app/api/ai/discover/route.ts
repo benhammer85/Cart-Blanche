@@ -32,7 +32,13 @@ export async function POST(request: NextRequest) {
   if (!ai || !member) return NextResponse.json({ ok: false, error: "Discover needs the Gemini key." });
   const body = (await request.json().catch(() => ({}))) as DiscoverFilters;
   // Only take the filters the page sends; store details are looked up here.
-  const filters: DiscoverFilters = { store: body.store ?? null, maxMinutes: body.maxMinutes ?? null, kidFriendly: !!body.kidFriendly, style: body.style ?? null };
+  const filters: DiscoverFilters = {
+    store: body.store ?? null,
+    stores: Array.isArray(body.stores) ? body.stores.filter((s): s is string => typeof s === "string").slice(0, 5) : undefined,
+    maxMinutes: body.maxMinutes ?? null,
+    kidFriendly: !!body.kidFriendly,
+    style: body.style ?? null,
+  };
 
   const [{ data: recipes }, { data: people }, { data: settings }, { data: syn }, { data: members }] = await Promise.all([
     db.from("recipes").select("title, tags, main_protein, kid_friendly, times_made, source_url, is_kid_meal").eq("archived", false),
@@ -54,7 +60,18 @@ export async function POST(request: NextRequest) {
     (settings?.bonus_tags as string[] | undefined) ?? [],
   );
   filters.kitchen = kitchenSummary((settings?.planner_defaults as { kitchen?: string[] } | null)?.kitchen);
-  if (filters.store) {
+  if (filters.stores?.length) {
+    filters.storeDetails = {};
+    for (const name of filters.stores) {
+      const { data: st } = await db.from("stores").select("*").eq("name", name).eq("archived", false).maybeSingle();
+      if (!st) continue;
+      const { data: only } = await db.from("ingredients").select("name_norm").eq("learned_store_id", st.id).eq("only_at", true).limit(20);
+      filters.storeDetails[name] = {
+        notes: typeof st.notes === "string" && st.notes.trim() ? scrub(st.notes.trim()) : null,
+        only: ((only ?? []) as { name_norm: string }[]).map((o) => o.name_norm),
+      };
+    }
+  } else if (filters.store) {
     const { data: st } = await db.from("stores").select("*").eq("name", filters.store).eq("archived", false).maybeSingle();
     if (st) {
       filters.storeNotes = typeof st.notes === "string" && st.notes.trim() ? scrub(st.notes.trim()) : null;

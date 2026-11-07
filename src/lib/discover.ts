@@ -105,6 +105,10 @@ export const BLOCKED_SITES = [
 
 export interface DiscoverFilters {
   store?: string | null;
+  /** several stores on one trip (takes the place of store) */
+  stores?: string[];
+  /** filled in on the server, per store: our notes and only-here products */
+  storeDetails?: Record<string, { notes: string | null; only: string[] }>;
   maxMinutes?: number | null;
   kidFriendly?: boolean;
   style?: string | null;
@@ -117,12 +121,25 @@ export interface DiscoverFilters {
   kitchen?: string | null;
 }
 
+/** What to ask for, store by store: easy to shop at these stores, their signature products. */
+function tripLines(f: DiscoverFilters): string[] {
+  const stores = f.stores?.length ? f.stores : f.store ? [f.store] : [];
+  if (!stores.length) return [];
+  const key = (s: string) => s.toLowerCase().replace(/[^a-z]/g, "");
+  const out = [`ingredients that are easy to buy at ${stores.join(" and ")} in one trip`];
+  for (const s of stores) {
+    const d = f.storeDetails?.[s] ?? (s === f.store ? { notes: f.storeNotes ?? null, only: f.storeOnly ?? [] } : { notes: null, only: [] });
+    out.push(storeStyle(s) ?? "");
+    if (STORE_SITES[key(s)]) out.push(`good sources for ${s} recipes: ${STORE_SITES[key(s)].join(", ")}`);
+    if (d.notes) out.push(`what we usually buy at ${s}: ${d.notes.slice(0, 300)}`);
+    if (d.only.length) out.push(`recipes that use products we get only at ${s} are especially welcome: ${d.only.slice(0, 12).join(", ")}`);
+  }
+  return out.filter(Boolean);
+}
+
 export function buildDiscoverPrompt(p: TasteProfile, f: DiscoverFilters, kidAges: number[], avoid: string[], have: string[]): string {
   const wants = [
-    f.store && `ingredients that are easy to buy at ${f.store} in one trip. ${storeStyle(f.store)}`,
-    f.store && STORE_SITES[f.store.toLowerCase().replace(/[^a-z]/g, "")] && `good sources for ${f.store} recipes: ${STORE_SITES[f.store.toLowerCase().replace(/[^a-z]/g, "")].join(", ")}`,
-    f.store && f.storeNotes && `what we usually buy at ${f.store}: ${f.storeNotes.slice(0, 400)}`,
-    f.store && f.storeOnly?.length && `recipes that use products we get only at ${f.store} are especially welcome: ${f.storeOnly.slice(0, 15).join(", ")}`,
+    ...tripLines(f),
     f.maxMinutes && `about ${f.maxMinutes} minutes of hands-on time or less`,
     f.kidFriendly && `kid-friendly for children aged ${kidAges.join(" and ") || "4 to 6"}`,
     f.style && `cooked as ${f.style}`,

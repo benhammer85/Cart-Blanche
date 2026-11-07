@@ -5,7 +5,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Button, Chip, Empty, Section, Segmented, Sheet } from "@/components/ui";
-import { Discover } from "./Discover";
 import { RecipeImage } from "@/components/RecipeImage";
 import { StoreBadge } from "@/components/StoreBadge";
 import { fitShare, makeFitContext, onlyAtStores, storeFit, type StoreFit } from "@/lib/trip";
@@ -57,7 +56,6 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
   const [adding, setAdding] = useState(false);
   const [filtering, setFiltering] = useState(false);
   const [noPhoto, setNoPhoto] = useState(false);
-  const [view, setView] = useState<"ours" | "discover">("ours");
   // "Best at <store>": sort by how much of each recipe that store usually carries.
   const [storeFocus, setStoreFocus] = useState<string | null>(null);
   const stores = household.stores.filter((s) => !s.archived);
@@ -131,13 +129,6 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
         </div>
       </header>
 
-      <div className="mt-3 px-4">
-        <Segmented value={view} onChange={setView} options={[{ value: "ours", label: "Our recipes" }, { value: "discover", label: "Discover" }]} />
-      </div>
-      {view === "discover" ? (
-        <Discover stores={stores} />
-      ) : (
-      <>
       {recipes.length > 0 && recipes.filter((r) => !r.is_kid_meal).length < 10 && (
         <Link href="/recipes/import" className="card mx-4 mt-3 flex items-center gap-3 p-4">
           <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-accent-soft text-2xl text-accent"><IconUpload /></span>
@@ -202,9 +193,6 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
       )}
       {recipes.length > 0 && !shown.length && <Empty title="Nothing matches">Try a different search or filter.</Empty>}
 
-      </>
-      )}
-
       <Sheet open={filtering} onClose={() => setFiltering(false)} title="Filter">
         <Section title="Best at a store" className="mt-0">
           <div className="flex flex-wrap gap-2">
@@ -234,6 +222,7 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
             { href: "/recipes/new?mode=url", icon: <IconLink />, label: "From a link", detail: "Paste a recipe website address" },
             { href: "/recipes/new?mode=scan", icon: <IconCamera />, label: "Scan a cookbook page", detail: "A photo of a page, or a screenshot" },
             { href: "/recipes/new?mode=paste", icon: <IconPencil />, label: "Type or paste", detail: "A recipe page you copied, or your own" },
+            { href: "/recipes/browse", icon: <IconSearch />, label: "Browse recipe sites", detail: "Trusted sites and Reddit, tick what you want" },
             { href: "/recipes/import", icon: <IconUpload />, label: "Import from Crouton", detail: ".crumb files or a .zip" },
             { href: "/recipes/share-setup", icon: <IconShare />, label: "Share button setup", detail: "Save from any site in Safari, in one tap" },
           ].map((o) => (
