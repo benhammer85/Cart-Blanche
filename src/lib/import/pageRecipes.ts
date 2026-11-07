@@ -89,7 +89,11 @@ export function roundupLinks(html: string, pageUrl: string): PageLink[] {
   let s = html;
   const h1 = s.search(/<h1\b/i);
   if (h1 > 0) s = s.slice(h1);
-  const stop = s.search(/id="(comments|respond)"|class="[^"]*\b(entry-related|post-navigation|related-posts|jp-relatedposts|yarpp|entry-footer|comments-area)\b|>\s*(you may also like|similar posts|more (easy )?[a-z ]*recipes|related (posts|recipes)|reader favorites)\s*</i);
+  // A category page lists many posts (each with its own footer); a single post ends at its footer.
+  const isArchive = (s.match(/<article\b/gi) ?? []).length > 2;
+  const stop = isArchive
+    ? s.search(/id="(comments|respond)"|class="[^"]*\b(site-footer|pagination)\b/i)
+    : s.search(/id="(comments|respond)"|class="[^"]*\b(entry-related|post-navigation|related-posts|jp-relatedposts|yarpp|entry-footer|comments-area)\b|>\s*(you may also like|similar posts|more (easy )?[a-z ]*recipes|related (posts|recipes)|reader favorites)\s*</i);
   if (stop > 0) s = s.slice(0, stop);
   s = s.replace(/<(script|style|noscript|nav|aside|footer|form)\b[^>]*>[\s\S]*?<\/\1>/gi, " ");
   const page = new URL(pageUrl);
@@ -111,6 +115,9 @@ export function roundupLinks(html: string, pageUrl: string): PageLink[] {
       const key = href.origin + href.pathname.replace(/\/$/, "");
       if (!/^https?:$/.test(href.protocol) || key === self || NOT_RECIPES.test(href.href) || seen.has(key) || href.pathname.length < 4) continue;
       let title = decode(got.text.replace(/<[^>]+>/g, " ")).replace(/^\s*\d+[.)]\s*/, "").replace(/\s+/g, " ").trim();
+      // Cards often wrap the title with a price, count or description: keep the title.
+      title = title.split(/\s+(?:\$\d|\d+\s*$)/)[0].trim();
+      if (title.length > 90) title = slugTitle(href);
       // Links inside a sentence ("the frozen food department", "here") read better as the page's own name.
       if (title.length < 4 || /^[a-z]/.test(title) || /^(here|click here|recipe|get the recipe|this recipe|link|read more|full recipe)$/i.test(title)) title = slugTitle(href);
       if (title.length < 4) continue;
@@ -173,9 +180,13 @@ export interface AiPageRecipe {
   notes?: string | null;
 }
 
-export function buildPagePrompt(text: string, site: string): string {
-  return `This web page from ${site} has several recipes written out on it.
-Return every complete recipe (one with its own ingredient list). Skip intros, shopping lists, FAQs, ads and links to other recipes.
+export function buildPagePrompt(text: string, site: string, discussion = false): string {
+  const intro = discussion
+    ? `This is a discussion thread from ${site}. People share dinner ideas in the post and comments.
+Return each complete recipe someone wrote out (with ingredients and at least rough steps). If a comment gives a clear store-bought combination (for example "frozen dumplings + chili crisp + bok choy, pan-fry"), you may return it as a short recipe with those ingredients. Name each one plainly. Skip jokes, questions and opinions.`
+    : `This web page from ${site} has several recipes written out on it.
+Return every complete recipe (one with its own ingredient list). Skip intros, shopping lists, FAQs, ads and links to other recipes.`;
+  return `${intro}
 Keep ingredient lines exactly as a shopper would read them, with amounts. Steps: one string per step, without numbering or the bold lead-in words.
 "notes": the author's short tip for that recipe, if any, in one or two sentences.
 Reply with JSON only:

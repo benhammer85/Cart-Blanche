@@ -87,12 +87,14 @@ async function read(html: string, finalUrl: string, db: Awaited<ReturnType<typeo
 
   // 2. Recipes written out on the page without recipe data.
   const text = mainText(html);
-  if (inlineRecipeCount(text) >= 1) {
+  // Discussion threads (Reddit) have recipes in posts and comments, not in headings.
+  const discussion = /(^|\.)reddit\.com$/i.test(new URL(finalUrl).hostname);
+  if (inlineRecipeCount(text) >= 1 || discussion) {
     const ai = getAiProvider();
     if (ai) {
       try {
         await db.rpc("bump_ai_usage");
-        const raw = await ai.generateJson(buildPagePrompt(text, site), { temperature: 0.1 });
+        const raw = await ai.generateJson(buildPagePrompt(text, site, discussion), { temperature: 0.1 });
         const parsed = aiSchema.safeParse(JSON.parse(raw.replace(/^```(?:json)?|```$/g, "").trim()));
         if (parsed.success && parsed.data.recipes.length) {
           const recipes = parsed.data.recipes.map((r) => draftFromAi(r, finalUrl, site, photoAfterHeading(html, r.title, finalUrl), synonyms));
@@ -104,6 +106,8 @@ async function read(html: string, finalUrl: string, db: Awaited<ReturnType<typeo
       }
     }
   }
+
+  if (discussion) return NextResponse.json({ error: "No complete recipe in that thread. Look for a post or comment that lists ingredients." }, { status: 422 });
 
   // 3. A roundup of links to recipes.
   const links = roundupLinks(html, finalUrl);

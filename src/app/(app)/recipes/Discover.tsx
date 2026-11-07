@@ -8,6 +8,7 @@ import { useMembership } from "@/components/AppShell";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { saveRecipe } from "@/lib/data/recipes";
 import { PLAN_INBOX_KEY } from "@/lib/planInbox";
+import { BROWSE_SOURCES, REDDIT_SOURCES } from "@/lib/discover";
 import type { RecipeDraft } from "@/lib/types";
 
 interface Card {
@@ -145,6 +146,7 @@ export function Discover({ stores }: { stores: { id: string; name: string }[] })
         {busy ? "Searching recipe sites…" : cards ? "Find different recipes" : "Find recipes"}
       </Button>
       {busy && <p className="mt-2 text-center text-[13px] text-muted">This takes about 20 seconds.</p>}
+      {!cards && !busy && <Sources store={store} />}
       {error && <p className="card mt-3 p-3 text-[14px] text-[#d23c3c]">{error}</p>}
 
       {cards && (
@@ -179,6 +181,38 @@ export function Discover({ stores }: { stores: { id: string; name: string }[] })
           ))}
         </ul>
       )}
+      {cards && <Sources store={store} />}
+    </div>
+  );
+}
+
+/** Trusted sites to browse (pick from a list) and Reddit threads to read in Safari. */
+function Sources({ store }: { store: string | null }) {
+  const key = store?.toLowerCase().replace(/[^a-z]/g, "") ?? "";
+  const first = <T extends { store?: string }>(xs: T[]) => [...xs.filter((x) => x.store === key), ...xs.filter((x) => !x.store), ...xs.filter((x) => x.store && x.store !== key)];
+  return (
+    <div className="pb-6">
+      <h3 className="menu-label mt-7 px-1 text-muted">Browse</h3>
+      <div className="no-scrollbar -mx-4 mt-2 flex gap-3 overflow-x-auto px-4 pb-1">
+        {first(BROWSE_SOURCES).map((s) => (
+          <a key={s.url} href={`/recipes/new?mode=url&url=${encodeURIComponent(s.url)}`} className="card w-[156px] shrink-0 p-3.5 active:scale-[0.98]">
+            <span className="menu-label block text-accent">{s.site}</span>
+            <span className="recipe-title mt-1 block text-[16px] leading-snug font-semibold">{s.label}</span>
+          </a>
+        ))}
+      </div>
+      <h3 className="menu-label mt-6 px-1 text-muted">From Reddit</h3>
+      <ul className="card mt-2 divide-y divide-line overflow-hidden">
+        {first(REDDIT_SOURCES).map((r) => (
+          <li key={r.url}>
+            <a href={r.url} target="_blank" rel="noopener noreferrer" className="flex min-h-[48px] items-center justify-between px-4 text-[15px] active:bg-soft">
+              {r.label}
+              <span className="text-[13px] text-muted">Open ↗</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+      <p className="mt-2 px-1 text-[13px] text-muted">Found a good one? In Safari, tap Share, then Send page to Cart Blanche.</p>
     </div>
   );
 }

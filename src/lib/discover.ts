@@ -168,3 +168,25 @@ export function isBlockedSite(url: string): boolean {
     return true;
   }
 }
+
+/** Pages that list recipes the app can read: open one and tick what you want. */
+export const BROWSE_SOURCES: { label: string; site: string; url: string; store?: string }[] = [
+  { label: "Trader Joe’s recipes", site: "Get On My Plate", url: "https://getonmyplate.com/category/trader-joes-recipes/", store: "traderjoes" },
+  { label: "A week of Trader Joe’s dinners", site: "Gimme Some Oven", url: "https://www.gimmesomeoven.com/trader-joes-dinners/", store: "traderjoes" },
+  { label: "30-minute meals", site: "Gimme Some Oven", url: "https://www.gimmesomeoven.com/popular/30-minute-meals/" },
+  { label: "Instant Pot", site: "Gimme Some Oven", url: "https://www.gimmesomeoven.com/cooking-method/instant-pot-pressure-cooker/" },
+  { label: "Kid favorites", site: "Smitten Kitchen", url: "https://smittenkitchen.com/recipes/kid-favorites/?format=photo" },
+  { label: "Kid-friendly", site: "Gimme Some Oven", url: "https://www.gimmesomeoven.com/popular/kid-friendly/" },
+  { label: "Main dishes", site: "Budget Bytes", url: "https://www.budgetbytes.com/category/recipes/main-dish/" },
+  { label: "Main dishes", site: "RecipeTin Eats", url: "https://www.recipetineats.com/category/main-dishes/" },
+];
+
+/** Reddit threads to browse in Safari; send a good one with the share shortcut. */
+export const REDDIT_SOURCES: { label: string; url: string; store?: string }[] = [
+  { label: "r/traderjoes · dinner ideas", url: "https://www.reddit.com/r/traderjoes/search/?q=dinner&restrict_sr=1&sort=top&t=year", store: "traderjoes" },
+  { label: "r/Costco · meals", url: "https://www.reddit.com/r/Costco/search/?q=dinner%20recipe&restrict_sr=1&sort=top&t=year", store: "costco" },
+  { label: "r/EatCheapAndHealthy", url: "https://www.reddit.com/r/EatCheapAndHealthy/top/?t=month" },
+  { label: "r/instantpot", url: "https://www.reddit.com/r/instantpot/top/?t=month" },
+  { label: "r/MealPrepSunday", url: "https://www.reddit.com/r/MealPrepSunday/top/?t=month" },
+  { label: "r/Cooking · weeknight", url: "https://www.reddit.com/r/Cooking/search/?q=weeknight%20dinner&restrict_sr=1&sort=top&t=year" },
+];
