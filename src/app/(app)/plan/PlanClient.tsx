@@ -9,6 +9,7 @@ import Link from "next/link";
 import { Button, Chip, Section, Segmented, Sheet, Stepper, TextField, Toast, Toggle, cx } from "@/components/ui";
 import { IconGrip, IconChevron, IconCheck, IconLock, IconSwap, IconPlus } from "@/components/icons";
 import { useMembership } from "@/components/AppShell";
+import { RecipeImage } from "@/components/RecipeImage";
 import { AddStoreSheet } from "@/components/AddStoreSheet";
 import { Recommend } from "./Recommend";
 import { planMeals, pickKidMeals, rng, swapMeal, type PlannerRecipe, type PlanParams } from "@/lib/planner/planner";
@@ -680,14 +681,16 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
                   const r = s.recipeId ? byId.get(s.recipeId) : null;
                   const prep = r?.prep_min ?? s.draft?.prepMin;
                   return (
-                    <div className="bg-card py-4">
+                    <div className="bg-card pt-4 pb-1">
                       <div className="flex items-baseline justify-between gap-3">
                         <span className={cx("menu-label", i === 0 ? "text-accent" : "text-muted")}>{dayLabel(i)}</span>
-                        <span className="-my-2 -mr-1">{handle}</span>
+                        <span className="-my-3 -mr-2 grid h-11 w-11 place-items-center">{handle}</span>
                       </div>
+                      <div className="flex gap-3">
+                      <div className="min-w-0 flex-1">
                       <p className="recipe-title mt-1 text-[20px] leading-snug font-semibold">
                         {s.title}
-                        {s.locked && <IconLock className="ml-1.5 inline align-baseline text-[13px] text-muted" />}
+                        {s.locked && <IconLock className="ml-1.5 inline align-baseline text-[13px] text-muted" aria-label="Locked" />}
                       </p>
                       {s.kid ? (
                         <button onClick={() => cycleKid(i)} className="recipe-title mt-0.5 text-left text-[15px] text-muted italic">
@@ -699,12 +702,19 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
                       <p className="mt-1 text-[13px] text-muted">
                         {[prep != null && `${prep} min`, s.draft && !s.recipeId ? "new recipe" : s.reason].filter(Boolean).join(" · ")}
                       </p>
-                      <div className="mt-2 flex gap-4 text-[14px]">
-                        <button className="text-accent disabled:opacity-40" onClick={() => swap(i)} disabled={s.locked || !!busy}>Swap</button>
-                        <button className="text-accent" onClick={() => setPicker({ mode: "replace", index: i })}>Change</button>
-                        <button className="text-muted" onClick={() => setSlots(slots.map((x, j) => (j === i ? { ...x, locked: !x.locked } : x)))}>{s.locked ? "Unlock" : "Keep"}</button>
-                        <button className="text-muted" onClick={() => setSlots(slots.filter((_, j) => j !== i))}>Remove</button>
-                        {s.draft && !s.recipeId && <button className="ml-auto font-semibold text-accent" onClick={() => saveDraftToFavorites(i)}>Save</button>}
+                      </div>
+                      {r?.image_path && (
+                        <div className="mt-1 h-16 w-16 shrink-0 overflow-hidden rounded-lg">
+                          <RecipeImage src={r.image_path} title={s.title} />
+                        </div>
+                      )}
+                      </div>
+                      <div className="-mx-2 mt-1 flex text-[15px]">
+                        <button className="h-11 px-2 text-accent disabled:opacity-40" onClick={() => swap(i)} disabled={s.locked || !!busy}>Swap</button>
+                        <button className="h-11 px-2 text-accent" onClick={() => setPicker({ mode: "replace", index: i })}>Change</button>
+                        <button className="h-11 px-2 text-muted" aria-pressed={s.locked} onClick={() => setSlots(slots.map((x, j) => (j === i ? { ...x, locked: !x.locked } : x)))}>{s.locked ? "Unlock" : "Lock"}</button>
+                        <button className="h-11 px-2 text-muted" onClick={() => setSlots(slots.filter((_, j) => j !== i))}>Remove</button>
+                        {s.draft && !s.recipeId && <button className="ml-auto h-11 px-2 font-semibold text-accent" onClick={() => saveDraftToFavorites(i)}>Save</button>}
                       </div>
                     </div>
                   );

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
-import { StoreBadge, storeBadgeStyle } from "@/components/StoreBadge";
+import { StoreBadge } from "@/components/StoreBadge";
 import { TonightCard } from "@/components/TonightCard";
 import { useMembership } from "@/components/AppShell";
 import { useSharedList } from "@/lib/offline/useSharedList";
@@ -312,7 +312,7 @@ export function ListClient() {
       <header className="pt-safe sticky top-0 z-30 bg-bg/90 px-5 pb-3 backdrop-blur-xl">
         <div className="flex h-11 items-center justify-end gap-2">
           <SyncBadge status={status} pending={pending} />
-          <button onClick={() => setMenu(true)} className="h-8 rounded-full bg-soft px-3 text-[14px] font-medium">
+          <button onClick={() => setMenu(true)} className="-mr-2 h-11 px-2 text-[16px] text-accent">
             More
           </button>
         </div>
@@ -321,17 +321,22 @@ export function ListClient() {
           {loaded ? (totalTodo ? `${totalTodo} to get${totalCart ? ` · ${totalCart} in cart` : ""}` : totalCart ? `All done · ${totalCart} in cart` : "No items") : "Loading…"}
         </p>
         {groups.length > 1 && (
-          <div className="no-scrollbar -mx-5 mt-3 flex gap-2 overflow-x-auto px-5">
-            <Chip active={!shown} onClick={() => setViewStore("all")}>All</Chip>
-            {groups.map((g) => (
-              <Chip key={g.storeId} active={shown === g.storeId} onClick={() => setViewStore(g.storeId)}>
-                <span className="flex items-center gap-1.5">
-                  <StoreBadge name={g.name} size={18} />
-                  {g.name}
-                  <span className={cx("text-[12px]", shown === g.storeId ? "opacity-70" : "text-muted")}>{g.todoCount || "✓"}</span>
-                </span>
-              </Chip>
-            ))}
+          <div className="no-scrollbar -mx-5 mt-2 flex gap-5 overflow-x-auto border-b hairline px-5" role="tablist">
+            {[{ id: null as string | null, name: "All", count: totalTodo }, ...groups.map((g) => ({ id: g.storeId as string | null, name: g.name, count: g.todoCount }))].map((t) => {
+              const on = (shown ?? null) === t.id;
+              return (
+                <button
+                  key={t.id ?? "all"}
+                  role="tab"
+                  aria-selected={on}
+                  onClick={() => setViewStore(t.id ?? "all")}
+                  className={cx("-mb-px flex h-11 shrink-0 items-center gap-1.5 border-b-2 text-[15px] transition-colors", on ? "border-accent font-semibold text-ink" : "border-transparent text-muted")}
+                >
+                  {t.name}
+                  <span className="text-[13px] font-normal text-muted tabular-nums">{t.count || "✓"}</span>
+                </button>
+              );
+            })}
           </div>
         )}
       </header>
@@ -345,22 +350,20 @@ export function ListClient() {
         )}
 
         {groups.filter((g) => !shown || g.storeId === shown).map((g) => (
-          <section key={g.storeId} className="card mt-4 overflow-hidden" style={{ borderTop: `4px solid ${storeBadgeStyle(g.name).bg}` }}>
-            <div className="flex items-center justify-between px-4 pt-4 pb-1">
-              <div className="flex items-center gap-3">
-                <StoreBadge name={g.name} size={36} />
+          <section key={g.storeId} className="card mt-4 overflow-hidden">
+            <div className="flex items-start justify-between px-4 pt-4 pb-1">
+              <div className="flex items-start gap-2.5">
+                <span className="mt-1"><StoreBadge name={g.name} size={24} /></span>
                 <div>
-                  <h2 className="text-[20px] font-bold leading-tight">{g.name}</h2>
-                  {g.location && <p className="text-[13px] text-muted">{g.location}</p>}
+                  <h2 className="recipe-title text-[22px] leading-tight font-semibold">{g.name}</h2>
+                  {g.location && <p className="menu-label mt-0.5 text-muted">{g.location}</p>}
                 </div>
               </div>
-              <div className="flex items-center gap-2">
-                {g.todoCount ? (
-                  <span className="rounded-full bg-accent-soft px-2.5 py-0.5 text-[13px] font-semibold text-accent">{g.todoCount}</span>
-                ) : (
-                  <span className="grid h-6 w-6 place-items-center rounded-full bg-ok text-white"><IconCheck strokeWidth={3} /></span>
-                )}
-                <button onClick={() => copy(storeText(g), g.name)} className="grid h-9 w-9 place-items-center rounded-full bg-soft text-lg text-muted" aria-label={`Copy ${g.name} list`}>
+              <div className="-mr-2 flex items-center gap-1">
+                <span className={cx("text-[14px] tabular-nums", g.todoCount ? "text-muted" : "font-semibold text-ok")}>
+                  {g.todoCount ? `${g.todoCount} left` : "Done"}
+                </span>
+                <button onClick={() => copy(storeText(g), g.name)} className="grid h-11 w-11 place-items-center text-lg text-muted" aria-label={`Copy ${g.name} list`}>
                   <IconCopy />
                 </button>
               </div>
@@ -368,7 +371,7 @@ export function ListClient() {
 
             {g.sections.map((s) => (
               <div key={s.id}>
-                <div className="px-4 pt-3 pb-1 text-[12px] font-semibold uppercase tracking-wide text-muted">{s.name}</div>
+                <div className="menu-label px-4 pt-4 pb-1 text-muted">{s.name}</div>
                 <ul>
                   {s.items.map((i) => (
                     <ItemRow key={i.id} item={i} onToggle={() => toggle(i)} onEdit={() => setEditing(i)} />
@@ -409,7 +412,7 @@ export function ListClient() {
           {!text.trim() && quickAdd.length > 0 && listId && (
             <div className="no-scrollbar mb-2 flex gap-2 overflow-x-auto px-1">
               {quickAdd.map((n) => (
-                <button key={n} onClick={() => addQuick(n)} className="h-8 shrink-0 rounded-full bg-card px-3 text-[13px] font-medium shadow-sm ring-1 ring-line active:scale-95">
+                <button key={n} onClick={() => addQuick(n)} className="h-9 shrink-0 rounded-full px-3 text-[14px] text-ink ring-1 ring-line active:scale-95 active:bg-soft">
                   + {n}
                 </button>
               ))}
@@ -444,7 +447,7 @@ export function ListClient() {
               }}
               autoCorrect="on"
               spellCheck
-              placeholder="Add something, like 2 lb chicken thighs"
+              placeholder="Add an item"
               className="h-11 flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted"
               enterKeyHint="done"
               autoCapitalize="sentences"
