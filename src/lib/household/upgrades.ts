@@ -1,5 +1,6 @@
 import "server-only";
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { inferMealTypes } from "../infer";
 
 // One-time additions to households created before a feature existed.
 // Each step checks whether it already ran, so this is safe to call often;
@@ -27,6 +28,7 @@ export async function applyUpgrades(db: SupabaseClient, householdId: string): Pr
     await addHMart(db, householdId);
     await addLovedBonus(db, householdId);
     await addEverydayItems(db, householdId);
+    await reclassifyMeals(db, householdId);
     done.add(householdId);
   } catch (e) {
     console.error("household upgrade failed", e);
@@ -107,4 +109,22 @@ async function addHMart(db: SupabaseClient, household_id: string) {
   for (const name_norm of ASIAN_GROCERIES) {
     await db.from("ingredients").upsert({ household_id, name_norm, category_id: cat!.id }, { onConflict: "household_id,name_norm" });
   }
+}
+
+/**
+ * Recipes imported before the stricter dinner check (dressings, drinks, plain
+ * rice, sides) were all marked "dinner". Re-sort them once; a marker in the
+ * settings keeps later manual changes from being undone.
+ */
+async function reclassifyMeals(db: SupabaseClient, household_id: string) {
+  const { data: settings } = await db.from("household_settings").select("planner_defaults").eq("household_id", household_id).maybeSingle();
+  const defaults = (settings?.planner_defaults ?? {}) as Record<string, unknown>;
+  if (!settings || defaults._mealTypesV2) return;
+  const { data: recipes } = await db.from("recipes").select("id, title, tags, meal_types").eq("household_id", household_id);
+  for (const r of (recipes ?? []) as { id: string; title: string; tags: string[]; meal_types: string[] }[]) {
+    if (r.meal_types.length !== 1 || r.meal_types[0] !== "dinner") continue;
+    const next = inferMealTypes(r.title, r.tags ?? []);
+    if (!next.includes("dinner")) await db.from("recipes").update({ meal_types: next }).eq("id", r.id);
+  }
+  await db.from("household_settings").update({ planner_defaults: { ...defaults, _mealTypesV2: true } }).eq("household_id", household_id);
 }

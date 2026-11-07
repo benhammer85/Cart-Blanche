@@ -31,13 +31,13 @@ export function RecipeEditor({ draft, onChange, synonyms = {} }: { draft: Recipe
 
       <Section title="Meal">
         <div className="flex flex-wrap gap-2">
-          {(["dinner", "lunch", "breakfast", "side", "dessert"] as MealType[]).map((m) => (
+          {(["dinner", "lunch", "breakfast", "side", "dessert", "basic"] as MealType[]).map((m) => (
             <Chip
               key={m}
               active={draft.mealTypes.includes(m)}
               onClick={() => set({ mealTypes: draft.mealTypes.includes(m) ? draft.mealTypes.filter((x) => x !== m) : [...draft.mealTypes, m] })}
             >
-              {m[0].toUpperCase() + m.slice(1)}
+              {m === "basic" ? "Sauce, drink or basic" : m[0].toUpperCase() + m.slice(1)}
             </Chip>
           ))}
         </div>
