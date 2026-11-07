@@ -89,10 +89,10 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
   // New recipes from sites and quick ideas picked on this trip (not in our library yet).
   const [pickedDrafts, setPickedDrafts] = useState<PickedDraft[]>([]);
   const chosenCount = pinnedIds.length + pickedDrafts.length;
-  const pickDraft = (d: PickedDraft) => setPickedDrafts((cur) => (cur.some((x) => x.key === d.key) ? cur : [...cur, d]));
+  const pickDraft = (d: PickedDraft) => setPickedDrafts((cur) => (cur.some((x) => x.key === d.key) ? cur.map((x) => (x.key === d.key ? d : x)) : [...cur, d]));
   const unpickDraft = (key: string) => setPickedDrafts((cur) => cur.filter((x) => x.key !== key));
   const draftSlots = (): Slot[] =>
-    pickedDrafts.map((d) => ({ key: uid(), recipeId: null, draft: d.draft, title: d.title, locked: true, reason: d.kind === "idea" ? "not cooked yet" : "new recipe", kid: null, skipIds: [] }));
+    pickedDrafts.map((d) => ({ key: uid(), recipeId: d.recipeId ?? null, draft: d.draft, title: d.title, locked: true, reason: d.kind === "idea" ? "not cooked yet" : "new recipe", kid: null, skipIds: [] }));
   const [ai, setAi] = useState<{ enabled: boolean; requestsToday: number }>({ enabled: false, requestsToday: 0 });
   const [slots, setSlots] = useState<Slot[]>([]);
   const [step, setStep] = useState<Step>("params");
@@ -272,7 +272,7 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
     for (const s of slots) {
       const kf = isKidFriendly(s);
       const servings = round((kf || !p.kidMeals ? everyone : portions.adults) * extra, 2);
-      if (s.recipeId) {
+      if (s.recipeId && byId.has(s.recipeId)) {
         const r = byId.get(s.recipeId)!;
         out.push({ key: s.key, title: r.title, recipeId: r.id, baseServings: Number(r.servings), servings, ingredients: r.recipe_ingredients });
       } else if (s.draft) {
