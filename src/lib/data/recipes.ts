@@ -60,15 +60,19 @@ export function base64ToBlob(b64: string, type = "image/jpeg"): Blob {
   return new Blob([bytes], { type });
 }
 
-export async function uploadRecipeImage(db: SupabaseClient, householdId: string, recipeId: string, image: Blob): Promise<string | null> {
+/**
+ * Upload a recipe photo (resized) and return its public URL.
+ * Always a new file name, so no "overwrite" permission is needed.
+ */
+export async function uploadRecipeImage(db: SupabaseClient, householdId: string, recipeId: string, image: Blob): Promise<{ url: string | null; error: string | null }> {
   try {
     const small = await resizeImage(image);
-    const path = `${householdId}/${recipeId}-${Date.now()}.jpg`;
-    const { error } = await db.storage.from("recipe-images").upload(path, small, { contentType: "image/jpeg", upsert: true });
-    if (error) return null;
-    return db.storage.from("recipe-images").getPublicUrl(path).data.publicUrl;
-  } catch {
-    return null;
+    const path = `${householdId}/${recipeId}-${Date.now()}-${Math.random().toString(36).slice(2, 7)}.jpg`;
+    const { error } = await db.storage.from("recipe-images").upload(path, small, { contentType: "image/jpeg", upsert: false, cacheControl: "31536000" });
+    if (error) return { url: null, error: error.message };
+    return { url: db.storage.from("recipe-images").getPublicUrl(path).data.publicUrl, error: null };
+  } catch (e) {
+    return { url: null, error: e instanceof Error ? e.message : "Couldn’t read the photo" };
   }
 }
 
@@ -77,7 +81,7 @@ export async function saveRecipe(
   db: SupabaseClient,
   householdId: string,
   d: RecipeDraft,
-  opts: { id?: string; image?: Blob | null; userId?: string } = {},
+  opts: { id?: string; image?: Blob | null; userId?: string; onPhotoError?: (message: string) => void } = {},
 ): Promise<string> {
   const row = {
     household_id: householdId,
@@ -129,8 +133,9 @@ export async function saveRecipe(
     if (error) throw error;
   }
   if (opts.image) {
-    const url = await uploadRecipeImage(db, householdId, id!, opts.image);
+    const { url, error } = await uploadRecipeImage(db, householdId, id!, opts.image);
     if (url) await db.from("recipes").update({ image_path: url }).eq("id", id);
+    else if (error) opts.onPhotoError?.(error);
   }
   return id!;
 }

@@ -399,11 +399,11 @@ export function ListClient() {
             )}
           </section>
         ))}
-        <div className="h-40" />
+        <div className="h-52" />
       </div>
 
       {/* Add bar */}
-      <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+58px)] z-30 bg-gradient-to-t from-bg via-bg/95 to-transparent px-3 pt-4 pb-2">
+      <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+58px)] z-30 border-t hairline bg-bg px-3 pt-2 pb-2">
         <div className="mx-auto max-w-xl">
           {!text.trim() && quickAdd.length > 0 && listId && (
             <div className="no-scrollbar mb-2 flex gap-2 overflow-x-auto px-1">

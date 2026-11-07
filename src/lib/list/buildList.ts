@@ -130,7 +130,8 @@ export function buildShoppingList(meals: PlannedMealForList[], opts: BuildListOp
     const assignment = assignStore(g.nameNorm, ctx);
     const info = lookupIngredient(g.nameNorm, ctx);
     const store = opts.stores.find((s) => s.id === assignment.storeId);
-    const note = store?.is_bulk ? (info?.pack_size ? `Bulk pack: ${info.pack_size}` : "Bulk pack") : null;
+    // Only mention bulk packs when we know the size (otherwise it's just noise).
+    const note = store?.is_bulk && info?.pack_size ? `Bulk pack: ${info.pack_size}` : null;
     items.push({
       key: g.nameNorm,
       name: g.name,

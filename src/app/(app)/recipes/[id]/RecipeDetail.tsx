@@ -183,8 +183,8 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
           </div>
         )}
         <div className="mt-8 grid grid-cols-2 gap-2">
-          <Button variant="secondary" onClick={sendToCrouton}><IconShare /> Send to Crouton</Button>
-          <Button variant="secondary" onClick={copyAsText}><IconCopy /> Copy as text</Button>
+          <Button variant="secondary" className="whitespace-nowrap" onClick={sendToCrouton}><IconShare /> To Crouton</Button>
+          <Button variant="secondary" className="whitespace-nowrap" onClick={copyAsText}><IconCopy /> Copy text</Button>
         </div>
         {msg && <p className="mt-2 px-1 text-[13px] text-muted">{msg}</p>}
         <Button variant="danger" className="mt-3 w-full" onClick={archive}>Delete recipe</Button>

@@ -99,10 +99,13 @@ export function Recommend({
 
   return (
     <section className="mt-6">
-      <div className="mb-2 flex items-end justify-between px-1">
-        <h2 className="text-[20px] font-bold">Good for {storeNames.length > 2 ? "this trip" : storeNames.join(" & ")}</h2>
-        <button onClick={surprise} disabled={!ranked.length} className="flex h-9 items-center gap-1.5 rounded-full bg-accent-soft px-3.5 text-[14px] font-semibold text-accent disabled:opacity-40">
-          <IconDice /> Surprise me
+      <div className="mb-3 flex items-start justify-between gap-3 px-1">
+        <div>
+          <h2 className="text-[20px] font-bold">Suggested dinners</h2>
+          <p className="text-[13px] text-muted">Best matches for {storeNames.length > 2 ? "these stores" : storeNames.join(" & ")}. Tap to choose.</p>
+        </div>
+        <button onClick={surprise} disabled={!ranked.length} className="flex h-9 shrink-0 items-center gap-1.5 rounded-full bg-accent-soft px-3.5 text-[14px] font-semibold whitespace-nowrap text-accent disabled:opacity-40">
+          <IconDice /> Pick one
         </button>
       </div>
       <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
@@ -144,7 +147,8 @@ export function Recommend({
   );
 }
 
+/** Only speak up when the trip won't cover everything. */
 function FitBadge({ fit }: { fit: StoreFit }) {
-  if (!fit.missing.length) return <p className="px-0.5 text-[12px] font-semibold text-ok">All from these stores</p>;
+  if (!fit.missing.length) return null;
   return <p className="truncate px-0.5 text-[12px] text-warn">Also need: {fit.missing.slice(0, 2).join(", ")}{fit.missing.length > 2 ? ` +${fit.missing.length - 2}` : ""}</p>;
 }

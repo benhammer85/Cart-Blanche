@@ -326,7 +326,7 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
           ?? household.sections.find((s) => s.store_id === storeId && s.name === "Other");
         const store = stores.find((s) => s.id === storeId);
         const info = household.ingredients.find((x) => x.name_norm === i.nameNorm);
-        return { ...i, storeId, sectionId: sec?.id ?? null, moved: true, note: store?.is_bulk ? (info?.pack_size ? `Bulk pack: ${info.pack_size}` : "Bulk pack") : null };
+        return { ...i, storeId, sectionId: sec?.id ?? null, moved: true, note: store?.is_bulk && info?.pack_size ? `Bulk pack: ${info.pack_size}` : null };
       }),
     );
   }
@@ -484,10 +484,12 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
                   ))}
                 </div>
               </div>
+              {ai.enabled && (
+              <>
               <label className="flex items-center justify-between px-4 py-3">
                 <span>
                   <span className="flex items-center gap-1.5 text-[17px]"><IconSparkle className="text-accent" /> Add new ideas</span>
-                  <span className="block text-[13px] text-muted">{ai.enabled ? "Mix in dishes we haven’t tried" : "Not set up yet"}</span>
+                  <span className="block text-[13px] text-muted">Mix in dishes we haven’t tried</span>
                 </span>
                 <Toggle checked={useAi} onChange={setUseAi} />
               </label>
@@ -497,10 +499,12 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
                   <input type="range" min={0} max={100} step={10} value={p.aiFavoritesPct} onChange={(e) => setP({ ...p, aiFavoritesPct: +e.target.value })} className="w-full accent-[var(--accent)]" />
                 </div>
               )}
+              </>
+              )}
             </div>
 
-            <Section title="Max active prep">
-              <Segmented value={p.maxPrep} onChange={(v) => setP({ ...p, maxPrep: v })} options={[{ value: 15, label: "15" }, { value: 30, label: "30" }, { value: 45, label: "45" }, { value: null, label: "60+" }]} />
+            <Section title="Hands-on time">
+              <Segmented value={p.maxPrep} onChange={(v) => setP({ ...p, maxPrep: v })} options={[{ value: 15, label: "15 min" }, { value: 30, label: "30 min" }, { value: 45, label: "45 min" }, { value: null, label: "Any" }]} />
             </Section>
 
             <Recommend
@@ -577,19 +581,29 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
             {!p.storeIds.length && <p className="mt-2 text-center text-[13px] text-muted">Pick at least one store.</p>}
             {pinnedIds.length > 0 && (
               <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+64px)] z-30 px-4">
-                <div className="mx-auto flex max-w-xl gap-2">
-                  <Button size="lg" variant="secondary" className="flex-1 shadow-lg" disabled={!!busy} onClick={useJustPicked}>
-                    Just these {pinnedIds.length}
-                  </Button>
-                  {pinnedIds.length < p.mealCount && (
-                    <Button size="lg" className="flex-1 shadow-lg" disabled={!!busy || !p.storeIds.length} onClick={() => planIt()}>
-                      {busy ?? `Fill to ${p.mealCount}`}
-                    </Button>
-                  )}
+                <div className="card mx-auto max-w-xl p-3 shadow-xl">
+                  <p className="px-1 pb-2 text-[14px]">
+                    <span className="font-semibold">{pinnedIds.length} of {Math.max(p.mealCount, pinnedIds.length)} dinners chosen.</span>{" "}
+                    <span className="text-muted">{pinnedIds.length < p.mealCount ? "Tap more, or let the app fill the rest." : "Ready to plan."}</span>
+                  </p>
+                  <div className="flex gap-2">
+                    {pinnedIds.length < p.mealCount ? (
+                      <>
+                        <Button variant="secondary" className="flex-1 whitespace-nowrap" disabled={!!busy} onClick={useJustPicked}>
+                          Plan just {pinnedIds.length === 1 ? "this one" : `these ${pinnedIds.length}`}
+                        </Button>
+                        <Button className="flex-1 whitespace-nowrap" disabled={!!busy || !p.storeIds.length} onClick={() => planIt()}>
+                          {busy ?? `Choose ${p.mealCount - pinnedIds.length} more`}
+                        </Button>
+                      </>
+                    ) : (
+                      <Button className="flex-1" disabled={!!busy} onClick={useJustPicked}>Continue</Button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
-            {pinnedIds.length > 0 && <div className="h-20" />}
+            {pinnedIds.length > 0 && <div className="h-36" />}
           </>
         )}
 
@@ -730,7 +744,7 @@ function PreviewRow({ item, storeIds, stores, onHave, onMove }: { item: PreviewI
         <div className={cx("min-w-0 flex-1", item.have && "opacity-40")}>
           <p className="text-[16px]">
             {item.name} <span className="text-[14px] text-muted">{item.displayQty}</span>
-            {item.unknown && <span className="ml-1.5 rounded bg-soft px-1.5 text-[11px] text-muted">new item</span>}
+            
           </p>
           <p className="truncate text-[12px] text-muted">{[item.note, item.wasOut && "we’re out", `for ${item.sourceMeals.map((m) => m.title).join(", ")}`].filter(Boolean).join(" · ")}</p>
         </div>

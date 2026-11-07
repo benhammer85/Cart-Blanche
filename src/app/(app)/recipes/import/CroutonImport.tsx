@@ -6,7 +6,7 @@ import { Button, PageHeader, Sheet, Toggle, cx } from "@/components/ui";
 import { IconCheck, IconUpload } from "@/components/icons";
 import { RecipeEditor } from "@/components/RecipeEditor";
 import { LOVED, parseCrumb } from "@/lib/import/crouton";
-import { base64ToBlob, isDuplicate, loadExistingKeys, saveRecipe } from "@/lib/data/recipes";
+import { base64ToBlob, isDuplicate, loadExistingKeys, saveRecipe, uploadRecipeImage } from "@/lib/data/recipes";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { useMembership } from "@/components/AppShell";
 import type { RecipeDraft } from "@/lib/types";
@@ -35,6 +35,8 @@ export function CroutonImport() {
   const [editing, setEditing] = useState<Item | null>(null);
   const [importing, setImporting] = useState(false);
   const [drag, setDrag] = useState(false);
+  const [photoErrors, setPhotoErrors] = useState<{ count: number; message: string | null }>({ count: 0, message: null });
+  const [repaired, setRepaired] = useState(0);
 
   async function handleFiles(files: FileList | File[]) {
     const db = supabaseBrowser();
@@ -96,13 +98,29 @@ export function CroutonImport() {
 
   async function importAll() {
     setImporting(true);
+    setPhotoErrors({ count: 0, message: null });
+    setRepaired(0);
     const db = supabaseBrowser();
-    // Already-saved recipes that are 4–5 stars in Crouton get the Loved tag added.
+    const photoFailed = (message: string) => setPhotoErrors((p) => ({ count: p.count + 1, message: p.message ?? message }));
+    // Recipes imported before: add the Loved tag and any missing photo.
     for (const item of items) {
-      if (!item.duplicate || !item.draft.externalId || !item.draft.tags.includes(LOVED)) continue;
-      const { data: existing } = await db.from("recipes").select("id, tags").eq("external_id", item.draft.externalId).maybeSingle();
-      if (existing && !(existing.tags as string[]).includes(LOVED)) {
+      if (!item.duplicate || !item.draft.externalId) continue;
+      const { data: existing } = await db.from("recipes").select("id, tags, image_path").eq("external_id", item.draft.externalId).maybeSingle();
+      if (!existing) continue;
+      if (item.draft.tags.includes(LOVED) && !(existing.tags as string[]).includes(LOVED)) {
         await db.from("recipes").update({ tags: [...(existing.tags as string[]), LOVED] }).eq("id", existing.id);
+      }
+      if (!existing.image_path) {
+        setItems((cur) => cur.map((i) => (i.key === item.key ? { ...i, status: "saving" } : i)));
+        const full = parseCrumb(JSON.parse(await item.read()));
+        if (full.imageBase64) {
+          const { url, error } = await uploadRecipeImage(db, householdId, existing.id, base64ToBlob(full.imageBase64));
+          if (url) {
+            await db.from("recipes").update({ image_path: url }).eq("id", existing.id);
+            setRepaired((n) => n + 1);
+          } else if (error) photoFailed(error);
+        }
+        setItems((cur) => cur.map((i) => (i.key === item.key ? { ...i, status: "ready" } : i)));
       }
     }
     for (const item of items) {
@@ -112,7 +130,7 @@ export function CroutonImport() {
         // Re-read to get the full-size photo; it's resized to ~1000px before upload.
         const full = parseCrumb(JSON.parse(await item.read()));
         const image = full.imageBase64 ? base64ToBlob(full.imageBase64) : null;
-        await saveRecipe(db, householdId, item.draft, { image });
+        await saveRecipe(db, householdId, item.draft, { image, onPhotoError: photoFailed });
         setItems((cur) => cur.map((i) => (i.key === item.key ? { ...i, status: "saved" } : i)));
       } catch (e) {
         const msg = e instanceof Error ? e.message : "failed";
@@ -192,9 +210,19 @@ export function CroutonImport() {
                 </li>
               ))}
             </ul>
+            {(repaired > 0 || photoErrors.count > 0) && (
+              <div className="card mt-4 p-4 text-[14px]">
+                {repaired > 0 && <p className="text-ok">Added photos to {repaired} recipe{repaired === 1 ? "" : "s"} you’d already imported.</p>}
+                {photoErrors.count > 0 && (
+                  <p className="text-[#d23c3c]">
+                    {photoErrors.count} photo{photoErrors.count === 1 ? "" : "s"} couldn’t be saved: {photoErrors.message}
+                  </p>
+                )}
+              </div>
+            )}
             <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+70px)] mt-4">
-              <Button size="lg" className="w-full shadow-lg" disabled={importing || !toImport} onClick={importAll}>
-                {importing ? "Importing…" : toImport ? `Import ${toImport} recipe${toImport === 1 ? "" : "s"}` : saved ? "All done" : "Nothing selected"}
+              <Button size="lg" className="w-full shadow-lg" disabled={importing || !items.length} onClick={importAll}>
+                {importing ? "Importing…" : toImport ? `Import ${toImport} recipe${toImport === 1 ? "" : "s"}` : saved ? "All done" : "Update existing recipes (photos, Loved)"}
               </Button>
             </div>
           </>

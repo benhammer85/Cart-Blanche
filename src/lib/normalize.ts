@@ -133,7 +133,8 @@ export function normalizeName(text: string, synonyms: Record<string, string> = {
   s = s.replace(/\s+\d+(\.\d+)?\s*(ounces?|oz|grams?|g|pounds?|lbs?|ml)\b.*$/, ""); // "carrots 10 ounces"
   s = s.replace(/^(zest|juice) of (half |one )?(an? )?/, "");
   s = s.replace(descriptorRe, " ").replace(/\s+/g, " ").trim();
-  s = s.replace(/\s*\b(and|with)\s+(tender|fine)\s+stems?\b/g, "").replace(/\s+(leaves|leaf)$/, "");
+  // "cilantro leaves and tender stems" → "cilantro" (but "bay leaf" stays a bay leaf)
+  s = s.replace(/\s*\b(and|with)\s+(tender|fine)\s+stems?\b/g, "").replace(/\b(cilantro|parsley|basil|mint|dill|thyme|sage|tarragon|oregano|rosemary|chervil)\s+(leaves|leaf)$/, "$1");
   for (let i = 0; i < 3; i++) s = s.replace(/^(and|or|with|of|the|a|an|-)\s+/, "").replace(/^-+/, "").trim();
   s = s.replace(/^(packages?|cans?|jars?|bags?|boxes|box|bottles?)\s+(of\s+)?/, "");
   s = s.replace(/\b(and|or|of|the|a|an|with)\s*$/g, "");
