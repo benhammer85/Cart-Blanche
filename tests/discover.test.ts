@@ -1,43 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { buildDiscoverPrompt, buildTasteProfile, isBlockedSite, parseDiscoverAnswer } from "@/lib/discover";
-
-const r = (title: string, extra: Partial<{ tags: string[]; main_protein: string | null; kid_friendly: boolean; times_made: number }> = {}) => ({
-  title, tags: [], main_protein: null, kid_friendly: false, times_made: 0, ...extra,
-});
-
-describe("Discover taste profile", () => {
-  const recipes = [
-    r("Sheet-Pan Bibimbap", { tags: ["Loved"], main_protein: "beef" }),
-    r("Instant Pot Chipotle Chicken", { tags: ["Instant Pot", "Loved"], main_protein: "chicken", kid_friendly: true }),
-    r("Mushroom Carbonara", { tags: ["Loved"] }),
-    r("Takeout-Style Sesame Noodles", { tags: ["Molly Favorites"] }),
-    r("Chicken Chile Verde Pressure Cooker", { tags: ["Asa and Saul Favorites"], main_protein: "chicken" }),
-    r("Some Unflagged Casserole", { times_made: 0 }),
-  ];
-  const p = buildTasteProfile(recipes, ["Molly Favorites", "Asa and Saul Favorites"]);
-
-  test("uses the recipes we flagged in Crouton", () => {
-    expect(p.favorites).toContain("Sheet-Pan Bibimbap");
-    expect(p.favorites).toContain("Takeout-Style Sesame Noodles");
-    expect(p.favorites).not.toContain("Some Unflagged Casserole");
-    expect(p.proteins[0]).toBe("chicken");
-    expect(p.cuisines).toEqual(expect.arrayContaining(["Korean", "Mexican", "Italian", "Chinese"]));
-    expect(p.styles[0]).toBe("Instant Pot / pressure cooker");
-  });
-
-  test("prompt carries the filters and no names", () => {
-    const prompt = buildDiscoverPrompt(p, { store: "Trader Joe's", maxMinutes: 30, kidFriendly: true }, [6, 4], ["cilantro"], ["Beef Kebabs"]);
-    expect(prompt).toContain("easy to buy at Trader Joe's");
-    expect(prompt).toContain("signature products");
-    expect(buildDiscoverPrompt(p, { store: "Costco" }, [], [], [])).toContain("family pack");
-    expect(buildDiscoverPrompt(p, { store: "H Mart" }, [], [], [])).toContain("Korean");
-    expect(prompt).toContain("30 minutes");
-    expect(prompt).toContain("aged 6 and 4");
-    expect(prompt).toContain("Never use: cilantro");
-    expect(prompt).toContain("cooking.nytimes.com");
-    expect(prompt).not.toMatch(/Asa|Saul|Molly|Ben\b/);
-  });
-});
+import { BROWSE_SOURCES, isBlockedSite, parseDiscoverAnswer } from "@/lib/discover";
+import { interleave, sourcesFor } from "@/lib/newRecipes";
 
 describe("Discover answer parsing", () => {
   test("pulls the JSON array out of prose and fences", () => {
@@ -49,4 +12,22 @@ describe("Discover answer parsing", () => {
     expect(isBlockedSite("https://www.traderjoes.com/home/recipes/x")).toBe(true);
     expect(isBlockedSite("https://cooking.nytimes.com/recipes/1")).toBe(false);
   });
+});
+
+describe("new recipes to try", () => {
+  test("store pages come first, then general ones", () => {
+    const urls = sourcesFor(["Trader Joe's", "Costco"], false, () => 0.5);
+    expect(urls.length).toBeGreaterThanOrEqual(3);
+    expect(BROWSE_SOURCES.find((s) => s.url === urls[0])?.store).toBe("traderjoes");
+    const sites = urls.map((u) => BROWSE_SOURCES.find((s) => s.url === u)!.site);
+    expect(new Set(sites).size).toBe(sites.length);
+  });
+  test("no store pages for stores without them", () => {
+    const urls = sourcesFor(["Costco"], true, () => 0.5);
+    expect(urls.every((u) => !BROWSE_SOURCES.find((s) => s.url === u)?.store)).toBe(true);
+  });
+});
+
+test("interleave takes from each list in turn", () => {
+  expect(interleave([[1, 2, 3], [4], [5, 6]])).toEqual([1, 4, 5, 2, 6, 3]);
 });

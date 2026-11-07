@@ -63,7 +63,7 @@ export function NewRecipes({ storeNames, maxPrep, picked, onPick, onUnpick, bare
     setBusy(true);
     setError(null);
     try {
-      const r = await fetch("/api/ai/discover", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ stores: storeNames, maxMinutes: maxPrep }) }).then((x) => x.json());
+      const r = await fetch("/api/new-recipes", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ stores: storeNames, maxMinutes: maxPrep }) }).then((x) => x.json());
       if (!r.ok) setError(r.error ?? "Couldn’t find recipes right now.");
       else {
         setCards(r.cards);
@@ -104,7 +104,7 @@ export function NewRecipes({ storeNames, maxPrep, picked, onPick, onUnpick, bare
       )}
       {!cards ? (
         <button onClick={find} disabled={busy} className="card mt-3 flex h-14 w-full items-center justify-center text-[16px] font-semibold text-accent disabled:opacity-60">
-          {busy ? "Searching recipe sites… about 20 seconds" : "Find new recipes"}
+          {busy ? "Looking through recipe sites…" : "Find new recipes"}
         </button>
       ) : (
         <>

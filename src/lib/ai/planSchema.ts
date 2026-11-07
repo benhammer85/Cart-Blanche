@@ -47,12 +47,14 @@ export interface AiPlanContext {
 }
 
 function confirmedProducts(c: AiPlanContext): string {
-  const rows = (c.storeProducts ?? []).filter((s) => s.notes || s.onlyHere.length || s.buyHere.length);
+  // Only store notes and store-brand items: a list of everything we buy turns
+  // ideas into mash-ups of whatever was on the last receipt.
+  const rows = (c.storeProducts ?? []).filter((s) => s.notes || s.onlyHere.length);
   if (!rows.length) return "Confirmed products: none listed.";
   return (
-    "Confirmed products (what we actually buy at each store):\n" +
+    "Confirmed products (store-brand items we buy):\n" +
     rows
-      .map((s) => `- ${s.store}: ${[s.notes, s.onlyHere.length && `only sold here: ${s.onlyHere.slice(0, 25).join(", ")}`, s.buyHere.length && `we buy here: ${s.buyHere.slice(0, 40).join(", ")}`].filter(Boolean).join("; ")}`)
+      .map((s) => `- ${s.store}: ${[s.notes, s.onlyHere.length && `only sold here: ${s.onlyHere.slice(0, 25).join(", ")}`].filter(Boolean).join("; ")}`)
       .join("\n")
   );
 }
@@ -73,7 +75,9 @@ Max active prep: ${c.maxPrep ? `${c.maxPrep} min` : "any"}.
 ${c.includeTags.length ? `Must include: ${c.includeTags.join(", ")}.\n` : ""}${c.exclude.length ? `Never use: ${c.exclude.join(", ")}.\n` : ""}${c.useUp.length ? `Use up: ${c.useUp.join(", ")}.\n` : ""}${c.variety ? "Variety: no two meals with the same main protein; at most one soup.\n" : ""}${c.pinnedIds.length ? `Must include these favorite ids: ${c.pinnedIds.join(", ")}.\n` : ""}Stores: ${c.stores.join(", ")}. Pantry staples we always have: ${c.staples.slice(0, 40).join(", ")}.
 Avoid repeating these recent meals: ${c.recentTitles.slice(0, 30).join("; ") || "none"}.
 ${c.kitchen ? `${c.kitchen} Only suggest dishes this kitchen can make.\n` : ""}${confirmedProducts(c)}
-New ideas: quick dinners built mostly from what these stores sell, often a shortcut product plus a few fresh things.
+New ideas: real dishes a family would happily make again, the kind any good recipe site has, each with a clear cuisine and a proper name.
+Never combine unrelated convenience foods into one dish, and never build a dinner around kids' snacks or frozen kids' food. Keep it simple and normal: a protein, a vegetable, a starch, and a sauce or seasoning that belong together.
+A shortcut (rotisserie chicken, a jarred sauce, frozen vegetables) is fine where a cook would naturally reach for it, at most one per meal.
 Only name a store-brand or signature product (a specific sauce, frozen item or kit) if it is listed under "Confirmed products". Otherwise use generic ingredients ("teriyaki sauce", "frozen potstickers", "rotisserie chicken"). Never invent or guess product names.
 
 Favorites (id | title | tags | history | prep | ingredients):

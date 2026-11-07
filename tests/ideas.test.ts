@@ -18,7 +18,9 @@ describe("ideas", () => {
     };
     const p = buildPlanPrompt(c);
     expect(p).toContain("only sold here: soyaki");
-    expect(p).toContain("we buy here: mandarin orange chicken");
+    // Everyday purchases stay out, so ideas aren't mash-ups of the last receipt.
+    expect(p).not.toContain("mandarin orange chicken");
+    expect(p).toContain("Never combine unrelated convenience foods");
     expect(p).toContain("Never invent or guess product names");
     expect(buildPlanPrompt({ ...c, storeProducts: [] })).toContain("Confirmed products: none listed.");
   });

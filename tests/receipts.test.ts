@@ -1,7 +1,6 @@
 import { describe, expect, test } from "vitest";
 import { receiptUpdates, suggestFromReceipt } from "@/lib/receipts";
 import { makeFitContext, onlyAtStores, storeFit } from "@/lib/trip";
-import { buildDiscoverPrompt } from "@/lib/discover";
 import type { Category, CategoryStoreRule, IngredientInfo } from "@/lib/types";
 
 const categories: Category[] = [
@@ -64,9 +63,5 @@ describe("only-at items", () => {
   test("recipes that need a store's own products", () => {
     expect(onlyAtStores(["soyaki", "chicken thigh"], ctx)).toEqual([{ storeId: "tj", items: ["soyaki"] }]);
   });
-  test("Discover hears about the store's notes and products", () => {
-    const prompt = buildDiscoverPrompt({ favorites: [], cuisines: [], proteins: [], styles: [] } as never, { store: "Trader Joe's", storeNotes: "frozen dumplings", storeOnly: ["soyaki"] }, [4, 6], [], []);
-    expect(prompt).toContain("frozen dumplings");
-    expect(prompt).toContain("soyaki");
-  });
+
 });
