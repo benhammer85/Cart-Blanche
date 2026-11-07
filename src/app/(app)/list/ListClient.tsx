@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { StoreBadge, storeBadgeStyle } from "@/components/StoreBadge";
 import { TonightCard } from "@/components/TonightCard";
 import { useMembership } from "@/components/AppShell";
@@ -25,6 +25,24 @@ export function ListClient() {
   const [openCart, setOpenCart] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
+  // Which store's list we're looking at ("all" or a store id); remembered on this phone.
+  const [viewStore, setViewStoreState] = useState<string>("all");
+  useEffect(() => {
+    try {
+      const v = localStorage.getItem("cb:listStore");
+      if (v) setViewStoreState(v);
+    } catch {
+      /* ignore */
+    }
+  }, []);
+  const setViewStore = (v: string) => {
+    setViewStoreState(v);
+    try {
+      localStorage.setItem("cb:listStore", v);
+    } catch {
+      /* ignore */
+    }
+  };
 
   const stores = useMemo(() => (household?.stores ?? []).filter((s) => !s.archived), [household]);
   const sections = household?.sections ?? [];
@@ -51,7 +69,9 @@ export function ListClient() {
   const spelled = useMemo(() => (keepSpelling ? { text, corrections: [] } : correctSpelling(text, vocab)), [text, vocab, keepSpelling]);
   const parsed = useMemo(() => (spelled.text.trim() ? parseIngredientLine(spelled.text, household?.synonyms ?? {}) : null), [spelled.text, household]);
   const predicted = useMemo(() => (parsed && assignCtx ? assignStore(parsed.nameNorm, assignCtx) : null), [parsed, assignCtx]);
-  const addStoreId = storeOverride ?? predicted?.storeId ?? stores[0]?.id ?? null;
+  const viewing = viewStore !== "all" && stores.some((s) => s.id === viewStore) ? viewStore : null;
+  // When looking at one store, new items go to that store unless you pick another.
+  const addStoreId = storeOverride ?? viewing ?? predicted?.storeId ?? stores[0]?.id ?? null;
 
   /** A list row from one parsed line, in the chosen store (or the store our rules pick). */
   function makeItem(parsed: ReturnType<typeof parseIngredientLine>, storeId: string | null): ListItem | null {
@@ -185,6 +205,8 @@ export function ListClient() {
   }, [items, stores, sections, listId]);
 
   const totalTodo = groups.reduce((n, g) => n + g.todoCount, 0);
+  // Show one store only if it still has something on the list.
+  const shown = viewing && groups.some((g) => g.storeId === viewing) ? viewing : null;
   const totalCart = groups.reduce((n, g) => n + g.inCart.length, 0);
 
   function storeText(g: (typeof groups)[number]) {
@@ -224,6 +246,20 @@ export function ListClient() {
         <p className="mt-1 text-[15px] text-muted">
           {loaded ? (totalTodo ? `${totalTodo} to get${totalCart ? ` · ${totalCart} in cart` : ""}` : totalCart ? `All done · ${totalCart} in cart` : "Nothing yet") : "Loading…"}
         </p>
+        {groups.length > 1 && (
+          <div className="no-scrollbar -mx-5 mt-3 flex gap-2 overflow-x-auto px-5">
+            <Chip active={!shown} onClick={() => setViewStore("all")}>All</Chip>
+            {groups.map((g) => (
+              <Chip key={g.storeId} active={shown === g.storeId} onClick={() => setViewStore(g.storeId)}>
+                <span className="flex items-center gap-1.5">
+                  <StoreBadge name={g.name} size={18} />
+                  {g.name}
+                  <span className={cx("text-[12px]", shown === g.storeId ? "opacity-70" : "text-muted")}>{g.todoCount || "✓"}</span>
+                </span>
+              </Chip>
+            ))}
+          </div>
+        )}
       </header>
 
       <div className="px-4">
@@ -234,7 +270,7 @@ export function ListClient() {
           </Empty>
         )}
 
-        {groups.map((g) => (
+        {groups.filter((g) => !shown || g.storeId === shown).map((g) => (
           <section key={g.storeId} className="card mt-4 overflow-hidden" style={{ borderTop: `4px solid ${storeBadgeStyle(g.name).bg}` }}>
             <div className="flex items-center justify-between px-4 pt-4 pb-1">
               <div className="flex items-center gap-3">

@@ -17,3 +17,15 @@ export async function supabaseServer() {
     },
   });
 }
+
+/**
+ * The signed-in user from the session's JWT. With Supabase's signing keys this
+ * is verified locally (no round trip to the auth server), which keeps every
+ * tab switch fast.
+ */
+export async function getAuthUser(db?: Awaited<ReturnType<typeof supabaseServer>>): Promise<{ id: string; email: string | null } | null> {
+  const client = db ?? (await supabaseServer());
+  const { data } = await client.auth.getClaims();
+  const c = data?.claims;
+  return c?.sub ? { id: c.sub, email: (c.email as string | undefined) ?? null } : null;
+}

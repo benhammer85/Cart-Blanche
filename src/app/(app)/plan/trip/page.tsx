@@ -1,4 +1,5 @@
-import { supabaseServer } from "@/lib/supabase/server";
+import { getAuthUser, supabaseServer } from "@/lib/supabase/server";
+import { getMembershipFor } from "@/lib/household/ensure";
 import { loadHouseholdData } from "@/lib/data/household";
 import { TripClient } from "./TripClient";
 import type { PlanRecipe } from "../PlanClient";
@@ -8,12 +9,10 @@ export const metadata = { title: "Quick trip · Cart Blanche" };
 export default async function TripPage({ searchParams }: { searchParams: Promise<{ store?: string }> }) {
   const { store } = await searchParams;
   const db = await supabaseServer();
-  const {
-    data: { user },
-  } = await db.auth.getUser();
-  const { data: member } = await db.from("household_members").select("household_id").eq("user_id", user!.id).single();
+  const user = await getAuthUser(db);
+  const member = await getMembershipFor(user!);
   const [household, recipes] = await Promise.all([
-    loadHouseholdData(db, member!.household_id),
+    loadHouseholdData(db, member!.householdId),
     db
       .from("recipes")
       .select("id, title, servings, prep_min, cook_min, steps, image_path, tags, meal_types, main_protein, kid_friendly, is_kid_meal, times_made, last_made_at, recipe_ingredients(qty, qty_max, unit, name, name_norm, raw_text, parsed_ok)")

@@ -1,5 +1,4 @@
 import "server-only";
-import type { User } from "@supabase/supabase-js";
 import { supabaseAdmin } from "../supabase/admin";
 import { isAllowed } from "../env";
 import { parseIngredientLine } from "../ingredientParser";
@@ -28,15 +27,28 @@ function initialsOf(name: string): string {
  * log in creates it (with default stores, rules, staples, kid favorites…);
  * the second joins it. Returns null for non-allowlisted users.
  */
-export async function ensureMembership(user: User): Promise<Membership | null> {
+// Membership never changes once made, so remember it per server instance:
+// tab switches then skip the database lookup entirely.
+const cache = new Map<string, Membership>();
+
+/** Membership for an already signed-in user (cached). */
+export async function getMembershipFor(user: { id: string; email: string | null }): Promise<Membership | null> {
+  return ensureMembership(user);
+}
+
+export async function ensureMembership(user: { id: string; email: string | null }): Promise<Membership | null> {
   const allowed = isAllowed(user.email);
   if (!allowed) return null;
+  const hit = cache.get(user.id);
+  if (hit) return hit;
   const admin = supabaseAdmin();
 
   const { data: existing } = await admin.from("household_members").select("household_id, display_name, initials").eq("user_id", user.id).maybeSingle();
   if (existing) {
     await applyUpgrades(admin, existing.household_id);
-    return { householdId: existing.household_id, displayName: existing.display_name, initials: existing.initials };
+    const m = { householdId: existing.household_id, displayName: existing.display_name, initials: existing.initials };
+    cache.set(user.id, m);
+    return m;
   }
 
   const { data: hh } = await admin.from("households").select("id").order("created_at").limit(1).maybeSingle();

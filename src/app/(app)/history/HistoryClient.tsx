@@ -27,7 +27,7 @@ export function HistoryClient({ plans: initial, stores }: { plans: HistoryPlan[]
 
   return (
     <div>
-      <PageHeader title="History" subtitle="Tick what you cooked so the planner can mix things up." />
+      <PageHeader title="Past weeks" back="/plan" subtitle="Tick what you cooked so the planner can mix things up." />
       <div className="px-4">
         {!plans.length && <Empty icon={<IconClock />} title="No plans yet">Plans you send to the list show up here.</Empty>}
         {plans.map((p) => {

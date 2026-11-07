@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { z } from "zod";
-import { supabaseServer } from "@/lib/supabase/server";
+import { getAuthUser, supabaseServer } from "@/lib/supabase/server";
 import { AiError, getAiProvider } from "@/lib/ai/provider";
 
 // Reads a screenshot of a shopping list (e.g. an Instacart cart) and returns
@@ -19,9 +19,7 @@ Reply with JSON only: {"items":[{"name":"","quantity":""}]}`;
 
 export async function POST(request: NextRequest) {
   const db = await supabaseServer();
-  const {
-    data: { user },
-  } = await db.auth.getUser();
+  const user = await getAuthUser(db);
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
   const ai = getAiProvider();

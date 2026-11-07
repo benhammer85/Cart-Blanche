@@ -1,13 +1,11 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { supabaseServer } from "@/lib/supabase/server";
+import { getAuthUser, supabaseServer } from "@/lib/supabase/server";
 import { recipeFromHtml } from "@/lib/import/jsonld";
 
 // Fetches a recipe page server-side and extracts schema.org Recipe JSON-LD.
 export async function POST(request: NextRequest) {
   const db = await supabaseServer();
-  const {
-    data: { user },
-  } = await db.auth.getUser();
+  const user = await getAuthUser(db);
   if (!user) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
 
   const { url } = (await request.json().catch(() => ({}))) as { url?: string };

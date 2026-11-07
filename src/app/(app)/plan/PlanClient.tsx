@@ -416,11 +416,15 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
           ) : (
             <span />
           )}
-          {ai.enabled && <span className="text-[12px] text-muted">{ai.requestsToday} idea lookups today</span>}
+          {step === "params" ? (
+            <Link href="/history" className="text-[15px] text-accent">Past weeks</Link>
+          ) : (
+            ai.enabled && <span className="text-[12px] text-muted">{ai.requestsToday} idea lookups today</span>
+          )}
         </div>
         <h1 className="large-title">{step === "params" ? "Plan a trip" : step === "plan" ? "This week" : "Shopping list"}</h1>
         <p className="mt-1 text-[15px] text-muted">
-          {step === "params" && "Pick stores and constraints, then plan."}
+          {step === "params" && "Pick the stores, then plan the week."}
           {step === "plan" && `${slots.length} meals · ${orderedStoreIds.map((id) => stores.find((s) => s.id === id)?.name).join(" + ")}`}
           {step === "list" && `${preview.filter((i) => !i.have).length} items · tick what you already have`}
         </p>
@@ -461,6 +465,35 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
                   ))}
                 </div>
               </div>
+              <label className="flex items-center justify-between px-4 py-3">
+                <span>
+                  <span className="flex items-center gap-1.5 text-[17px]"><IconSparkle className="text-accent" /> Add new ideas</span>
+                  <span className="block text-[13px] text-muted">{ai.enabled ? "Mix in dishes we haven’t tried" : "Not set up yet"}</span>
+                </span>
+                <Toggle checked={useAi} onChange={setUseAi} />
+              </label>
+              {useAi && (
+                <div className="px-4 py-3">
+                  <div className="mb-1 flex justify-between text-[14px]"><span>Favorites</span><span className="text-muted">{p.aiFavoritesPct}% · {100 - p.aiFavoritesPct}% new</span></div>
+                  <input type="range" min={0} max={100} step={10} value={p.aiFavoritesPct} onChange={(e) => setP({ ...p, aiFavoritesPct: +e.target.value })} className="w-full accent-[var(--accent)]" />
+                </div>
+              )}
+            </div>
+
+            <Section title="Max active prep">
+              <Segmented value={p.maxPrep} onChange={(v) => setP({ ...p, maxPrep: v })} options={[{ value: 15, label: "15" }, { value: 30, label: "30" }, { value: 45, label: "45" }, { value: null, label: "60+" }]} />
+            </Section>
+
+            <Button size="lg" className="mt-6 w-full" disabled={!p.storeIds.length || !!busy} onClick={planIt}>
+              {busy ?? "Plan it"}
+            </Button>
+
+            <details className="group mt-6">
+              <summary className="flex cursor-pointer list-none items-center justify-between px-1 py-2 text-[15px] font-semibold text-muted">
+                More options
+                <IconChevron className="transition group-open:rotate-90" />
+              </summary>
+              <div className="card mt-2 divide-y divide-line">
               <div className="flex items-center justify-between px-4 py-3">
                 <span>
                   <span className="block text-[17px]">Portions per meal</span>
@@ -479,12 +512,14 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
                 </span>
                 <Toggle checked={p.kidMeals} onChange={(v) => setP({ ...p, kidMeals: v })} />
               </label>
-            </div>
-
-            <Section title="Max active prep">
-              <Segmented value={p.maxPrep} onChange={(v) => setP({ ...p, maxPrep: v })} options={[{ value: 15, label: "15" }, { value: 30, label: "30" }, { value: 45, label: "45" }, { value: null, label: "60+" }]} />
-            </Section>
-
+              <label className="flex items-center justify-between px-4 py-3">
+                <span>
+                  <span className="block text-[17px]">Variety</span>
+                  <span className="block text-[13px] text-muted">No repeated protein, at most one soup</span>
+                </span>
+                <Toggle checked={p.variety} onChange={(v) => setP({ ...p, variety: v })} />
+              </label>
+              </div>
             <Section title="Must include">
               <TagPicker tags={allTags} selected={p.includeTags} onChange={(v) => setP({ ...p, includeTags: v })} />
             </Section>
@@ -506,36 +541,8 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
                 {!pinnedIds.length && <span className="px-1 text-[14px] text-muted">None</span>}
               </div>
             </Section>
-
-            <div className="card mt-6 divide-y divide-line">
-              <label className="flex items-center justify-between px-4 py-3">
-                <span>
-                  <span className="block text-[17px]">Variety</span>
-                  <span className="block text-[13px] text-muted">No repeated protein, at most one soup</span>
-                </span>
-                <Toggle checked={p.variety} onChange={(v) => setP({ ...p, variety: v })} />
-              </label>
-              <label className="flex items-center justify-between px-4 py-3">
-                <span>
-                  <span className="flex items-center gap-1.5 text-[17px]"><IconSparkle className="text-accent" /> Add new ideas</span>
-                  <span className="block text-[13px] text-muted">{ai.enabled ? "Mix in dishes we haven’t tried" : "Not set up yet"}</span>
-                </span>
-                <Toggle checked={useAi} onChange={setUseAi} />
-              </label>
-              {useAi && (
-                <div className="px-4 py-3">
-                  <div className="mb-1 flex justify-between text-[14px]"><span>Favorites</span><span className="text-muted">{p.aiFavoritesPct}% · {100 - p.aiFavoritesPct}% new</span></div>
-                  <input type="range" min={0} max={100} step={10} value={p.aiFavoritesPct} onChange={(e) => setP({ ...p, aiFavoritesPct: +e.target.value })} className="w-full accent-[var(--accent)]" />
-                </div>
-              )}
-            </div>
-
-            <div className="mt-6 flex gap-2">
-              <Button variant="secondary" onClick={saveDefaults}>Save as default</Button>
-              <Button size="lg" className="flex-1" disabled={!p.storeIds.length || !!busy} onClick={planIt}>
-                {busy ?? "Plan it"}
-              </Button>
-            </div>
+              <Button variant="secondary" className="mt-6 w-full" onClick={saveDefaults}>Save these as our usual settings</Button>
+            </details>
             {!p.storeIds.length && <p className="mt-2 text-center text-[13px] text-muted">Pick at least one store.</p>}
           </>
         )}
