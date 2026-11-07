@@ -142,6 +142,10 @@ export interface PlannerDefaults {
   kitchen?: string[];
   /** how many receipts each item appears on (from our receipts), for suggestions */
   purchaseCounts?: Record<string, number>;
+  /** per store: how many trips each item was bought on there (store id → item → trips) */
+  storeCounts?: Record<string, Record<string, number>>;
+  /** how we write an item on the list ("Cheddar slices" for "cheddar slice") */
+  itemLabels?: Record<string, string>;
 }
 
 export const DEFAULT_PLANNER: PlannerDefaults = {

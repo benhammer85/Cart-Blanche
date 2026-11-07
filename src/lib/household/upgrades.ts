@@ -1,4 +1,5 @@
 import "server-only";
+import { COSTCO_HISTORY } from "../seed/costcoHistory";
 import { SHAWS_HISTORY } from "../seed/shawsHistory";
 import { sortSections, walkOrderFor } from "../list/walkOrder";
 import { parseIngredientLine } from "../ingredientParser";
@@ -39,6 +40,7 @@ export async function applyUpgrades(db: SupabaseClient, householdId: string): Pr
     await addChickenRamen(db, householdId);
     await setWalkOrder(db, householdId);
     await addShawsHistory(db, householdId);
+    await addCostcoCounts(db, householdId);
     done.add(householdId);
   } catch (e) {
     console.error("household upgrade failed", e);
@@ -301,4 +303,44 @@ async function addShawsHistory(db: SupabaseClient, household_id: string) {
   }
   for (let i = 0; i < fresh.length; i += 100) await db.from("ingredients").insert(fresh.slice(i, i + 100));
   await db.from("household_settings").update({ planner_defaults: { ...d, purchaseCounts: counts, _shawsHistoryV1: true } }).eq("household_id", household_id);
+}
+
+/**
+ * How often we buy each thing at Costco (from receipts), for "Usually at
+ * Costco" on the list. Items new to us are added and sent to Costco; items
+ * we already route somewhere keep their store.
+ */
+async function addCostcoCounts(db: SupabaseClient, household_id: string) {
+  const { data: settings } = await db.from("household_settings").select("planner_defaults").eq("household_id", household_id).maybeSingle();
+  const d = (settings?.planner_defaults ?? {}) as Record<string, unknown>;
+  if (!settings || d._costcoCountsV1) return;
+  const [{ data: stores }, { data: cats }, { data: known }, { data: syn }] = await Promise.all([
+    db.from("stores").select("id, name").eq("household_id", household_id),
+    db.from("categories").select("id, name").eq("household_id", household_id),
+    db.from("ingredients").select("id, name_norm, category_id, learned_store_id").eq("household_id", household_id),
+    db.from("synonyms").select("alias, canonical").eq("household_id", household_id),
+  ]);
+  const costco = ((stores ?? []) as { id: string; name: string }[]).find((x) => x.name.toLowerCase().replace(/[^a-z]/g, "") === "costco");
+  if (!costco) return;
+  const synonyms = Object.fromEntries(((syn ?? []) as { alias: string; canonical: string }[]).map((x) => [x.alias, x.canonical]));
+  const byName = new Map(((known ?? []) as { id: string; name_norm: string; category_id: string | null; learned_store_id: string | null }[]).map((k) => [k.name_norm, k]));
+  const catId = (n: string) => ((cats ?? []) as { id: string; name: string }[]).find((c) => c.name === n)?.id ?? null;
+  const storeCounts = { ...((d.storeCounts as Record<string, Record<string, number>>) ?? {}) };
+  const counts: Record<string, number> = { ...(storeCounts[costco.id] ?? {}) };
+  const itemLabels: Record<string, string> = { ...((d.itemLabels as Record<string, string>) ?? {}) };
+  for (const [raw, cat, n] of COSTCO_HISTORY) {
+    const name_norm = normalizeName(raw, synonyms);
+    if (!name_norm) continue;
+    counts[name_norm] = Math.max(counts[name_norm] ?? 0, n);
+    itemLabels[name_norm] ??= raw.charAt(0).toUpperCase() + raw.slice(1);
+    const k = byName.get(name_norm);
+    if (!k) {
+      await db.from("ingredients").insert({ household_id, name_norm, category_id: catId(cat), learned_store_id: costco.id });
+      byName.set(name_norm, { id: "", name_norm, category_id: catId(cat), learned_store_id: costco.id });
+    } else if (!k.learned_store_id && k.id) {
+      await db.from("ingredients").update({ learned_store_id: costco.id, ...(k.category_id ? {} : { category_id: catId(cat) }) }).eq("id", k.id);
+    }
+  }
+  storeCounts[costco.id] = counts;
+  await db.from("household_settings").update({ planner_defaults: { ...d, storeCounts, itemLabels, _costcoCountsV1: true } }).eq("household_id", household_id);
 }
