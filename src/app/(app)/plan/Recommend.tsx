@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button, Chip, Sheet, cx } from "@/components/ui";
 import { IconCheck, IconClock, IconSliders, IconUpload } from "@/components/icons";
 import { RecipeImage } from "@/components/RecipeImage";
-import { fitShare, makeFitContext, onlyAtStores, tripFit, type StoreFit } from "@/lib/trip";
+import { fitShare, makeFitContext, onlyAtStores, tripFit } from "@/lib/trip";
 import { CardBadge } from "@/components/CardBadge";
 import { rng, scoreRecipe } from "@/lib/planner/planner";
 import { COOKING_STYLES, cookingStyles, type CookingStyle } from "@/lib/infer";
@@ -127,7 +127,7 @@ export function Recommend({
       </Sheet>
       {seed != null && !ranked.length && <p className="px-1 py-6 text-center text-[15px] text-muted">{haveTerms.length ? "None of your recipes use those. Try fewer ingredients." : "No recipes match those filters."}</p>}
       <ul className="mt-3 grid grid-cols-2 gap-3">
-        {ranked.slice(0, limit).map(({ r, fit, uses }) => {
+        {ranked.slice(0, limit).map(({ r, uses }) => {
           const on = picked.includes(r.id);
           return (
             <li key={r.id} id={`rec-${r.id}`}>
@@ -149,7 +149,6 @@ export function Recommend({
                   {r.kid_friendly ? "kid-friendly" : (stylesOf.get(r.id) ?? [])[0] ?? lastMadeShort(r.times_made, r.last_made_at)}
                 </p>
                 {uses.length > 0 && <p className="truncate px-0.5 text-[12px] font-semibold text-ok">Uses {uses.join(", ")}</p>}
-                <FitBadge fit={fit} />
               </button>
             </li>
           );
@@ -160,10 +159,4 @@ export function Recommend({
       )}
     </section>
   );
-}
-
-/** Only speak up when the trip won't cover everything. */
-function FitBadge({ fit }: { fit: StoreFit }) {
-  if (!fit.missing.length) return null;
-  return <p className="truncate px-0.5 text-[12px] text-warn">Not on this trip: {fit.missing.slice(0, 2).join(", ")}{fit.missing.length > 2 ? ` +${fit.missing.length - 2}` : ""}</p>;
 }

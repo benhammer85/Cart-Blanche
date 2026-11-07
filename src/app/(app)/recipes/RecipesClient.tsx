@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button, Chip, Empty, Section, Segmented, Sheet } from "@/components/ui";
 import { RecipeImage } from "@/components/RecipeImage";
 import { StoreBadge } from "@/components/StoreBadge";
-import { fitShare, makeFitContext, onlyAtStores, storeFit, type StoreFit } from "@/lib/trip";
+import { fitShare, makeFitContext, onlyAtStores, storeFit } from "@/lib/trip";
 import { CardBadge } from "@/components/CardBadge";
 import type { HouseholdData } from "@/lib/data/household";
 import type { IngredientInfo } from "@/lib/types";
@@ -147,7 +147,6 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
                 const hit = n && !r.title.toLowerCase().includes(n) ? usesIngredient(r, n) : null;
                 return hit ? <p className="truncate px-0.5 text-[12px] font-semibold text-accent">Uses {hit}</p> : null;
               })()}
-              {fits && <FitNote fit={fits.get(r.id)!} store={stores.find((s) => s.id === storeFocus)?.name ?? ""} />}
             </Link>
           ))}
         </div>
@@ -173,9 +172,4 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
 
     </div>
   );
-}
-
-function FitNote({ fit, store }: { fit: StoreFit; store: string }) {
-  if (!fit.missing.length) return <p className="px-0.5 text-[12px] font-semibold text-ok">Everything at {store}</p>;
-  return <p className="truncate px-0.5 text-[12px] text-warn">Not at {store}: {fit.missing.slice(0, 2).join(", ")}{fit.missing.length > 2 ? ` +${fit.missing.length - 2}` : ""}</p>;
 }
