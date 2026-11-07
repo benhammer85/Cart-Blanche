@@ -1,3 +1,4 @@
+import { walkOrderFor } from "../list/walkOrder";
 // Default household data, applied once when the household is created.
 // Everything here is editable in Settings afterwards.
 
@@ -18,19 +19,19 @@ export interface SeedStore {
 export const SEED_STORES: SeedStore[] = [
   {
     key: "mb", name: "Market Basket", location: "Chelsea", isBulk: false,
-    sections: ["Produce", "Bakery", "Deli", "Meat", "Seafood", "Pantry", "Condiments", "Baking & Spices", "Snacks", "Beverages", "Household", "Dairy", "Cheese", "Frozen", "Other"],
+    sections: walkOrderFor("Market Basket").filter((x) => x !== "International"),
   },
   {
     key: "costco", name: "Costco", location: "Everett", isBulk: true,
-    sections: ["Household", "Snacks", "Pantry", "Condiments", "Baking & Spices", "Beverages", "Frozen", "Dairy", "Cheese", "Deli", "Meat", "Seafood", "Bakery", "Produce", "Other"],
+    sections: walkOrderFor("Costco").filter((x) => x !== "International"),
   },
   {
     key: "tj", name: "Trader Joe's", location: "Assembly Square", isBulk: false,
-    sections: ["Produce", "Bakery", "Cheese", "Deli", "Dairy", "Meat", "Seafood", "Condiments", "Pantry", "Snacks", "Frozen", "Beverages", "Baking & Spices", "Household", "Other"],
+    sections: walkOrderFor("Trader Joe's").filter((x) => x !== "International"),
   },
   {
     key: "shaws", name: "Shaw's", location: "East Boston", isBulk: false,
-    sections: ["Produce", "Bakery", "Deli", "Meat", "Seafood", "Pantry", "Condiments", "Baking & Spices", "Snacks", "Beverages", "Household", "Dairy", "Cheese", "Frozen", "Other"],
+    sections: walkOrderFor("Shaw's").filter((x) => x !== "International"),
   },
 ];
 

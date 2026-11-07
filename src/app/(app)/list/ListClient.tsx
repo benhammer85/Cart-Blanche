@@ -12,6 +12,7 @@ import { parseIngredientLine } from "@/lib/ingredientParser";
 import { buildVocabulary, correctSpelling } from "@/lib/spell";
 import { assignStore, buildKeywordIndex } from "@/lib/list/storeAssign";
 import { buildCandidates, suggestItems } from "@/lib/list/suggest";
+import { learnWalkOrder } from "@/lib/list/walkOrder";
 import { formatAmount } from "@/lib/units";
 import type { IngredientInfo, ListItem } from "@/lib/types";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -232,14 +233,46 @@ export function ListClient() {
   function toggle(item: ListItem) {
     if (navigator.vibrate) navigator.vibrate(8);
     write([{ ...item, checked: !item.checked, checked_by: !item.checked ? me.initials : null }]);
-    // Last thing at this store? Say so.
     if (!item.checked && item.store_id) {
+      noteWalk(item.store_id, item.section_id);
+      // Last thing at this store? Say so, and learn the aisle order from this trip.
       const left = items.filter((i) => i.store_id === item.store_id && !i.checked && !i.deleted_at && i.id !== item.id).length;
       const store = stores.find((s) => s.id === item.store_id);
       if (!left && store) {
-        setToast(`All done at ${store.name} ✓`);
         if (navigator.vibrate) navigator.vibrate([10, 60, 20]);
+        learnWalk(store.id).then((learned) => setToast(`All done at ${store.name} ✓${learned ? " Aisle order updated from this trip." : ""}`));
       }
+    }
+  }
+
+  // The order aisles get checked off in the store (kept on this phone for the current trip).
+  const walkKey = (storeId: string) => `cb:walk:${storeId}`;
+  function noteWalk(storeId: string, sectionId: string | null) {
+    if (!sectionId) return;
+    try {
+      const raw = JSON.parse(localStorage.getItem(walkKey(storeId)) ?? "null") as { at: number; sections: string[] } | null;
+      // A trip is one sitting: start fresh after 6 hours.
+      const trip = raw && Date.now() - raw.at < 6 * 3600_000 ? raw : { at: Date.now(), sections: [] };
+      if (!trip.sections.includes(sectionId)) trip.sections.push(sectionId);
+      localStorage.setItem(walkKey(storeId), JSON.stringify({ at: Date.now(), sections: trip.sections }));
+    } catch {
+      /* private mode */
+    }
+  }
+  async function learnWalk(storeId: string): Promise<boolean> {
+    try {
+      const raw = JSON.parse(localStorage.getItem(walkKey(storeId)) ?? "null") as { sections: string[] } | null;
+      localStorage.removeItem(walkKey(storeId));
+      if (!raw) return false;
+      const secs = sections.filter((x) => x.store_id === storeId && x.name !== "Other");
+      const current = secs.map((x) => x.id);
+      const next = learnWalkOrder(current, raw.sections);
+      if (next.every((id, i) => id === current[i])) return false;
+      const db = supabaseBrowser();
+      await Promise.all(next.map((id, i) => db.from("store_sections").update({ sort_order: i }).eq("id", id)));
+      return true;
+    } catch {
+      return false;
     }
   }
 

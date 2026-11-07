@@ -1,4 +1,5 @@
 import "server-only";
+import { sortSections, walkOrderFor } from "../list/walkOrder";
 import { parseIngredientLine } from "../ingredientParser";
 import { OUR_KITCHEN } from "../kitchen";
 import type { SupabaseClient } from "@supabase/supabase-js";
@@ -23,7 +24,7 @@ export const ASIAN_GROCERIES = [
   "chili crisp", "black vinegar", "rice vinegar", "chinese rice vinegar", "yeotkireum", "jujube", "pearl tapioca",
 ];
 
-const HMART_SECTIONS = ["Produce", "Meat", "Seafood", "International", "Pantry", "Frozen", "Dairy", "Snacks", "Other"];
+const HMART_SECTIONS = walkOrderFor("H Mart");
 
 export async function applyUpgrades(db: SupabaseClient, householdId: string): Promise<void> {
   if (done.has(householdId)) return;
@@ -35,6 +36,7 @@ export async function applyUpgrades(db: SupabaseClient, householdId: string): Pr
     await addCostcoFavorites(db, householdId);
     await setUpKitchen(db, householdId);
     await addChickenRamen(db, householdId);
+    await setWalkOrder(db, householdId);
     done.add(householdId);
   } catch (e) {
     console.error("household upgrade failed", e);
@@ -246,4 +248,21 @@ async function addChickenRamen(db: SupabaseClient, household_id: string) {
     }
   }
   await db.from("household_settings").update({ planner_defaults: { ...d, _ramenV1: true } }).eq("household_id", household_id);
+}
+
+/** Put every store's aisles in walking order: produce first (Costco: center aisles first), cold things last. */
+async function setWalkOrder(db: SupabaseClient, household_id: string) {
+  const { data: settings } = await db.from("household_settings").select("planner_defaults").eq("household_id", household_id).maybeSingle();
+  const d = (settings?.planner_defaults ?? {}) as Record<string, unknown>;
+  if (!settings || d._walkOrderV1) return;
+  const [{ data: stores }, { data: secs }] = await Promise.all([
+    db.from("stores").select("id, name").eq("household_id", household_id),
+    db.from("store_sections").select("id, store_id, name, sort_order").eq("household_id", household_id).order("sort_order"),
+  ]);
+  for (const st of (stores ?? []) as { id: string; name: string }[]) {
+    const mine = ((secs ?? []) as { id: string; store_id: string; name: string; sort_order: number }[]).filter((x) => x.store_id === st.id);
+    const sorted = sortSections(mine, st.name);
+    for (const [i, sec] of sorted.entries()) if (sec.sort_order !== i) await db.from("store_sections").update({ sort_order: i }).eq("id", sec.id);
+  }
+  await db.from("household_settings").update({ planner_defaults: { ...d, _walkOrderV1: true } }).eq("household_id", household_id);
 }
