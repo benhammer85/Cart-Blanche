@@ -6,13 +6,14 @@ import { TonightCard } from "@/components/TonightCard";
 import { useMembership } from "@/components/AppShell";
 import { useSharedList } from "@/lib/offline/useSharedList";
 import { Button, Chip, Empty, Select, Sheet, TextArea, TextField, Toast, Toggle, cx } from "@/components/ui";
-import { IconCart, IconCheck, IconCopy, IconPlus, IconTrash, IconWifiOff, IconChevron, IconUpload, IconPencil, IconLeaf, IconSnow } from "@/components/icons";
+import { IconCart, IconCheck, IconCopy, IconPlus, IconTrash, IconWifiOff, IconChevron, IconUpload, IconPencil, IconLeaf, IconSnow, IconMinus } from "@/components/icons";
 import { resizeImage } from "@/lib/data/recipes";
 import { parseIngredientLine } from "@/lib/ingredientParser";
 import { buildVocabulary, correctSpelling } from "@/lib/spell";
 import { assignStore, buildKeywordIndex } from "@/lib/list/storeAssign";
 import { buildCandidates, suggestItems } from "@/lib/list/suggest";
 import { learnWalkOrder } from "@/lib/list/walkOrder";
+import { QtySheet } from "@/components/QtySheet";
 import { formatAmount } from "@/lib/units";
 import type { IngredientInfo, ListItem } from "@/lib/types";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -67,6 +68,9 @@ export function ListClient() {
   const [text, setText] = useState("");
   const [storeOverride, setStoreOverride] = useState<string | null>(null);
   const [editing, setEditing] = useState<ListItem | null>(null);
+  const [qtyItem, setQtyItem] = useState<ListItem | null>(null);
+  // Amount for the item being typed in the add box (− 1 +).
+  const [addCount, setAddCount] = useState(1);
   const [openCart, setOpenCart] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
@@ -140,13 +144,14 @@ export function ListClient() {
   }, [typedName, candidates, items, storeOverride, assignCtx, viewing]);
   function addSuggestion(sg: (typeof suggestions)[number]) {
     const p = parseIngredientLine(text, household?.synonyms ?? {});
-    const line = p.qty != null ? `${formatAmount(p.qty, p.unit)} ${sg.label}` : sg.label;
+    const line = p.qty != null ? `${formatAmount(p.qty, p.unit)} ${sg.label}` : addCount > 1 ? `${addCount} ${sg.label}` : sg.label;
     const item = makeItem(parseIngredientLine(line, household?.synonyms ?? {}), sg.storeId);
     if (!item) return;
     write([item]);
     if (navigator.vibrate) navigator.vibrate(8);
     setToast(`Added ${sg.label}${sg.storeId ? ` · ${stores.find((x) => x.id === sg.storeId)?.name}` : ""}`);
     setText("");
+    setAddCount(1);
     setKeepSpelling(false);
     setStoreOverride(null);
   }
@@ -182,10 +187,12 @@ export function ListClient() {
 
   function add() {
     if (!parsed) return;
-    const item = makeItem(parsed, addStoreId);
+    const withCount = parsed.qty == null && addCount > 1 ? parseIngredientLine(`${addCount} ${spelled.text}`, household?.synonyms ?? {}) : parsed;
+    const item = makeItem(withCount, addStoreId);
     if (!item) return;
     write([item]);
     setText("");
+    setAddCount(1);
     setKeepSpelling(false);
     setStoreOverride(null);
   }
@@ -438,7 +445,7 @@ export function ListClient() {
                 <div className="menu-label px-4 pt-4 pb-1 text-muted">{s.name}</div>
                 <ul>
                   {s.items.map((i) => (
-                    <ItemRow key={i.id} item={i} onToggle={() => toggle(i)} onEdit={() => setEditing(i)} />
+                    <ItemRow key={i.id} item={i} onToggle={() => toggle(i)} onEdit={() => setEditing(i)} onQty={() => setQtyItem(i)} />
                   ))}
                 </ul>
               </div>
@@ -459,7 +466,7 @@ export function ListClient() {
                 {openCart[g.storeId] && (
                   <ul className="pb-2">
                     {g.inCart.map((i) => (
-                      <ItemRow key={i.id} item={i} onToggle={() => toggle(i)} onEdit={() => setEditing(i)} />
+                      <ItemRow key={i.id} item={i} onToggle={() => toggle(i)} onEdit={() => setEditing(i)} onQty={() => setQtyItem(i)} />
                     ))}
                   </ul>
                 )}
@@ -526,15 +533,29 @@ export function ListClient() {
               value={text}
               onChange={(e) => {
                 setText(e.target.value);
-                if (!e.target.value) setKeepSpelling(false);
+                if (!e.target.value) {
+                  setKeepSpelling(false);
+                  setAddCount(1);
+                }
               }}
               autoCorrect="on"
               spellCheck
               placeholder="Add an item"
-              className="h-11 flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted"
+              className="h-11 min-w-0 flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted"
               enterKeyHint="done"
               autoCapitalize="sentences"
             />
+            {text.trim() && parsed?.qty == null && (
+              <span className="flex shrink-0 items-center rounded-full bg-soft" aria-label="How many">
+                <button type="button" onClick={() => setAddCount((n) => Math.max(1, n - 1))} className="grid h-11 w-8 place-items-center text-[18px] text-muted" aria-label="Fewer">
+                  <IconMinus />
+                </button>
+                <span className="w-5 text-center text-[16px] font-semibold tabular-nums">{addCount}</span>
+                <button type="button" onClick={() => setAddCount((n) => n + 1)} className="grid h-11 w-8 place-items-center text-[18px]" aria-label="More">
+                  <IconPlus />
+                </button>
+              </span>
+            )}
             <button disabled={!text.trim() || !listId} className="grid h-11 w-11 place-items-center rounded-full bg-ink text-2xl text-bg disabled:opacity-30" aria-label="Add">
               <IconPlus />
             </button>
@@ -633,12 +654,21 @@ export function ListClient() {
           }}
         />
       )}
+      <QtySheet
+        item={qtyItem}
+        open={!!qtyItem}
+        onClose={() => setQtyItem(null)}
+        onSave={(q, u) => {
+          if (!qtyItem) return;
+          write([{ ...qtyItem, qty: q, unit: q == null ? null : u, display_qty: q == null ? null : formatAmount(q, u) || String(q) }]);
+        }}
+      />
       <Toast message={toast} onDone={() => setToast(null)} />
     </div>
   );
 }
 
-function ItemRow({ item, onToggle, onEdit }: { item: ListItem; onToggle: () => void; onEdit: () => void }) {
+function ItemRow({ item, onToggle, onEdit, onQty }: { item: ListItem; onToggle: () => void; onEdit: () => void; onQty: () => void }) {
   const meals = item.source_meals?.map((m) => m.title).join(", ");
   // Swipe right to check off (or un-check). Taps still work as before.
   const [dx, setDxState] = useState(0);
@@ -693,13 +723,22 @@ function ItemRow({ item, onToggle, onEdit }: { item: ListItem; onToggle: () => v
           <span className="min-w-0 flex-1 py-2">
             <span className={cx("block text-[17px] leading-snug", item.checked && "text-muted line-through decoration-1")}>
               {item.name}
-              {item.display_qty && <span className="ml-1.5 text-[15px] text-muted">{item.display_qty}</span>}
             </span>
             {(meals || item.note) && (
               <span className="block truncate text-[13px] text-muted">{[item.note, meals && `for ${meals}`].filter(Boolean).join(" · ")}</span>
             )}
           </span>
         </button>
+        {!item.checked && (
+          <button
+            onClick={onQty}
+            className={cx("my-auto h-9 shrink-0 rounded-full px-3 text-[15px] tabular-nums", item.display_qty ? "bg-soft font-semibold" : "text-muted ring-1 ring-line")}
+            aria-label={`Amount of ${item.name}`}
+          >
+            {item.display_qty || "+ Qty"}
+          </button>
+        )}
+        {item.checked && item.display_qty && <span className="my-auto shrink-0 text-[14px] text-muted">{item.display_qty}</span>}
         <button onClick={onEdit} className="flex shrink-0 items-center gap-2 pr-4 pl-2 text-muted" aria-label={`Edit ${item.name}`}>
           {item.is_manual && item.added_by && (
             <span className="grid h-6 min-w-6 place-items-center rounded-full bg-soft px-1.5 text-[11px] font-semibold">{item.added_by}</span>

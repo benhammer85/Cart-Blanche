@@ -16,6 +16,10 @@ describe("suggestions while typing", () => {
     const c2 = buildCandidates([{ name: "rotisserie chicken", bought: true }, "romaine", "rosemary", "rolled oats"], [{ name: "Roll", name_norm: "roll" }]);
     expect(suggestItems("ro", c2).map((s) => s.label)[0]).toBe("Rotisserie chicken");
   });
+  test("amounts typed into old list names are dropped", () => {
+    const c3 = buildCandidates(["milk"], [{ name: "2 milk", name_norm: "2 milk" }, { name: "Milk", name_norm: "milk" }]);
+    expect(suggestItems("mi", c3).map((s) => s.label)).toEqual(["Milk"]);
+  });
   test("a later word matches too", () => {
     expect(labels("chick")).toEqual(["Chicken thigh", "Rotisserie chicken"]);
     expect(labels("noo")).toEqual(["Ramen noodles"]);
