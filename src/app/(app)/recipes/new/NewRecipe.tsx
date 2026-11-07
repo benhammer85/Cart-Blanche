@@ -6,7 +6,7 @@ import { RecipeEditor, emptyDraft } from "@/components/RecipeEditor";
 import { Button, PageHeader, Segmented, TextArea, TextField } from "@/components/ui";
 import { parseIngredientLine, parsePlainTextRecipe } from "@/lib/ingredientParser";
 import { inferMainProtein, inferMealTypes } from "@/lib/infer";
-import { isDuplicate, loadExistingKeys, saveRecipe } from "@/lib/data/recipes";
+import { isDuplicate, loadExistingKeys, resizeImage, saveRecipe } from "@/lib/data/recipes";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { useMembership } from "@/components/AppShell";
 import type { RecipeDraft } from "@/lib/types";
@@ -23,6 +23,8 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warning, setWarning] = useState<string | null>(null);
+  const [photo, setPhoto] = useState<File | null>(null);
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   // Opened from the share sheet with a link: read it straight away.
   const started = useRef(false);
@@ -40,7 +42,10 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
     try {
       const res = await fetch("/api/recipe-from-url", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ url: target }) });
       const body = await res.json();
-      if (!res.ok) throw new Error(body.error ?? "Couldn’t read that page");
+      if (!res.ok) {
+        if (body.blocked) setMode("paste");
+        throw new Error(body.error ?? "Couldn’t read that page");
+      }
       setDraft(body.recipe);
       const dup = isDuplicate(body.recipe, await loadExistingKeys(supabaseBrowser()));
       setWarning(dup ? `Heads up: ${dup}.` : null);
@@ -51,10 +56,55 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
     }
   }
 
-  function readPaste() {
+  /** Pasted page text or a screenshot → Gemini reads it into a recipe draft. */
+  async function readWithAi(body: { text?: string; image?: string; mimeType?: string }) {
+    setBusy(true);
+    setError(null);
+    try {
+      const r = await fetch("/api/ai/recipe", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) }).then((x) => x.json());
+      if (!r.ok) return r.error as string;
+      const ai = r.recipe as { title: string; servings?: number | null; prepMinutes?: number | null; cookMinutes?: number | null; ingredients: string[]; steps: string[]; tags: string[]; source?: string | null };
+      const ingredients = ai.ingredients.map((l) => parseIngredientLine(l));
+      setDraft({
+        ...emptyDraft("paste"),
+        title: ai.title,
+        servings: ai.servings || 4,
+        prepMin: ai.prepMinutes ?? null,
+        cookMin: ai.cookMinutes ?? null,
+        ingredients,
+        steps: ai.steps.map((text) => ({ text })),
+        tags: ai.tags.slice(0, 6),
+        sourceName: ai.source ?? null,
+        sourceUrl: url.trim() || null,
+        mealTypes: inferMealTypes(ai.title, ai.tags),
+        mainProtein: inferMainProtein(ai.title, ingredients.map((i) => i.nameNorm)),
+      });
+      return null;
+    } catch {
+      return "Couldn’t read that. Check your connection and try again.";
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function readScreenshot(file: File) {
+    const small = await resizeImage(file, 1800, 0.85);
+    const b64 = await new Promise<string>((res) => {
+      const fr = new FileReader();
+      fr.onload = () => res(String(fr.result).replace(/^data:[^,]+,/, ""));
+      fr.readAsDataURL(small);
+    });
+    const err = await readWithAi({ image: b64, mimeType: "image/jpeg" });
+    if (err) setError(err);
+  }
+
+  async function readPaste() {
+    // Messy page text (e.g. copied from traderjoes.com): let Gemini clean it up.
+    const err = await readWithAi({ text: paste });
+    if (!err) return;
     const p = parsePlainTextRecipe(paste);
     if (!p.ingredients.length) {
-      setError("Put ingredients first (one per line), then a blank line, then the steps.");
+      setError(err.includes("set up") ? "Put ingredients first (one per line), then a blank line, then the steps." : err);
       return;
     }
     const ingredients = p.ingredients.map((l) => parseIngredientLine(l));
@@ -74,7 +124,7 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
     if (!draft) return;
     setBusy(true);
     try {
-      const id = await saveRecipe(supabaseBrowser(), householdId, draft);
+      const id = await saveRecipe(supabaseBrowser(), householdId, draft, { image: photo });
       router.push(`/recipes/${id}`);
       router.refresh();
     } catch (e) {
@@ -104,8 +154,13 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
             )}
             {mode === "paste" && (
               <div className="mt-4 space-y-3">
-                <TextArea rows={14} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder={"Recipe title (optional)\n\n1 lb ground beef\n1 onion, diced\n8 tortillas\n\nBrown the beef with the onion.\n\nWarm the tortillas and serve."} />
-                <Button size="lg" className="w-full" onClick={readPaste} disabled={!paste.trim()}>Read recipe</Button>
+                <p className="px-1 text-[14px] text-muted">Paste a whole recipe page (select all, copy) or type one out. Works for sites that block links, like traderjoes.com.</p>
+                <TextArea rows={12} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder={"Paste the recipe page here"} />
+                <Button size="lg" className="w-full" onClick={readPaste} disabled={!paste.trim() || busy}>{busy ? "Reading…" : "Read recipe"}</Button>
+                <label className="flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-soft text-[15px] font-semibold">
+                  Or read a screenshot
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) readScreenshot(f); }} />
+                </label>
               </div>
             )}
             {error && (
@@ -121,10 +176,24 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
         {draft && (
           <>
             {warning && <p className="card mt-4 p-3 text-[14px] text-warn">{warning}</p>}
-            {draft.imageUrl && (
+            {(photoPreview || draft.imageUrl) && (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={draft.imageUrl} alt="" className="mt-4 aspect-[16/9] w-full rounded-2xl object-cover" />
+              <img src={photoPreview ?? draft.imageUrl ?? ""} alt="" className="mt-4 aspect-[16/9] w-full rounded-2xl object-cover" />
             )}
+            <label className="card mt-3 flex cursor-pointer items-center justify-between px-4 py-3 text-[15px]">
+              <span>{photo ? "Photo added" : draft.imageUrl ? "Use a different photo" : "Add a photo"}</span>
+              <span className="text-accent">Choose</span>
+              <input
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => {
+                  const f = e.target.files?.[0] ?? null;
+                  setPhoto(f);
+                  setPhotoPreview(f ? URL.createObjectURL(f) : null);
+                }}
+              />
+            </label>
             <RecipeEditor draft={draft} onChange={setDraft} />
             {error && <p className="mt-3 text-[#d23c3c]">{error}</p>}
             <Button size="lg" className="mt-6 w-full" onClick={save} disabled={busy || !draft.title.trim()}>{busy ? "Saving…" : "Save to recipes"}</Button>

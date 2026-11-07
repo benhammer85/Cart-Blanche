@@ -29,7 +29,9 @@ export async function POST(request: NextRequest) {
       signal: AbortSignal.timeout(12_000),
       cache: "no-store",
     });
-    if (!res.ok) return NextResponse.json({ error: `The site answered ${res.status}. Try the Claude bridge or paste the recipe.` }, { status: 422 });
+    if (res.status === 403 || res.status === 401)
+      return NextResponse.json({ error: "This site blocks apps from reading its recipes. Open the page, select all, copy, and paste it here instead (or paste a screenshot).", blocked: true }, { status: 422 });
+    if (!res.ok) return NextResponse.json({ error: `The site answered ${res.status}. Paste the recipe text instead.` }, { status: 422 });
     html = (await res.text()).slice(0, 3_000_000);
   } catch {
     return NextResponse.json({ error: "Couldn’t load that page." }, { status: 422 });
