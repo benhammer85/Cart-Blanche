@@ -19,13 +19,57 @@ const NO_STORE = "__none";
 
 export function ListClient() {
   const me = useMembership();
-  const { listId, items, household, status, pending, loaded, write } = useSharedList(me.householdId);
+  const { listId, items, household, status, pending, loaded, write, refetch } = useSharedList(me.householdId);
+
+  // Quick-add: the things we add by hand most often (from past lists).
+  const [frequent, setFrequent] = useState<string[]>([]);
+  useEffect(() => {
+    supabaseBrowser()
+      .from("shopping_list_items")
+      .select("name, name_norm")
+      .eq("is_manual", true)
+      .neq("added_by", "Alexa")
+      .order("created_at", { ascending: false })
+      .limit(400)
+      .then(({ data }) => {
+        const counts = new Map<string, { name: string; n: number }>();
+        for (const r of (data ?? []) as { name: string; name_norm: string | null }[]) {
+          const key = r.name_norm ?? r.name.toLowerCase();
+          const cur = counts.get(key);
+          counts.set(key, { name: cur?.name ?? r.name, n: (cur?.n ?? 0) + 1 });
+        }
+        setFrequent([...counts.values()].filter((c) => c.n >= 2).sort((a, b) => b.n - a.n).map((c) => c.name).slice(0, 10));
+      });
+  }, []);
+  const quickAdd = useMemo(() => {
+    const onList = new Set(items.filter((i) => !i.checked && !i.deleted_at).map((i) => (i.name_norm ?? i.name).toLowerCase()));
+    const base = frequent.length >= 4 ? frequent : [...frequent, "Milk", "Eggs", "Bananas", "Bread", "Greek yogurt", "Apples", "Butter", "Coffee"];
+    const seen = new Set<string>();
+    return base.filter((n) => {
+      const k = n.toLowerCase();
+      if (seen.has(k) || onList.has(k) || onList.has(k.replace(/s$/, ""))) return false;
+      seen.add(k);
+      return true;
+    }).slice(0, 8);
+  }, [frequent, items]);
+  function addQuick(name: string) {
+    const item = makeItem(parseIngredientLine(name, household?.synonyms ?? {}), viewing);
+    if (item) {
+      write([item]);
+      if (navigator.vibrate) navigator.vibrate(8);
+      setToast(`Added ${name}`);
+    }
+  }
   const [text, setText] = useState("");
   const [storeOverride, setStoreOverride] = useState<string | null>(null);
   const [editing, setEditing] = useState<ListItem | null>(null);
   const [openCart, setOpenCart] = useState<Record<string, boolean>>({});
   const [toast, setToast] = useState<string | null>(null);
   const [menu, setMenu] = useState(false);
+  const [pull, setPull] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const [tonightKey, setTonightKey] = useState(0);
+  const pullStart = useRef<number | null>(null);
   // Which store's list we're looking at ("all" or a store id); remembered on this phone.
   const [viewStore, setViewStoreState] = useState<string>("all");
   useEffect(() => {
@@ -235,7 +279,35 @@ export function ListClient() {
   }
 
   return (
-    <div>
+    <div
+      onTouchStart={(e) => {
+        pullStart.current = window.scrollY <= 0 ? e.touches[0].clientY : null;
+      }}
+      onTouchMove={(e) => {
+        if (pullStart.current == null || refreshing) return;
+        const d = e.touches[0].clientY - pullStart.current;
+        setPull(d > 0 ? Math.min(d * 0.5, 90) : 0);
+      }}
+      onTouchEnd={async () => {
+        const go = pull > 60;
+        pullStart.current = null;
+        setPull(0);
+        if (go) {
+          setRefreshing(true);
+          if (navigator.vibrate) navigator.vibrate(8);
+          await refetch();
+          setTonightKey((k) => k + 1);
+          setRefreshing(false);
+        }
+      }}
+    >
+      {(pull > 0 || refreshing) && (
+        <div className="pt-safe pointer-events-none fixed inset-x-0 top-0 z-40 flex justify-center" style={{ transform: `translateY(${refreshing ? 50 : pull}px)` }}>
+          <span className="rounded-full bg-card px-3 py-1.5 text-[13px] font-medium text-muted shadow">
+            {refreshing ? "Refreshing…" : pull > 60 ? "Release to refresh" : "Pull to refresh"}
+          </span>
+        </div>
+      )}
       <header className="pt-safe sticky top-0 z-30 bg-bg/90 px-5 pb-3 backdrop-blur-xl">
         <div className="flex h-11 items-center justify-end gap-2">
           <SyncBadge status={status} pending={pending} />
@@ -264,7 +336,7 @@ export function ListClient() {
       </header>
 
       <div className="px-4">
-        <TonightCard />
+        <TonightCard key={tonightKey} />
         {loaded && !groups.length && (
           <Empty icon={<IconCart />} title="Your list is empty">
             Add items below or plan the week’s meals.
@@ -331,8 +403,17 @@ export function ListClient() {
       </div>
 
       {/* Add bar */}
-      <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+58px)] z-30 px-3 pb-2">
+      <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+58px)] z-30 bg-gradient-to-t from-bg via-bg/95 to-transparent px-3 pt-4 pb-2">
         <div className="mx-auto max-w-xl">
+          {!text.trim() && quickAdd.length > 0 && listId && (
+            <div className="no-scrollbar mb-2 flex gap-2 overflow-x-auto px-1">
+              {quickAdd.map((n) => (
+                <button key={n} onClick={() => addQuick(n)} className="h-8 shrink-0 rounded-full bg-card px-3 text-[13px] font-medium shadow-sm ring-1 ring-line active:scale-95">
+                  + {n}
+                </button>
+              ))}
+            </div>
+          )}
           {spelled.corrections.length > 0 && (
             <button type="button" onClick={() => setKeepSpelling(true)} className="mb-2 ml-1 rounded-full bg-card px-3 py-1.5 text-[13px] shadow-sm ring-1 ring-line">
               Adding as <b>{spelled.corrections.map((c) => c.to).join(", ")}</b>. <span className="text-accent">Keep “{spelled.corrections.map((c) => c.from).join(", ")}”</span>

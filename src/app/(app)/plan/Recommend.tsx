@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Chip, cx } from "@/components/ui";
-import { IconCheck, IconClock, IconUpload } from "@/components/icons";
+import { IconCheck, IconClock, IconDice, IconUpload } from "@/components/icons";
 import { RecipeImage } from "@/components/RecipeImage";
 import { fitShare, makeFitContext, tripFit, type StoreFit } from "@/lib/trip";
 import { rng, scoreRecipe } from "@/lib/planner/planner";
@@ -32,6 +32,7 @@ export function Recommend({
   const [kidsOnly, setKidsOnly] = useState(false);
   const [lovedOnly, setLovedOnly] = useState(false);
   const [limit, setLimit] = useState(12);
+  const [flash, setFlash] = useState<string | null>(null);
   // Ranking has a little randomness, so build it on the phone only (no server/phone mismatch).
   const [seed, setSeed] = useState<number | null>(null);
   useEffect(() => setSeed(Date.now()), []);
@@ -70,6 +71,19 @@ export function Recommend({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [recipes, storeIds, mealTypes, maxPrep, kidsOnly, lovedOnly, styles, ctx, household, seed, stylesOf]);
 
+  /** Pick a random dinner from the best matches that isn't picked yet. */
+  function surprise() {
+    const pool = ranked.slice(0, 20).filter(({ r }) => !picked.includes(r.id));
+    if (!pool.length) return;
+    const choice = pool[Math.floor(Math.random() * pool.length)].r;
+    onToggle(choice.id);
+    setFlash(choice.id);
+    const idx = ranked.findIndex((x) => x.r.id === choice.id);
+    if (idx >= limit) setLimit(idx + 1);
+    setTimeout(() => document.getElementById(`rec-${choice.id}`)?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+    setTimeout(() => setFlash(null), 1600);
+  }
+
   if (adultRecipes.length < 10) {
     return (
       <Link href="/recipes/import" className="card mt-4 flex items-center gap-3 p-4">
@@ -87,7 +101,9 @@ export function Recommend({
     <section className="mt-6">
       <div className="mb-2 flex items-end justify-between px-1">
         <h2 className="text-[20px] font-bold">Good for {storeNames.length > 2 ? "this trip" : storeNames.join(" & ")}</h2>
-        {picked.length > 0 && <span className="text-[13px] font-semibold text-accent">{picked.length} picked</span>}
+        <button onClick={surprise} disabled={!ranked.length} className="flex h-9 items-center gap-1.5 rounded-full bg-accent-soft px-3.5 text-[14px] font-semibold text-accent disabled:opacity-40">
+          <IconDice /> Surprise me
+        </button>
       </div>
       <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
         <Chip active={lovedOnly} onClick={() => setLovedOnly(!lovedOnly)}>♥ Loved</Chip>
@@ -101,7 +117,7 @@ export function Recommend({
         {ranked.slice(0, limit).map(({ r, fit }) => {
           const on = picked.includes(r.id);
           return (
-            <li key={r.id}>
+            <li key={r.id} id={`rec-${r.id}`} className={cx(flash === r.id && "animate-pulse")}>
               <button onClick={() => onToggle(r.id)} className="w-full text-left active:scale-[0.98] transition" aria-pressed={on}>
                 <div className={cx("relative aspect-[4/3] overflow-hidden rounded-2xl bg-soft", on && "ring-3 ring-accent")}>
                   <RecipeImage src={r.image_path} title={r.title} />

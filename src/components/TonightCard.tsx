@@ -4,6 +4,7 @@ import Link from "next/link";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { RecipeImage } from "./RecipeImage";
 import { IconCheck } from "./icons";
+import { Sheet } from "./ui";
 
 interface PlanItem {
   id: string;
@@ -21,6 +22,7 @@ const CACHE = "cb:tonight";
 export function TonightCard() {
   const [items, setItems] = useState<PlanItem[] | null>(null);
   const [busy, setBusy] = useState(false);
+  const [switching, setSwitching] = useState(false);
 
   const load = useCallback(async () => {
     const since = new Date(Date.now() - 14 * 86_400_000).toISOString();
@@ -58,6 +60,25 @@ export function TonightCard() {
   const kids = items.find((i) => i.for_kids && i.position === tonight.position + 1);
   const next = dinners[1];
 
+  /** Cook another dinner from this week tonight: the two swap days (kids' items move with them). */
+  async function switchTo(other: PlanItem) {
+    setSwitching(false);
+    setBusy(true);
+    const db = supabaseBrowser();
+    const kidOf = (it: PlanItem) => items!.find((x) => x.for_kids && x.position === it.position + 1);
+    const a = tonight;
+    const ak = kidOf(a);
+    const bk = kidOf(other);
+    await Promise.all([
+      db.from("meal_plan_items").update({ position: other.position }).eq("id", a.id),
+      db.from("meal_plan_items").update({ position: a.position }).eq("id", other.id),
+      ak && db.from("meal_plan_items").update({ position: other.position + 1 }).eq("id", ak.id),
+      bk && db.from("meal_plan_items").update({ position: a.position + 1 }).eq("id", bk.id),
+    ]);
+    await load();
+    setBusy(false);
+  }
+
   async function madeIt() {
     setBusy(true);
     await supabaseBrowser().rpc("mark_meal_made", { p_item_id: tonight.id, p_made: true });
@@ -85,10 +106,33 @@ export function TonightCard() {
             Start cooking
           </Link>
         )}
+        {dinners.length > 1 && (
+          <button onClick={() => setSwitching(true)} disabled={busy} className="flex h-11 flex-1 items-center justify-center border-l hairline text-muted disabled:opacity-40">
+            Switch
+          </button>
+        )}
         <button onClick={madeIt} disabled={busy} className="flex h-11 flex-1 items-center justify-center gap-1.5 border-l hairline text-muted disabled:opacity-40">
-          <IconCheck /> Mark as made
+          <IconCheck /> Made
         </button>
       </div>
+      {switching && (
+        <Sheet open onClose={() => setSwitching(false)} title="Cook something else tonight">
+          <ul className="card divide-y divide-line overflow-hidden">
+            {dinners.slice(1).map((d) => (
+              <li key={d.id}>
+                <button onClick={() => switchTo(d)} className="flex w-full items-center gap-3 p-3 text-left active:bg-soft">
+                  <div className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-soft">
+                    <RecipeImage src={d.recipes?.image_path} title={d.title} placeholderText={false} />
+                  </div>
+                  <span className="recipe-title flex-1 text-[16px] font-semibold">{d.title}</span>
+                  {d.recipes?.prep_min != null && <span className="text-[13px] text-muted">{d.recipes.prep_min} min</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-3 px-1 text-[13px] text-muted">The two dinners swap days.</p>
+        </Sheet>
+      )}
     </section>
   );
 }

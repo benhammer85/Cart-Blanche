@@ -211,7 +211,7 @@ export function Toast({ message, onDone }: { message: string | null; onDone: () 
   }, [message, onDone]);
   if (!message) return null;
   return (
-    <div className="animate-fade fixed inset-x-0 bottom-28 z-[60] flex justify-center px-6">
+    <div className="animate-fade fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+11rem)] z-[60] flex justify-center px-6">
       <div className="rounded-full bg-ink px-4 py-2.5 text-[14px] font-medium text-bg shadow-lg">{message}</div>
     </div>
   );

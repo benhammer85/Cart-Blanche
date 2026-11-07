@@ -1,9 +1,10 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Chip, Empty, Sheet, cx } from "@/components/ui";
 import { RecipeImage } from "@/components/RecipeImage";
-import { IconBook, IconChat, IconClock, IconLink, IconPencil, IconPlus, IconSearch, IconShare, IconUpload } from "@/components/icons";
+import { IconBook, IconChat, IconClock, IconLink, IconPencil, IconPlus, IconSearch, IconShare, IconUpload, IconDice } from "@/components/icons";
 
 export interface RecipeCard {
   id: string;
@@ -32,6 +33,7 @@ const SORTS: { value: Sort; label: string }[] = [
 ];
 
 export function RecipesClient({ recipes }: { recipes: RecipeCard[] }) {
+  const router = useRouter();
   const [q, setQ] = useState("");
   const [tag, setTag] = useState<string | null>(null);
   const [maxPrep, setMaxPrep] = useState<number | null>(null);
@@ -66,7 +68,17 @@ export function RecipesClient({ recipes }: { recipes: RecipeCard[] }) {
   return (
     <div>
       <header className="pt-safe px-5">
-        <div className="flex h-11 items-center justify-end">
+        <div className="flex h-11 items-center justify-end gap-2">
+          <button
+            onClick={() => {
+              const pool = shown.filter((r) => !r.is_kid_meal);
+              if (pool.length) router.push(`/recipes/${pool[Math.floor(Math.random() * pool.length)].id}`);
+            }}
+            className="flex h-9 items-center gap-1.5 rounded-full bg-accent-soft px-3.5 text-[14px] font-semibold text-accent"
+            aria-label="Open a random recipe"
+          >
+            <IconDice /> Surprise me
+          </button>
           <button onClick={() => setAdding(true)} className="grid h-9 w-9 place-items-center rounded-full bg-accent text-xl text-accent-ink shadow-sm" aria-label="Add recipe">
             <IconPlus />
           </button>

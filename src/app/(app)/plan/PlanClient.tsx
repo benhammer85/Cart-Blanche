@@ -1,10 +1,13 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
+import { DndContext, PointerSensor, TouchSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { StoreBadge } from "@/components/StoreBadge";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button, Chip, Section, Segmented, Sheet, Stepper, TextField, Toast, Toggle, cx } from "@/components/ui";
-import { IconCart, IconChevron, IconCheck, IconLock, IconSearch, IconSparkle, IconSwap, IconUnlock, IconX, IconPlus, IconClock } from "@/components/icons";
+import { IconGrip, IconCart, IconChevron, IconCheck, IconLock, IconSearch, IconSparkle, IconSwap, IconUnlock, IconX, IconPlus, IconClock } from "@/components/icons";
 import { useMembership } from "@/components/AppShell";
 import { RecipeImage } from "@/components/RecipeImage";
 import { AddStoreSheet } from "@/components/AddStoreSheet";
@@ -599,11 +602,19 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
                 <ul className="mt-1 list-disc pl-5 text-muted">{suggestions.map((s) => <li key={s}>{s}</li>)}</ul>
               </div>
             )}
-            <ul className="mt-4 space-y-3">
-              {slots.map((s, i) => {
+            <p className="mt-4 px-1 text-[13px] text-muted">Drag ≡ to change the day.</p>
+            <DayList
+              ids={slots.map((s) => s.key)}
+              onReorder={(keys) => setSlots(keys.map((k) => slots.find((s) => s.key === k)!))}
+              render={(key, i, handle) => {
+                const s = slots.find((x) => x.key === key)!;
                 const r = s.recipeId ? byId.get(s.recipeId) : null;
                 return (
-                  <li key={s.key} className="card overflow-hidden">
+                  <div className="card overflow-hidden">
+                    <div className="flex items-center justify-between border-b hairline px-3 py-1.5">
+                      <span className="text-[12px] font-semibold uppercase tracking-wide text-accent">{dayLabel(i)}</span>
+                      {handle}
+                    </div>
                     <div className="flex gap-3 p-3">
                       <div className="h-20 w-20 shrink-0 overflow-hidden rounded-xl bg-soft">
                         {s.draft && !r ? (
@@ -637,10 +648,10 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
                     {s.draft && !s.recipeId && (
                       <button onClick={() => saveDraftToFavorites(i)} className="w-full border-t hairline py-2.5 text-[14px] font-semibold text-accent">Save to recipes</button>
                     )}
-                  </li>
+                  </div>
                 );
-              })}
-            </ul>
+              }}
+            />
             <div className="mt-3 flex gap-2">
               <Button variant="secondary" className="flex-1" onClick={() => setPicker({ mode: "add", index: -1 })}><IconPlus /> Add meal</Button>
               <Button variant="secondary" className="flex-1" onClick={planIt} disabled={!!busy}><IconSwap /> Re-plan</Button>
@@ -787,5 +798,56 @@ function RecipePicker({ recipes, onPick, onClose }: { recipes: PlanRecipe[]; onP
         {!shown.length && <li className="px-4 py-4 text-muted">No matches</li>}
       </ul>
     </Sheet>
+  );
+}
+
+/** "Tonight", "Tomorrow", then weekday names. */
+function dayLabel(i: number): string {
+  if (i === 0) return "Tonight";
+  if (i === 1) return "Tomorrow";
+  const d = new Date();
+  d.setDate(d.getDate() + i);
+  return d.toLocaleDateString(undefined, { weekday: "long" });
+}
+
+/** Vertical drag-to-reorder list of cards (grip handle in each card's header). */
+function DayList({ ids, onReorder, render }: { ids: string[]; onReorder: (ids: string[]) => void; render: (id: string, index: number, handle: React.ReactNode) => React.ReactNode }) {
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 120, tolerance: 6 } }),
+  );
+  return (
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={(e: DragEndEvent) => {
+        if (!e.over || e.active.id === e.over.id) return;
+        onReorder(arrayMove(ids, ids.indexOf(String(e.active.id)), ids.indexOf(String(e.over.id))));
+      }}
+    >
+      <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+        <ul className="mt-2 space-y-3">
+          {ids.map((id, i) => (
+            <DayItem key={id} id={id}>
+              {(handle) => render(id, i, handle)}
+            </DayItem>
+          ))}
+        </ul>
+      </SortableContext>
+    </DndContext>
+  );
+}
+
+function DayItem({ id, children }: { id: string; children: (handle: React.ReactNode) => React.ReactNode }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id });
+  const handle = (
+    <button {...attributes} {...listeners} className="touch-none px-1 text-lg text-muted" aria-label="Drag to change the day">
+      <IconGrip />
+    </button>
+  );
+  return (
+    <li ref={setNodeRef} style={{ transform: CSS.Transform.toString(transform), transition }} className={cx("relative", isDragging && "z-10 opacity-90 shadow-xl")}>
+      {children(handle)}
+    </li>
   );
 }
