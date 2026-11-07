@@ -694,7 +694,7 @@ export function ListClient() {
         />
       )}
       <Sheet open={favSheet} onClose={() => setFavSheet(false)} title={`Usually at ${stores.find((x) => x.id === favStore)?.name ?? "this store"}`}>
-        <p className="px-1 text-[14px] text-muted">From your receipts and past lists, most often first. Tick what you need.</p>
+        <p className="px-1 text-[14px] text-muted">Most bought first. Tick what you need.</p>
         <ul className="card mt-3 divide-y divide-line overflow-hidden">
           {storeFavs.map((f) => {
             const on = favPicked.has(f.key);
@@ -710,7 +710,7 @@ export function ListClient() {
                     {on && <IconCheck className="text-[13px]" strokeWidth={3} />}
                   </span>
                   <span className="flex-1 text-[16px]">{f.label}</span>
-                  <span className="shrink-0 text-[13px] text-muted">{f.onList ? "On the list" : f.n >= 2 ? `${Math.round(f.n)} trips` : ""}</span>
+                  {f.onList && <span className="shrink-0 text-[13px] text-muted">On the list</span>}
                 </button>
               </li>
             );
