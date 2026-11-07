@@ -70,8 +70,9 @@ class GeminiProvider implements AiProvider {
   async searchWeb(prompt: string): Promise<AiSearchResult> {
     // Search grounding isn't on every model; try the chosen model, then the 2.5 Flash-Lite family.
     const first = await this.resolveModel();
-    const tries = [...new Set([first, "gemini-2.5-flash-lite", "gemini-2.5-flash"])];
+    const tries = [...new Set([first, "gemini-2.5-flash-lite", "gemini-2.5-flash", "gemini-flash-lite-latest", "gemini-flash-latest", "gemini-2.0-flash"])];
     let lastStatus = 0;
+    let limited: "minute" | "day" | null = null;
     for (const model of tries) {
       const res = await fetch(`${API}/models/${encodeURIComponent(model)}:generateContent`, {
         method: "POST",
@@ -85,7 +86,15 @@ class GeminiProvider implements AiProvider {
         cache: "no-store",
       }).catch(() => null);
       if (!res) throw new AiError("Couldn’t reach Gemini", "failed");
-      if (res.status === 429) throw new AiError("Today’s free recipe searches are used up. Try again tomorrow.", "rate_limited");
+      if (res.status === 429) {
+        // Each model has its own free allowance, so try the next one.
+        // Google says which limit was hit: per minute, or per day.
+        const body = await res.text().catch(() => "");
+        if (/PerMinute|per minute/i.test(body)) limited = limited ?? "minute";
+        else limited = "day";
+        lastStatus = 429;
+        continue;
+      }
       if (!res.ok) {
         lastStatus = res.status;
         continue; // model may not support search; try the next
@@ -100,6 +109,8 @@ class GeminiProvider implements AiProvider {
         .filter((x) => x.uri);
       return { text, sources };
     }
+    if (limited === "minute") throw new AiError("Too many searches in a short time. Wait a minute and try again.", "rate_limited");
+    if (limited === "day") throw new AiError("Today’s free recipe searches are used up. Try again tomorrow.", "rate_limited");
     throw new AiError(`Recipe search isn’t available with this key (${lastStatus}).`, "failed");
   }
 
