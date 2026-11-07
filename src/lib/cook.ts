@@ -45,3 +45,46 @@ export function ingredientsForStep<T extends StepIngredient>(step: string, ingre
     .sort((a, b) => a.at - b.at)
     .map((f) => f.i);
 }
+
+/**
+ * A step split into plain text and ingredient mentions, so each mention can be
+ * tapped for its amount: "Mix flour and baking soda" → flour, baking soda.
+ * A vague main word ("flour") counts here when only one ingredient has it.
+ */
+export function stepSegments<T extends StepIngredient>(step: string, ingredients: T[]): { text: string; ingredient?: T }[] {
+  const heads = new Map<string, number>();
+  for (const i of ingredients) {
+    const w = i.name_norm.toLowerCase().trim().split(/\s+/);
+    const h = w[w.length - 1];
+    if (h) heads.set(h, (heads.get(h) ?? 0) + 1);
+  }
+  const terms: { p: string; i: T }[] = [];
+  for (const i of ingredients) {
+    const w = i.name_norm.toLowerCase().trim().split(/\s+/);
+    const h = w[w.length - 1];
+    const ps = new Set(phrases(i));
+    if (w.length > 1 && h && h.length >= 3 && VAGUE.has(h) && heads.get(h) === 1) ps.add(h);
+    for (const p of ps) terms.push({ p, i });
+  }
+  terms.sort((a, b) => b.p.length - a.p.length);
+  // Mark the spans each term covers, longest terms first, never overlapping.
+  const marks: { from: number; to: number; i: T }[] = [];
+  for (const { p, i } of terms) {
+    const re = new RegExp(`\\b${esc(p)}(e?s)?\\b`, "gi");
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(step))) {
+      const from = m.index, to = m.index + m[0].length;
+      if (!marks.some((k) => from < k.to && to > k.from)) marks.push({ from, to, i });
+    }
+  }
+  marks.sort((a, b) => a.from - b.from);
+  const out: { text: string; ingredient?: T }[] = [];
+  let at = 0;
+  for (const k of marks) {
+    if (k.from > at) out.push({ text: step.slice(at, k.from) });
+    out.push({ text: step.slice(k.from, k.to), ingredient: k.i });
+    at = k.to;
+  }
+  if (at < step.length) out.push({ text: step.slice(at) });
+  return out;
+}

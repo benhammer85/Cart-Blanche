@@ -60,3 +60,25 @@ describe("our kitchen", () => {
     expect(s).toContain("oven's air-fry mode");
   });
 });
+
+import { stepSegments } from "@/lib/cook";
+describe("ingredient mentions in a step", () => {
+  const ings = [
+    { name: "ripe bananas, mashed", name_norm: "banana" },
+    { name: "white sugar", name_norm: "white sugar" },
+    { name: "melted butter", name_norm: "melted butter" },
+    { name: "all-purpose flour", name_norm: "all-purpose flour" },
+    { name: "baking soda", name_norm: "baking soda" },
+    { name: "salt", name_norm: "salt" },
+  ];
+  test("marks each mention, longest name first", () => {
+    const seg = stepSegments("Combine bananas, sugar, egg, and butter. Mix flour and baking soda; stir into banana mixture. Stir salt into batter.", ings);
+    const hits = seg.filter((s) => s.ingredient).map((s) => `${s.text}=${s.ingredient!.name_norm}`);
+    expect(hits).toEqual(["bananas=banana", "sugar=white sugar", "butter=melted butter", "flour=all-purpose flour", "baking soda=baking soda", "banana=banana", "salt=salt"]);
+    expect(seg.map((s) => s.text).join("")).toContain("Combine bananas, sugar, egg");
+  });
+  test("leaves a vague word alone when two ingredients share it", () => {
+    const seg = stepSegments("Add the sugar.", [{ name: "white sugar", name_norm: "white sugar" }, { name: "brown sugar", name_norm: "brown sugar" }]);
+    expect(seg.some((s) => s.ingredient)).toBe(false);
+  });
+});

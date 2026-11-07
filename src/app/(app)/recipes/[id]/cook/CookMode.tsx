@@ -7,6 +7,7 @@ import { IconClock, IconX, IconCheck } from "@/components/icons";
 import { findTimers, formatClock } from "@/lib/timers";
 import { formatAmount, usEquivalent } from "@/lib/units";
 import { ingredientsForStep } from "@/lib/cook";
+import { StepText } from "@/components/StepText";
 import { isIngredientHeading } from "@/lib/ingredientParser";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Recipe } from "@/lib/types";
@@ -242,7 +243,7 @@ export function CookMode({ recipe: r }: { recipe: Recipe }) {
               Step {i + 1} of {total}
               {page.section && ` · ${page.section}`}
             </p>
-            <p className={cx("mt-4 leading-[1.45] font-medium", page.text.length > 260 ? "text-[21px]" : page.text.length > 160 ? "text-[23px]" : "text-[26px]")}>{page.text}</p>
+            <StepText className={cx("mt-4 leading-[1.45] font-medium", page.text.length > 260 ? "text-[21px]" : page.text.length > 160 ? "text-[23px]" : "text-[26px]")} text={page.text} ingredients={shoppable} amount={amount} />
             {kitchenTips(page.text, kitchen).map((tip) => (
               <p key={tip} className="mt-4 rounded-xl bg-soft px-4 py-3 text-[15px] leading-snug">{tip}</p>
             ))}

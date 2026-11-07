@@ -138,12 +138,3 @@ select {
 }
 .check-pop { animation: check-pop 0.22s ease-out; }
 
-/* Hearting a recipe: a quick chef's kiss. */
-@keyframes kiss {
-  0% { opacity: 0; transform: translateY(6px) scale(0.8); }
-  15% { opacity: 1; transform: translateY(0) scale(1.08); }
-  25% { transform: scale(1); }
-  80% { opacity: 1; }
-  100% { opacity: 0; transform: translateY(-6px); }
-}
-.kiss { animation: kiss 1.5s ease-out forwards; }
