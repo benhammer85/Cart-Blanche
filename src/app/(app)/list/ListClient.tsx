@@ -5,6 +5,7 @@ import { useSharedList } from "@/lib/offline/useSharedList";
 import { Button, Chip, Empty, Select, Sheet, TextField, Toast, cx } from "@/components/ui";
 import { IconCart, IconCheck, IconCopy, IconPlus, IconTrash, IconWifiOff, IconChevron } from "@/components/icons";
 import { parseIngredientLine } from "@/lib/ingredientParser";
+import { buildVocabulary, correctSpelling } from "@/lib/spell";
 import { assignStore, buildKeywordIndex } from "@/lib/list/storeAssign";
 import { formatAmount } from "@/lib/units";
 import type { IngredientInfo, ListItem } from "@/lib/types";
@@ -38,7 +39,14 @@ export function ListClient() {
     };
   }, [household, stores, sections]);
 
-  const parsed = useMemo(() => (text.trim() ? parseIngredientLine(text, household?.synonyms ?? {}) : null), [text, household]);
+  // Fix typos as you type ("theighs" → "thighs"); tap the note to keep your spelling.
+  const vocab = useMemo(
+    () => buildVocabulary([...(household?.ingredients ?? []).map((i) => i.name_norm), ...Object.keys(household?.synonyms ?? {})]),
+    [household],
+  );
+  const [keepSpelling, setKeepSpelling] = useState(false);
+  const spelled = useMemo(() => (keepSpelling ? { text, corrections: [] } : correctSpelling(text, vocab)), [text, vocab, keepSpelling]);
+  const parsed = useMemo(() => (spelled.text.trim() ? parseIngredientLine(spelled.text, household?.synonyms ?? {}) : null), [spelled.text, household]);
   const predicted = useMemo(() => (parsed && assignCtx ? assignStore(parsed.nameNorm, assignCtx) : null), [parsed, assignCtx]);
   const addStoreId = storeOverride ?? predicted?.storeId ?? stores[0]?.id ?? null;
 
@@ -71,6 +79,7 @@ export function ListClient() {
       },
     ]);
     setText("");
+    setKeepSpelling(false);
     setStoreOverride(null);
   }
 
@@ -225,6 +234,11 @@ export function ListClient() {
       {/* Add bar */}
       <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+58px)] z-30 px-3 pb-2">
         <div className="mx-auto max-w-xl">
+          {spelled.corrections.length > 0 && (
+            <button type="button" onClick={() => setKeepSpelling(true)} className="mb-2 ml-1 rounded-full bg-card px-3 py-1.5 text-[13px] shadow-sm ring-1 ring-line">
+              Adding as <b>{spelled.corrections.map((c) => c.to).join(", ")}</b>. <span className="text-accent">Keep “{spelled.corrections.map((c) => c.from).join(", ")}”</span>
+            </button>
+          )}
           {text.trim() && stores.length > 0 && (
             <div className="no-scrollbar mb-2 flex gap-2 overflow-x-auto px-1">
               {stores.map((s) => (
@@ -243,7 +257,12 @@ export function ListClient() {
           >
             <input
               value={text}
-              onChange={(e) => setText(e.target.value)}
+              onChange={(e) => {
+                setText(e.target.value);
+                if (!e.target.value) setKeepSpelling(false);
+              }}
+              autoCorrect="on"
+              spellCheck
               placeholder="Add something, like 2 lb chicken thighs"
               className="h-11 flex-1 bg-transparent text-[16px] outline-none placeholder:text-muted"
               enterKeyHint="done"
