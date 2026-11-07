@@ -1,4 +1,5 @@
 "use client";
+import { OfflineRecipes } from "./OfflineRecipes";
 import { createContext, useContext, useEffect, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -30,6 +31,7 @@ export function AppShell({ membership, children }: { membership: Membership; chi
   return (
     <Ctx.Provider value={membership}>
       <div className="mx-auto min-h-dvh max-w-xl pb-28">{children}</div>
+      <OfflineRecipes />
       <nav className="pb-safe fixed inset-x-0 bottom-0 z-40 border-t hairline bg-bg/85 backdrop-blur-xl">
         <div className="mx-auto flex max-w-xl">
           {TABS.map(({ href, label, Icon }) => {

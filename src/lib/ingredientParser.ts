@@ -236,3 +236,27 @@ export function parsePlainTextRecipe(text: string): { title: string | null; ingr
 function stripStepNumber(s: string): string {
   return s.replace(/^(step\s*)?\d+[.):]\s*/i, "").trim();
 }
+
+const HEADING_WORDS = /^(vegetables|veggies|sauce|dressing|marinade|toppings?|garnish(es)?|filling|glaze|base|batter|assembly|optional|to serve|for serving|spice mix|seasoning)$/i;
+
+/**
+ * A sub-heading that was saved as an ingredient line ("Japchae Sauce",
+ * "Vegetables", "For the dressing:"). Shown as a heading, never shopped for.
+ */
+export function isIngredientHeading(raw: string, qty: number | null | undefined, unit: string | null | undefined): boolean {
+  const t = raw.trim();
+  if (qty != null || unit) return false;
+  if (/:\s*$/.test(t) && t.length < 50) return true;
+  if (/^for the\b/i.test(t) && t.split(/\s+/).length <= 5) return true;
+  if (HEADING_WORDS.test(t)) return true;
+  const words = t.split(/\s+/);
+  // Every word capitalized, short, no commas: "Japchae Sauce", "Peanut Lime Dressing"
+  return words.length >= 2 && words.length <= 4 && !/[,(]/.test(t) && words.every((w) => /^[A-Z][a-z'’-]+$|^(and|&|of|the|for|with)$/.test(w)) && /^[A-Z]/.test(words[words.length - 1]);
+}
+
+/** Lines that aren't ingredients at all: a sentence of description, a cheer, a stray title. */
+export function isProseLine(raw: string, qty: number | null | undefined): boolean {
+  if (qty != null) return false;
+  const t = raw.trim();
+  return t.split(/\s+/).length > 14 || /[!]$|\.\.+$/.test(t) || /\b(I|I'm|you'll|we|my)\b/.test(t);
+}

@@ -455,6 +455,7 @@ export function PlanClient({ household, recipes, repeat, intro }: { household: H
         /* stock is a convenience; never block the list */
       }
 
+      window.dispatchEvent(new Event("cb:plan-sent")); // save this week's recipes for offline cooking
       router.push("/list");
     } catch (e) {
       setBusy(null);

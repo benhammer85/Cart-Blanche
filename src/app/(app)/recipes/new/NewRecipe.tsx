@@ -3,7 +3,8 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { RecipeEditor, emptyDraft } from "@/components/RecipeEditor";
-import { Button, PageHeader, Segmented, TextArea, TextField } from "@/components/ui";
+import { Button, PageHeader, Segmented, TextArea, TextField, cx } from "@/components/ui";
+import { IconCamera } from "@/components/icons";
 import { parseIngredientLine, parsePlainTextRecipe } from "@/lib/ingredientParser";
 import { inferMainProtein, inferMealTypes } from "@/lib/infer";
 import { isDuplicate, loadExistingKeys, resizeImage, saveRecipe } from "@/lib/data/recipes";
@@ -164,7 +165,7 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
         {!draft && !page && (
           <>
             <div className="mt-4">
-              <Segmented value={mode} onChange={(m) => { setMode(m); setError(null); if (m === "manual") setDraft(emptyDraft()); }} options={[{ value: "url", label: "Link" }, { value: "paste", label: "Paste" }, { value: "manual", label: "Blank" }]} />
+              <Segmented value={mode} onChange={(m) => { setMode(m); setError(null); if (m === "manual") setDraft(emptyDraft()); }} options={[{ value: "url", label: "Link" }, { value: "paste", label: "Scan or paste" }, { value: "manual", label: "Blank" }]} />
             </div>
             {mode === "url" && (
               <form className="mt-4 space-y-3" onSubmit={(e) => { e.preventDefault(); fetchUrl(); }}>
@@ -174,10 +175,18 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
             )}
             {mode === "paste" && (
               <div className="mt-4 space-y-3">
-                <p className="px-1 text-[14px] text-muted">Paste a whole recipe page (select all, copy) or type one out. Works for sites that block links, like traderjoes.com.</p>
+                <label className={cx("card flex min-h-[72px] cursor-pointer items-center gap-4 px-4 py-3 active:bg-soft", busy && "pointer-events-none opacity-60")}>
+                  <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-ink text-[22px] text-bg"><IconCamera /></span>
+                  <span className="flex-1">
+                    <span className="block text-[17px] font-semibold">{busy ? "Reading…" : "Scan a cookbook page"}</span>
+                    <span className="block text-[13px] text-muted">Take a photo, or choose a screenshot</span>
+                  </span>
+                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) readScreenshot(f); }} />
+                </label>
+                <p className="px-1 pt-2 text-[14px] text-muted">Or paste a recipe page (select all, copy), or type one out.</p>
                 <button
                   type="button"
-                  className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-accent-soft text-[15px] font-semibold text-accent"
+                  className="flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-soft text-[15px] font-semibold"
                   onClick={async () => {
                     try {
                       const t = await navigator.clipboard.readText();
@@ -197,10 +206,6 @@ export function NewRecipe({ initialMode, initialUrl = null }: { initialMode: Mod
                 </button>
                 <TextArea rows={12} value={paste} onChange={(e) => setPaste(e.target.value)} placeholder={"Paste the recipe page here"} />
                 <Button size="lg" className="w-full" onClick={readPaste} disabled={!paste.trim() || busy}>{busy ? "Reading…" : "Read recipe"}</Button>
-                <label className="flex h-12 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-soft text-[15px] font-semibold">
-                  Or read a screenshot
-                  <input type="file" accept="image/*" className="hidden" onChange={(e) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) readScreenshot(f); }} />
-                </label>
               </div>
             )}
             {error && (

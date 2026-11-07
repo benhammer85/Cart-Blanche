@@ -12,7 +12,7 @@ import { fitShare, makeFitContext, onlyAtStores, storeFit, type StoreFit } from 
 import { OnlyAtBadge } from "@/components/OnlyAtBadge";
 import type { HouseholdData } from "@/lib/data/household";
 import type { IngredientInfo } from "@/lib/types";
-import { IconBook, IconChat, IconClock, IconLink, IconPencil, IconPlus, IconSearch, IconShare, IconUpload, IconSliders } from "@/components/icons";
+import { IconBook, IconChat, IconClock, IconLink, IconPencil, IconPlus, IconSearch, IconShare, IconUpload, IconSliders, IconCamera } from "@/components/icons";
 
 export interface RecipeCard {
   id: string;
@@ -40,6 +40,13 @@ const SORTS: { value: Sort; label: string }[] = [
   { value: "most", label: "Most made" },
   { value: "new", label: "Newest" },
 ];
+
+/** "coconut milk" or "thighs" → the ingredient a recipe uses that matches, if any (whole words). */
+function usesIngredient(r: RecipeCard, needle: string): string | null {
+  if (needle.length < 3) return null;
+  const re = new RegExp(`\\b${needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/s$/, "")}`, "i");
+  return (r.recipe_ingredients ?? []).find((i) => re.test(i.name_norm))?.name_norm ?? null;
+}
 
 export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; household: HouseholdData }) {
   const router = useRouter();
@@ -78,7 +85,7 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
       if (r.is_kid_meal && tag !== "kids") return false;
       if (tag && !r.tags.includes(tag)) return false;
       if (maxPrep && r.prep_min != null && r.prep_min > maxPrep) return false;
-      return !needle || r.title.toLowerCase().includes(needle) || r.tags.some((t) => t.toLowerCase().includes(needle));
+      return !needle || r.title.toLowerCase().includes(needle) || r.tags.some((t) => t.toLowerCase().includes(needle)) || !!usesIngredient(r, needle);
     });
     if (fits) {
       // Recipes that use something only this store sells come first among equals.
@@ -118,7 +125,7 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
         <h1 className="large-title">Recipes</h1>
         <div className="relative mt-3">
           <IconSearch className="absolute top-1/2 left-3.5 -translate-y-1/2 text-[18px] text-muted" />
-          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${recipes.filter((r) => !r.is_kid_meal).length} recipes`} className="h-10 w-full rounded-xl bg-soft pr-3 pl-10 text-[16px] outline-none placeholder:text-muted" />
+          <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={`Search ${recipes.filter((r) => !r.is_kid_meal).length} recipes or an ingredient`} className="h-10 w-full rounded-xl bg-soft pr-3 pl-10 text-[16px] outline-none placeholder:text-muted" />
         </div>
       </header>
 
@@ -184,6 +191,11 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
                 {r.prep_min != null && (<><IconClock /> {r.prep_min} min · </>)}
                 {lastMadeShort(r.times_made, r.last_made_at)}
               </p>
+              {(() => {
+                const n = q.toLowerCase().trim();
+                const hit = n && !r.title.toLowerCase().includes(n) ? usesIngredient(r, n) : null;
+                return hit ? <p className="truncate px-0.5 text-[12px] font-semibold text-accent">Uses {hit}</p> : null;
+              })()}
               {fits && <FitNote fit={fits.get(r.id)!} store={stores.find((s) => s.id === storeFocus)?.name ?? ""} />}
             </Link>
           ))}
@@ -218,7 +230,8 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
         <div className="card divide-y divide-line overflow-hidden">
           {[
             { href: "/recipes/new?mode=url", icon: <IconLink />, label: "From a link", detail: "Paste a recipe website address" },
-            { href: "/recipes/new?mode=paste", icon: <IconPencil />, label: "Type or paste", detail: "Ingredients, a blank line, then steps" },
+            { href: "/recipes/new?mode=scan", icon: <IconCamera />, label: "Scan a cookbook page", detail: "A photo of a page, or a screenshot" },
+            { href: "/recipes/new?mode=paste", icon: <IconPencil />, label: "Type or paste", detail: "A recipe page you copied, or your own" },
             { href: "/recipes/import", icon: <IconUpload />, label: "Import from Crouton", detail: ".crumb files or a .zip" },
             { href: "/recipes/claude", icon: <IconChat />, label: "Find new recipes", detail: "Get fresh ideas that fit our week" },
             { href: "/recipes/share-setup", icon: <IconShare />, label: "Share button setup", detail: "Save recipes from any website or app in one tap" },

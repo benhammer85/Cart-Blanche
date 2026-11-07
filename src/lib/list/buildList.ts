@@ -9,6 +9,7 @@
 import { assignStore, buildKeywordIndex, lookupIngredient, type AssignContext } from "./storeAssign";
 import { formatAmount, fromBase, mergeKey, toBase, unitDimension, niceFraction, round } from "../units";
 import { normalizeName } from "../normalize";
+import { isIngredientHeading, isProseLine } from "../ingredientParser";
 import { parsePack, planPacks, useStock, type Amount } from "./bulk";
 import type { IngredientInfo, RecipeIngredient, Store } from "../types";
 
@@ -79,6 +80,8 @@ export function buildShoppingList(meals: PlannedMealForList[], opts: BuildListOp
 
   for (const meal of meals) {
     for (const ing of meal.ingredients) {
+      // Sub-headings and stray sentences saved as ingredient lines aren't things to buy.
+      if (isIngredientHeading(ing.raw_text || ing.name, ing.qty, ing.unit) || isProseLine(ing.raw_text || ing.name, ing.qty)) continue;
       const nameNorm = opts.synonyms[ing.name_norm] ?? (ing.name_norm || normalizeName(ing.name, opts.synonyms));
       // "salt and pepper" — skip when every part is a staple we have
       const parts = nameNorm.split(/\s+(?:and|&)\s+/);

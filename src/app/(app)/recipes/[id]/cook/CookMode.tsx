@@ -4,7 +4,9 @@ import { useRouter } from "next/navigation";
 import { Button, Chip, Sheet, cx } from "@/components/ui";
 import { IconClock, IconX, IconCheck } from "@/components/icons";
 import { findTimers, formatClock } from "@/lib/timers";
-import { formatAmount } from "@/lib/units";
+import { formatAmount, usEquivalent } from "@/lib/units";
+import { ingredientsForStep } from "@/lib/cook";
+import { isIngredientHeading } from "@/lib/ingredientParser";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Recipe } from "@/lib/types";
 
@@ -15,9 +17,22 @@ interface Running {
   done: boolean;
 }
 
+// One audio context, created by the tap that starts a timer (iOS only plays sound after a tap).
+let audio: AudioContext | null = null;
+function unlockAudio() {
+  try {
+    audio ??= new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    if (audio.state === "suspended") audio.resume().catch(() => {});
+  } catch {
+    /* no audio */
+  }
+}
+
 function beep() {
   try {
-    const ctx = new (window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext)();
+    unlockAudio();
+    const ctx = audio;
+    if (!ctx) return;
     [0, 0.35, 0.7].forEach((t) => {
       const o = ctx.createOscillator();
       const g = ctx.createGain();
@@ -55,6 +70,7 @@ export function CookMode({ recipe: r }: { recipe: Recipe }) {
   const [now, setNow] = useState(() => Date.now());
   const [finished, setFinished] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [missed, setMissed] = useState<string | null>(null);
   const touch = useRef<number | null>(null);
   const total = pages.length;
   const page = pages[i];
@@ -94,6 +110,37 @@ export function CookMode({ recipe: r }: { recipe: Recipe }) {
     return () => clearInterval(id);
   }, [timers]);
 
+  // A finished timer keeps ringing (every few seconds, for about a minute) until you tap it.
+  const ringing = timers.some((t) => t.done);
+  useEffect(() => {
+    if (!ringing) return;
+    let n = 0;
+    const id = setInterval(() => {
+      if (++n > 12) return clearInterval(id);
+      beep();
+      navigator.vibrate?.([300, 150, 300]);
+    }, 5000);
+    return () => clearInterval(id);
+  }, [ringing]);
+
+  // Timers can't ring while the phone is locked or another app is open.
+  // When you come back, say which ones finished and when.
+  useEffect(() => {
+    const onVis = () => {
+      if (document.visibilityState !== "visible") return;
+      const t = Date.now();
+      const ended = timers.filter((x) => !x.done && x.endsAt <= t);
+      if (!ended.length) return;
+      const mins = Math.round((t - Math.min(...ended.map((x) => x.endsAt))) / 60000);
+      setMissed(`${ended.map((x) => x.label).join(" and ")} timer finished ${mins < 1 ? "just now" : `${mins} min ago`}`);
+      setTimers((cur) => cur.map((x) => (ended.some((e) => e.id === x.id) ? { ...x, done: true } : x)));
+      beep();
+      navigator.vibrate?.([300, 150, 300, 150, 300]);
+    };
+    document.addEventListener("visibilitychange", onVis);
+    return () => document.removeEventListener("visibilitychange", onVis);
+  }, [timers]);
+
   const go = (d: number) => setI((x) => Math.max(0, Math.min(total - 1, x + d)));
 
   async function madeIt() {
@@ -114,6 +161,10 @@ export function CookMode({ recipe: r }: { recipe: Recipe }) {
   }
 
   const ingredients = [...(r.recipe_ingredients ?? [])].sort((a, b) => a.position - b.position);
+  const shoppable = ingredients.filter((g) => !isIngredientHeading(g.raw_text || g.name, g.qty, g.unit));
+  const inStep = page ? ingredientsForStep(page.text, shoppable) : [];
+  const amount = (g: (typeof ingredients)[number]) => formatAmount(g.qty != null ? Number(g.qty) * scale : null, g.unit, g.qty_max != null ? Number(g.qty_max) * scale : null);
+  const usAmount = (g: (typeof ingredients)[number]) => (/\b(oz|cups?|lb)\b/i.test(g.name) ? null : usEquivalent(g.qty != null ? Number(g.qty) * scale : null, g.unit));
 
   return (
     <div
@@ -141,6 +192,11 @@ export function CookMode({ recipe: r }: { recipe: Recipe }) {
         ))}
       </div>
 
+      {missed && (
+        <button onClick={() => setMissed(null)} className="mx-4 mt-3 rounded-xl bg-accent px-4 py-3 text-left text-[16px] font-semibold text-accent-ink">
+          {missed}
+        </button>
+      )}
       {timers.length > 0 && (
         <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 pt-3">
           {timers.map((t) => (
@@ -156,8 +212,12 @@ export function CookMode({ recipe: r }: { recipe: Recipe }) {
           ))}
         </div>
       )}
+      {timers.some((t) => !t.done) && (
+        <p className="px-5 pt-1.5 text-[12px] text-muted">Keep Cart Blanche open so the timer can ring. If the phone locks, it tells you when you come back.</p>
+      )}
 
-      <div className="flex flex-1 flex-col justify-center overflow-y-auto px-6 py-6">
+      <div className="min-h-0 flex-1 overflow-y-auto px-6">
+        <div className="flex min-h-full flex-col justify-center py-6">
         {!total ? (
           <p className="text-center text-[20px] text-muted">This recipe has no steps saved.</p>
         ) : finished ? (
@@ -175,13 +235,27 @@ export function CookMode({ recipe: r }: { recipe: Recipe }) {
               Step {i + 1} of {total}
               {page.section && ` · ${page.section}`}
             </p>
-            <p className="mt-4 text-[26px] leading-[1.45] font-medium">{page.text}</p>
+            <p className={cx("mt-4 leading-[1.45] font-medium", page.text.length > 260 ? "text-[21px]" : page.text.length > 160 ? "text-[23px]" : "text-[26px]")}>{page.text}</p>
+            {inStep.length > 0 && (
+              <ul className="mt-6 border-t hairline pt-3">
+                {inStep.map((g) => (
+                  <li key={g.id} className="flex items-baseline gap-3 py-1.5 text-[18px]">
+                    <span className="w-24 shrink-0 text-right font-semibold tabular-nums">{amount(g) || "·"}</span>
+                    <span className="min-w-0">
+                      {g.name}
+                      {usAmount(g) && <span className="text-[15px] text-muted"> ({usAmount(g)})</span>}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
             {stepTimers.length > 0 && (
               <div className="mt-6 flex flex-wrap gap-2">
                 {stepTimers.map((t, n) => (
                   <button
                     key={n}
                     onClick={() => {
+                      unlockAudio();
                       setNow(Date.now());
                       setTimers((cur) => [...cur, { id: Date.now() + n, label: t.label, endsAt: Date.now() + t.seconds * 1000, done: false }]);
                     }}
@@ -194,6 +268,7 @@ export function CookMode({ recipe: r }: { recipe: Recipe }) {
             )}
           </>
         )}
+        </div>
       </div>
 
       {!finished && total > 0 && (
@@ -210,12 +285,20 @@ export function CookMode({ recipe: r }: { recipe: Recipe }) {
           {[0.5, 1, 1.5, 2].map((s) => <Chip key={s} active={scale === s} onClick={() => setScale(s)}>{s}×</Chip>)}
         </div>
         <ul className="card divide-y divide-line overflow-hidden">
-          {ingredients.map((g) => (
+          {ingredients.map((g) =>
+            isIngredientHeading(g.raw_text || g.name, g.qty, g.unit) ? (
+              <li key={g.id} className="menu-label px-4 pt-4 pb-1.5 text-muted">{g.name}</li>
+            ) : (
             <li key={g.id} className="flex gap-3 px-4 py-3 text-[17px]">
-              <span className="w-20 shrink-0 font-semibold tabular-nums">{formatAmount(g.qty != null ? Number(g.qty) * scale : null, g.unit, g.qty_max != null ? Number(g.qty_max) * scale : null)}</span>
-              <span>{g.name}{g.note && <span className="text-muted">, {g.note}</span>}</span>
+              <span className="w-20 shrink-0 font-semibold tabular-nums">{amount(g)}</span>
+              <span>
+                {g.name}
+                {g.note && <span className="text-muted">, {g.note}</span>}
+                {usAmount(g) && <span className="text-muted"> ({usAmount(g)})</span>}
+              </span>
             </li>
-          ))}
+            ),
+          )}
         </ul>
       </Sheet>
     </div>

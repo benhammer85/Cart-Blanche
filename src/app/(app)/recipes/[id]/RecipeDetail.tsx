@@ -4,13 +4,15 @@ import { historyLine } from "@/lib/history";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { IconBack, IconClock, IconPencil, IconUsers, IconLink, IconHeart, IconShare, IconCopy } from "@/components/icons";
+import { IconBack, IconCart, IconClock, IconPencil, IconUsers, IconLink, IconHeart, IconShare, IconCopy } from "@/components/icons";
 import { recipeToDraft } from "@/lib/data/recipes";
 import { crumbFileName, toCrumb } from "@/lib/import/croutonExport";
 import { formatAmount as fmt } from "@/lib/units";
 import { Button, Chip, cx } from "@/components/ui";
 import { RecipeImage } from "@/components/RecipeImage";
-import { formatAmount } from "@/lib/units";
+import { formatAmount, usEquivalent } from "@/lib/units";
+import { AddToListSheet } from "@/components/AddToListSheet";
+import { isIngredientHeading } from "@/lib/ingredientParser";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import type { Recipe } from "@/lib/types";
 
@@ -24,6 +26,7 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
 
   const [tags, setTags] = useState(r.tags);
   const [msg, setMsg] = useState<string | null>(null);
+  const [adding, setAdding] = useState(false);
   const loved = tags.includes("Loved");
   async function toggleLoved() {
     const next = loved ? tags.filter((t) => t !== "Loved") : [...tags, "Loved"];
@@ -133,11 +136,19 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
           </a>
         )}
 
-        {(r.steps ?? []).some((x) => !x.isSection) && (
-          <Link href={`/recipes/${r.id}/cook`} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-xl bg-ink text-[16px] font-semibold text-bg shadow-sm">
-            Start cooking
-          </Link>
-        )}
+        <div className="mt-5 flex gap-2">
+          {(r.steps ?? []).some((x) => !x.isSection) && (
+            <Link href={`/recipes/${r.id}/cook`} className="flex h-12 flex-[3] items-center justify-center gap-2 rounded-xl bg-ink text-[16px] font-semibold text-bg">
+              Start cooking
+            </Link>
+          )}
+          {ingredients.length > 0 && (
+            <button onClick={() => setAdding(true)} className="flex h-12 flex-[2] items-center justify-center gap-2 rounded-xl bg-soft text-[16px] font-semibold">
+              <IconCart /> Add to list
+            </button>
+          )}
+        </div>
+        <AddToListSheet recipe={r} scale={scale} open={adding} onClose={() => setAdding(false)} />
         <div className="mt-5 flex rounded-xl bg-soft p-1">
           {(["ingredients", "steps"] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)} className={cx("h-9 flex-1 rounded-lg text-[15px] font-semibold capitalize", tab === t ? "bg-card shadow-sm" : "text-muted")}>
@@ -152,15 +163,24 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
               {[0.5, 1, 1.5, 2].map((s) => <Chip key={s} active={scale === s} onClick={() => setScale(s)}>{s}×</Chip>)}
             </div>
             <ul className="divide-y divide-line">
-              {ingredients.map((i) => (
+              {ingredients.map((i) =>
+                isIngredientHeading(i.raw_text || i.name, i.qty, i.unit) ? (
+                  <li key={i.id} className="menu-label pt-5 pb-2 text-muted">{i.name}</li>
+                ) : (
                 <li key={i.id} className="flex gap-3 py-3 text-[16px]">
                   <span className="w-20 shrink-0 font-semibold tabular-nums">{formatAmount(i.qty != null ? Number(i.qty) * scale : null, i.unit, i.qty_max != null ? Number(i.qty_max) * scale : null)}</span>
                   <span className={cx(!i.parsed_ok && "text-[#d23c3c]")}>
                     {i.name}
                     {i.note && <span className="text-muted">, {i.note}</span>}
+                    {(() => {
+                      // Metric recipes: show the US amount too ("200 g" → about 7 oz).
+                      const us = /\b(oz|cups?|lb)\b/i.test(i.name) ? null : usEquivalent(i.qty != null ? Number(i.qty) * scale : null, i.unit);
+                      return us ? <span className="text-muted"> (about {us})</span> : null;
+                    })()}
                   </span>
                 </li>
-              ))}
+                ),
+              )}
             </ul>
           </div>
         ) : (

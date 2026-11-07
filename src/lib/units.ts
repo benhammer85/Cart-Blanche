@@ -52,7 +52,7 @@ export const UNIT_ALIASES: Record<string, string> = {
   each: "each", ea: "each", whole: "each",
   can: "can", cans: "can", tin: "can", tins: "can",
   jar: "jar", jars: "jar",
-  bunch: "bunch", bunches: "bunch",
+  bunch: "bunch", bunches: "bunch", bundle: "bunch", bundles: "bunch",
   clove: "clove", cloves: "clove",
   head: "head", heads: "head",
   package: "package", packages: "package", pkg: "package", pkgs: "package",
@@ -178,4 +178,19 @@ export function formatAmount(qty: number | null, unit: string | null, qtyMax?: n
   const q = qtyMax && qtyMax > qty ? `${formatQty(qty)}–${formatQty(qtyMax)}` : formatQty(qty);
   const u = formatUnit(unit, qtyMax ?? qty);
   return u ? `${q} ${u}` : q;
+}
+
+/**
+ * A US-kitchen equivalent for a metric amount, or null when there isn't one
+ * worth showing. Weight stays weight and volume stays volume (no guessing
+ * how many cups 200 g of rice is): 200 g → "7 oz", 500 ml → "2 cups".
+ */
+export function usEquivalent(qty: number | null, unit: string | null): string | null {
+  if (qty == null || !unit || !["g", "kg", "ml", "l"].includes(unit)) return null;
+  const dim = unitDimension(unit);
+  const base = toBase(qty, unit);
+  if (dim === "weight" && base < 5) return null; // a few grams of spice: oz would be noise
+  if (dim === "volume" && base < 1) return null;
+  const r = fromBase(base, dim);
+  return formatAmount(r.qty, r.unit) || null;
 }
