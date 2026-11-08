@@ -9,10 +9,12 @@ import { IconCart, IconCheck, IconCopy, IconShare, IconPlus, IconTrash, IconWifi
 import { resizeImage } from "@/lib/data/recipes";
 import { parseIngredientLine } from "@/lib/ingredientParser";
 import { buildVocabulary, correctSpelling } from "@/lib/spell";
-import { assignStore, buildKeywordIndex } from "@/lib/list/storeAssign";
+import { assignStore, buildKeywordIndex, lookupIngredient } from "@/lib/list/storeAssign";
 import { buildCandidates, suggestItems } from "@/lib/list/suggest";
 import { learnWalkOrder } from "@/lib/list/walkOrder";
 import { foldVariants, usualKey } from "@/lib/list/usual";
+import { alsoHere } from "@/lib/list/alsoHere";
+import { isFullGrocery } from "@/lib/receipts";
 import { combine, mergeDuplicates, staleChecked } from "@/lib/list/tidy";
 import { cleanListLine, splitPastedList } from "@/lib/list/paste";
 import { normalizeName } from "@/lib/normalize";
@@ -373,6 +375,41 @@ export function ListClient() {
   // Show one store only if it still has something on the list.
   // Every store has a tab, even with nothing on its list yet, so its usual items are a tap away.
   const shown = viewing;
+  // At one store: what's on other stores' lists that you could get here too.
+  const extra = useMemo(() => {
+    if (!shown || !household || !assignCtx) return [];
+    return alsoHere(items, shown, {
+      fullGrocery: isFullGrocery(shown, household.categories, household.rules),
+      usualKeys: new Set((favsByStore.get(shown) ?? []).map((f) => usualKey(f.key))),
+      onlyAt: (n) => {
+        const info = lookupIngredient(n, assignCtx);
+        return info?.only_at ? info.learned_store_id : null;
+      },
+      listId,
+      // Stores that don't sell general groceries (H Mart) keep their own items.
+      specialty: (() => {
+        const other = household.categories.find((c) => c.name.toLowerCase() === "other");
+        return new Set(stores.filter((st) => !household.rules.some((r) => r.category_id === other?.id && r.store_id === st.id)).map((st) => st.id));
+      })(),
+    });
+  }, [shown, household, assignCtx, items, favsByStore, listId, stores]);
+  /** Picked up here instead: it moves to this store, ticked off. */
+  function getHere(item: ListItem, storeId: string) {
+    if (navigator.vibrate) navigator.vibrate(8);
+    const sectionId = assignCtx && item.name_norm ? assignStore(item.name_norm, { ...assignCtx, selectedStoreIds: [storeId] }).sectionId : null;
+    write([{ ...item, store_id: storeId, section_id: sectionId, checked: true, checked_by: me.initials }]);
+  }
+  const alsoHereBlock = (storeId: string) =>
+    extra.length > 0 && (
+      <div className="border-t hairline">
+        <div className="menu-label px-4 pt-4 pb-1 text-muted">Also here</div>
+        <ul>
+          {extra.map((i) => (
+            <ItemRow key={i.id} item={i} onToggle={() => getHere(i, storeId)} onEdit={() => setEditing(i)} onQty={() => setQtyItem(i)} />
+          ))}
+        </ul>
+      </div>
+    );
   const totalCart = groups.reduce((n, g) => n + g.inCart.length, 0);
 
   function storeText(g: (typeof groups)[number]) {
@@ -510,7 +547,7 @@ export function ListClient() {
               { id: null as string | null, name: "All", count: totalTodo, has: groups.length > 0 },
               ...stores.map((st) => {
                 const g = groups.find((x) => x.storeId === st.id);
-                return { id: st.id as string | null, name: st.name, count: g?.todoCount ?? 0, has: !!g };
+                return { id: st.id as string | null, name: st.name, count: (g?.todoCount ?? 0) + (st.id === shown ? extra.length : 0), has: !!g };
               }),
             ].map((t) => {
               const on = (shown ?? null) === t.id;
@@ -549,9 +586,10 @@ export function ListClient() {
                 </div>
               </div>
               <div className="-mr-2 flex items-center gap-1">
-                <span className={cx("text-[14px] tabular-nums", g.todoCount ? "text-muted" : "font-semibold text-ok")}>
-                  {g.todoCount ? `${g.todoCount} left` : "Done"}
-                </span>
+                {(() => {
+                  const left = g.todoCount + (g.storeId === shown ? extra.length : 0);
+                  return <span className={cx("text-[14px] tabular-nums", left ? "text-muted" : "font-semibold text-ok")}>{left ? `${left} left` : "Done"}</span>;
+                })()}
                 <button onClick={() => share(storeText(g), g.name)} className="grid h-11 w-11 place-items-center text-lg text-muted" aria-label={`Send the ${g.name} list`}>
                   <IconShare />
                 </button>
@@ -568,6 +606,7 @@ export function ListClient() {
                 </ul>
               </div>
             ))}
+            {g.storeId === shown && alsoHereBlock(g.storeId)}
             {/* Got it: stays visible, crossed out, at the bottom of the store. */}
             {g.inCart.length > 0 && (
               <ul className={cx(g.sections.length > 0 && "mt-2 border-t hairline")}>
@@ -605,6 +644,15 @@ export function ListClient() {
 
           </section>
         ))}
+        {shown && loaded && !groups.some((g) => g.storeId === shown) && extra.length > 0 && (
+          <section className="card mt-4 overflow-hidden">
+            <div className="flex items-center gap-2.5 px-4 pt-3 pb-1">
+              <StoreBadge name={stores.find((x) => x.id === shown)?.name ?? ""} size={24} />
+              <h2 className="recipe-title text-[22px] leading-tight font-semibold">{stores.find((x) => x.id === shown)?.name}</h2>
+            </div>
+            {alsoHereBlock(shown)}
+          </section>
+        )}
         {shown && loaded && !groups.some((g) => g.storeId === shown) && (
           <section className="card mt-4 overflow-hidden">
             <div className="flex items-baseline justify-between px-4 pt-4 pb-1">
