@@ -1,13 +1,14 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Button, Sheet, cx } from "./ui";
+import { Button, Chip, Sheet, cx } from "./ui";
 import { IconCheck } from "./icons";
 import { StoreBadge } from "./StoreBadge";
 import { useMembership } from "./AppShell";
 import { useHousehold } from "@/lib/data/useHousehold";
 import { buildShoppingList, type DraftListItem } from "@/lib/list/buildList";
 import { addQty, formatAmount } from "@/lib/units";
+import { isFullGrocery } from "@/lib/receipts";
 import type { IngredientInfo, ListItem, Recipe } from "@/lib/types";
 
 /**
@@ -23,13 +24,35 @@ export function AddToListSheet({ recipe: r, scale, open, onClose }: { recipe: Re
   const [done, setDone] = useState<number | null>(null);
 
   const stores = useMemo(() => (data?.stores ?? []).filter((s) => !s.archived).sort((a, b) => a.sort_order - b.sort_order), [data]);
+  // One store for the whole recipe: the last one picked, else our main grocery store.
+  const [storeId, setStoreId] = useState<string | null>(null);
+  useEffect(() => {
+    if (storeId || !data || !stores.length) return;
+    let saved: string | null = null;
+    try {
+      saved = localStorage.getItem("cb:recipe-store");
+    } catch {
+      /* private mode */
+    }
+    const main = stores.find((s) => isFullGrocery(s.id, data.categories, data.rules)) ?? stores[0];
+    setStoreId(stores.some((s) => s.id === saved) ? saved : main.id);
+  }, [data, stores, storeId]);
+  const pickStore = (id: string) => {
+    setStoreId(id);
+    try {
+      localStorage.setItem("cb:recipe-store", id);
+    } catch {
+      /* private mode */
+    }
+  };
   const items: DraftListItem[] = useMemo(() => {
     if (!data) return [];
     const base = Number(r.servings) || 4;
     return buildShoppingList(
       [{ key: r.id, title: r.title, recipeId: r.id, baseServings: base, servings: base * scale, ingredients: r.recipe_ingredients ?? [] }],
       {
-        selectedStoreIds: data.plannerDefaults.storeIds.length ? [...data.plannerDefaults.storeIds, ...stores.map((s) => s.id).filter((id) => !data.plannerDefaults.storeIds.includes(id))] : stores.map((s) => s.id),
+        // Everything to the one store, except things sold only somewhere else.
+        selectedStoreIds: storeId ? [storeId] : stores.map((s) => s.id),
         stores,
         categories: data.categories,
         rules: data.rules,
@@ -38,7 +61,7 @@ export function AddToListSheet({ recipe: r, scale, open, onClose }: { recipe: Re
         synonyms: data.synonyms,
       },
     );
-  }, [data, r, scale, stores]);
+  }, [data, r, scale, stores, storeId]);
   const pantry = useMemo(() => {
     const have = new Set((data?.ingredients ?? []).filter((i) => i.is_staple && !i.is_out).map((i) => i.name_norm));
     return [...new Set((r.recipe_ingredients ?? []).map((i) => data?.synonyms[i.name_norm] ?? i.name_norm).filter((n) => have.has(n)))];
@@ -54,7 +77,9 @@ export function AddToListSheet({ recipe: r, scale, open, onClose }: { recipe: Re
       const { data: existing } = await db.from("shopping_list_items").select("*").eq("list_id", list!.id).is("deleted_at", null).eq("checked", false);
       const now = new Date().toISOString();
       const rows: ListItem[] = chosen.map((it) => {
-        const match = (existing as ListItem[] | null)?.find((e) => e.name_norm === it.nameNorm && e.store_id === it.storeId);
+        // Already on the list (at any store): add to it rather than list it twice.
+        const same = ((existing as ListItem[] | null) ?? []).filter((e) => e.name_norm === it.nameNorm);
+        const match = same.find((e) => e.store_id === it.storeId) ?? same[0];
         if (match) {
           const sum = addQty(match.qty, match.unit, it.qty, it.unit);
           return {
@@ -107,7 +132,14 @@ export function AddToListSheet({ recipe: r, scale, open, onClose }: { recipe: Re
         <div className="space-y-2">{[0, 1, 2, 3].map((n) => <div key={n} className="skeleton h-12" />)}</div>
       ) : (
         <>
-          <p className="px-1 text-[14px] text-muted">
+          <div className="no-scrollbar -mx-4 flex gap-2 overflow-x-auto px-4 pb-1">
+            {stores.map((st) => (
+              <Chip key={st.id} active={storeId === st.id} onClick={() => pickStore(st.id)}>
+                <span className="flex items-center gap-1.5"><StoreBadge name={st.name} size={18} />{st.name}</span>
+              </Chip>
+            ))}
+          </div>
+          <p className="mt-3 px-1 text-[14px] text-muted">
             {scale !== 1 ? `Amounts for ${scale}× the recipe. ` : ""}Untick anything you already have.
           </p>
           <ul className="card mt-3 divide-y divide-line overflow-hidden">
@@ -137,7 +169,7 @@ export function AddToListSheet({ recipe: r, scale, open, onClose }: { recipe: Re
                       </span>
                       {it.note && <span className="block truncate text-[12px] text-muted">{it.note}</span>}
                     </span>
-                    {it.storeId && (
+                    {it.storeId && it.storeId !== storeId && (
                       <span className="flex shrink-0 items-center gap-1 text-[12px] text-muted">
                         <StoreBadge name={storeName(it.storeId)} size={16} />
                       </span>
