@@ -73,12 +73,23 @@ describe("ingredient mentions in a step", () => {
   ];
   test("marks each mention, longest name first", () => {
     const seg = stepSegments("Combine bananas, sugar, egg, and butter. Mix flour and baking soda; stir into banana mixture. Stir salt into batter.", ings);
-    const hits = seg.filter((s) => s.ingredient).map((s) => `${s.text}=${s.ingredient!.name_norm}`);
+    const hits = seg.filter((s) => s.ingredients).map((s) => `${s.text}=${s.ingredients!.map((i) => i.name_norm).join("+")}`);
     expect(hits).toEqual(["bananas=banana", "sugar=white sugar", "butter=melted butter", "flour=all-purpose flour", "baking soda=baking soda", "banana=banana", "salt=salt"]);
     expect(seg.map((s) => s.text).join("")).toContain("Combine bananas, sugar, egg");
   });
   test("leaves a vague word alone when two ingredients share it", () => {
     const seg = stepSegments("Add the sugar.", [{ name: "white sugar", name_norm: "white sugar" }, { name: "brown sugar", name_norm: "brown sugar" }]);
-    expect(seg.some((s) => s.ingredient)).toBe(false);
+    expect(seg.some((s) => s.ingredients)).toBe(false);
+  });
+  test("a word several ingredients share points to all of them", () => {
+    const cheeses = [
+      { name: "sharp cheddar cheese", name_norm: "cheddar cheese" },
+      { name: "Gruyère cheese", name_norm: "gruyere cheese" },
+      { name: "elbow macaroni", name_norm: "elbow macaroni" },
+    ];
+    const seg = stepSegments("Stir in the cheese until melted, then the macaroni.", cheeses);
+    expect(seg.find((s) => s.text === "cheese")?.ingredients?.map((i) => i.name_norm)).toEqual(["cheddar cheese", "gruyere cheese"]);
+    const one = stepSegments("Add the cheese.", [{ name: "cheese", name_norm: "cheese" }, { name: "cream cheese", name_norm: "cream cheese" }]);
+    expect(one.find((s) => s.text === "cheese")?.ingredients?.map((i) => i.name_norm)).toEqual(["cheese"]);
   });
 });
