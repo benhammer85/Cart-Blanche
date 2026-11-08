@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { stepSegments } from "@/lib/cook";
+import { fahrenheit } from "@/lib/temps";
 
 interface Ing {
   name: string;
@@ -9,7 +10,7 @@ interface Ing {
 
 /** A step with its ingredients underlined; tap one to see how much. */
 export function StepText<T extends Ing>({ text, ingredients, amount, className }: { text: string; ingredients: T[]; amount: (i: T) => string; className?: string }) {
-  const segments = useMemo(() => stepSegments(text, ingredients), [text, ingredients]);
+  const segments = useMemo(() => stepSegments(fahrenheit(text), ingredients), [text, ingredients]);
   const [shown, setShown] = useState<{ label: string; x: number; y: number } | null>(null);
 
   useEffect(() => {

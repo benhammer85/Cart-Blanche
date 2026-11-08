@@ -9,6 +9,7 @@ import { IconBack, IconCamera, IconCart, IconClock, IconPencil, IconUsers, IconL
 import { Chip, Sheet, cx } from "@/components/ui";
 import { Substitutes } from "@/components/Substitutes";
 import { StepText } from "@/components/StepText";
+import { fahrenheit } from "@/lib/temps";
 import { substitutesFor } from "@/lib/substitutes";
 import { RecipeImage } from "@/components/RecipeImage";
 import { formatAmount, usEquivalent } from "@/lib/units";
@@ -178,7 +179,7 @@ export function RecipeDetail({ recipe: r }: { recipe: Recipe }) {
         {r.notes && (
           <div className="card mt-6 p-4">
             <p className="mb-1 text-[12px] font-semibold uppercase tracking-wide text-muted">Notes</p>
-            <p className="text-[15px] leading-relaxed whitespace-pre-line">{r.notes}</p>
+            <p className="text-[15px] leading-relaxed whitespace-pre-line">{fahrenheit(r.notes)}</p>
           </div>
         )}
       </div>

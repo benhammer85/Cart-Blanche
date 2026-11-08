@@ -3,6 +3,7 @@ import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useMembership } from "@/components/AppShell";
 import { saveRecipe } from "@/lib/data/recipes";
+import { fahrenheit } from "@/lib/temps";
 import { supabaseBrowser } from "@/lib/supabase/client";
 import { IconCheck, IconClock } from "@/components/icons";
 import { Button, Sheet, cx } from "@/components/ui";
@@ -120,7 +121,7 @@ function Preview({ title, image, site, url, draft, loading, error, on, onToggle,
                   x.isSection ? (
                     <li key={k} className="pt-1 font-semibold">{x.text}</li>
                   ) : (
-                    <li key={k} className="flex gap-3"><span className="w-5 shrink-0 font-semibold text-muted tabular-nums">{++n}</span><span>{x.text.replace(/^\d+\.\s*/, "")}</span></li>
+                    <li key={k} className="flex gap-3"><span className="w-5 shrink-0 font-semibold text-muted tabular-nums">{++n}</span><span>{fahrenheit(x.text.replace(/^\d+\.\s*/, ""))}</span></li>
                   ),
                 )}
               </ol>
