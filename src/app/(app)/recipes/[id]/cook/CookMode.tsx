@@ -239,11 +239,11 @@ export function CookMode({ recipe: r }: { recipe: Recipe }) {
           </div>
         ) : (
           <>
-            <p className="text-[14px] font-semibold uppercase tracking-wide text-muted">
+            <p className="menu-label text-[17px] text-muted">
               Step {i + 1} of {total}
               {page.section && ` · ${page.section}`}
             </p>
-            <StepText className={cx("mt-4 leading-[1.45] font-medium", page.text.length > 260 ? "text-[21px]" : page.text.length > 160 ? "text-[23px]" : "text-[26px]")} text={page.text} ingredients={shoppable} amount={amount} />
+            <StepText className={cx("recipe-title mt-4 leading-[1.45]", page.text.length > 260 ? "text-[21px]" : page.text.length > 160 ? "text-[23px]" : "text-[26px]")} text={page.text} ingredients={shoppable} amount={amount} />
             {kitchenTips(page.text, kitchen).map((tip) => (
               <p key={tip} className="mt-4 rounded-xl bg-soft px-4 py-3 text-[15px] leading-snug">{tip}</p>
             ))}

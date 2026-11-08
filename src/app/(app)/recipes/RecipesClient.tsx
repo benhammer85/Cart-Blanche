@@ -91,7 +91,7 @@ export function RecipesClient({ recipes, household }: { recipes: RecipeCard[]; h
     <div>
       <header className="pt-safe px-5">
         <div className="flex h-11 items-center justify-end gap-2">
-          <Link href="/recipes/new" className="grid h-9 w-9 place-items-center rounded-full text-[22px] text-accent" aria-label="Add recipe">
+          <Link href="/recipes/new" className="grid h-9 w-9 place-items-center rounded-full text-[22px] text-ink" aria-label="Add recipe">
             <IconPlus />
           </Link>
         </div>

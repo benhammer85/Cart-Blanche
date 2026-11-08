@@ -1,8 +1,8 @@
 import type { Metadata, Viewport } from "next";
-import { Fraunces } from "next/font/google";
+import { Newsreader } from "next/font/google";
 import "./globals.css";
 
-const fraunces = Fraunces({ subsets: ["latin"], variable: "--font-fraunces", display: "swap", axes: ["SOFT", "opsz"], style: ["normal", "italic"] });
+const newsreader = Newsreader({ subsets: ["latin"], variable: "--font-newsreader", display: "swap", axes: ["opsz"], style: ["normal", "italic"] });
 
 export const metadata: Metadata = {
   title: "Cart Blanche",
@@ -19,7 +19,7 @@ export const metadata: Metadata = {
         [414, 896, 2], [375, 667, 2], [402, 874, 3], [440, 956, 3],
       ] as const
     ).map(([w, h, d]) => ({
-      url: `/splash/launch-${w * d}x${h * d}.png?v=3`,
+      url: `/splash/launch-${w * d}x${h * d}.png?v=4`,
       media: `(device-width: ${w}px) and (device-height: ${h}px) and (-webkit-device-pixel-ratio: ${d}) and (orientation: portrait)`,
     })),
   },
@@ -35,14 +35,14 @@ export const viewport: Viewport = {
   initialScale: 1,
   viewportFit: "cover",
   themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#faf6ee" },
-    { media: "(prefers-color-scheme: dark)", color: "#0e1726" },
+    { media: "(prefers-color-scheme: light)", color: "#fbf9f5" },
+    { media: "(prefers-color-scheme: dark)", color: "#141311" },
   ],
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en" className={fraunces.variable}>
+    <html lang="en" className={newsreader.variable}>
       <body className="min-h-dvh">{children}</body>
     </html>
   );

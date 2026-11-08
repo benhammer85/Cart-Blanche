@@ -470,7 +470,7 @@ export function PlanClient({ household, recipes, repeat, intro, current = null }
             <span />
           )}
           {step === "params" ? (
-            <Link href="/history" className="text-[15px] text-accent">Past weeks</Link>
+            <Link href="/history" className="text-[15px] text-muted">Past weeks</Link>
           ) : null}
         </div>
         <h1 className="large-title">{step === "params" ? (current?.items.length ? "This week" : "What’s for dinner?") : step === "plan" ? "Your week" : "Shopping list"}</h1>

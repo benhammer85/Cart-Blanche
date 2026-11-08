@@ -54,8 +54,8 @@ export function AppShell({ membership, children }: { membership: Membership; chi
           {TABS.map(({ href, label, Icon }) => {
             const active = path === href || path.startsWith(href + "/") || (href === "/plan" && path.startsWith("/history"));
             return (
-              <Link key={href} href={href} prefetch className={cx("flex flex-1 flex-col items-center gap-0.5 pt-2 pb-1 text-[11px] font-medium", active ? "text-accent" : "text-muted")}>
-                <Icon className="text-[26px]" strokeWidth={active ? 2.1 : 1.75} />
+              <Link key={href} href={href} prefetch className={cx("flex flex-1 flex-col items-center gap-0.5 pt-2 pb-1 text-[11px] font-medium", active ? "text-ink" : "text-muted")}>
+                <Icon className="text-[26px]" strokeWidth={active ? 1.9 : 1.5} />
                 {label}
               </Link>
             );

@@ -34,7 +34,7 @@ export function StepText<T extends Ing>({ text, ingredients, amount, className }
             <button
               key={k}
               type="button"
-              className="font-semibold underline decoration-accent/70 decoration-dotted decoration-2 underline-offset-4"
+              className="underline decoration-muted/80 decoration-dotted decoration-[1.5px] underline-offset-[5px]"
               onClick={(e) => {
                 e.stopPropagation();
                 const r = e.currentTarget.getBoundingClientRect();

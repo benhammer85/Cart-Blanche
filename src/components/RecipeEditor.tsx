@@ -103,7 +103,7 @@ export function RecipeEditor({ draft, onChange, synonyms = {} }: { draft: Recipe
         />
         {parsed.length > 0 && (
           <div className="card mt-2 overflow-hidden">
-            <p className="px-4 pt-3 text-[12px] font-semibold uppercase tracking-wide text-muted">How it reads</p>
+            <p className="menu-label px-4 pt-3 text-muted">How it reads</p>
             <ul className="px-4 pb-3 text-[14px]">
               {parsed.map((p, i) => (
                 <li key={i} className={cx("flex gap-2 py-1", !p.ok && "text-[#d23c3c]")}>

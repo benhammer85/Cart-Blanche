@@ -38,7 +38,7 @@ export default function EditItemSheet({
         <TextField value={name} onChange={(e) => setName(e.target.value)} aria-label="Name" />
         <TextField value={qty} onChange={(e) => setQty(e.target.value)} placeholder="Amount" aria-label="Amount" />
         <div>
-          <p className="mb-2 px-1 text-[13px] font-semibold uppercase tracking-wide text-muted">Store</p>
+          <p className="menu-label mb-2 px-1 text-muted">Store</p>
           <div className="flex flex-wrap gap-2">
             {stores.map((s) => (
               <Chip key={s.id} active={storeId === s.id} onClick={() => setStoreId(s.id)}>

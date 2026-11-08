@@ -401,8 +401,8 @@ export function ListClient() {
   }
   const alsoHereBlock = (storeId: string) =>
     extra.length > 0 && (
-      <div className="border-t hairline">
-        <div className="menu-label px-4 pt-4 pb-1 text-muted">Also here</div>
+      <div>
+        <div className="menu-label pt-5 pb-0.5 text-muted">Also here</div>
         <ul>
           {extra.map((i) => (
             <ItemRow key={i.id} item={i} onToggle={() => getHere(i, storeId)} onEdit={() => setEditing(i)} onQty={() => setQtyItem(i)} />
@@ -533,12 +533,12 @@ export function ListClient() {
       <header className="pt-safe sticky top-0 z-30 bg-bg/90 px-5 pb-3 backdrop-blur-xl">
         <div className="flex h-11 items-center justify-end gap-2">
           <SyncBadge status={status} pending={pending} onRetry={() => { setToast(syncError ?? "Trying again…"); retry(); }} />
-          <button onClick={() => setMenu(true)} className="-mr-2 h-11 px-2 text-[16px] text-accent">
+          <button onClick={() => setMenu(true)} className="-mr-2 h-11 px-2 text-[16px] text-muted">
             More
           </button>
         </div>
         <h1 className="large-title">Shopping list</h1>
-        <p className="mt-1 text-[15px] text-muted">
+        <p className="recipe-title mt-1 text-[17px] text-muted italic">
           {loaded ? (totalTodo ? `${totalTodo} to get${totalCart ? ` · ${totalCart} in cart` : ""}` : totalCart ? `All done · ${totalCart} in cart` : "No items") : "Loading…"}
         </p>
         {stores.length > 1 && (
@@ -557,7 +557,7 @@ export function ListClient() {
                   role="tab"
                   aria-selected={on}
                   onClick={() => setViewStore(t.id ?? "all")}
-                  className={cx("-mb-px flex h-11 shrink-0 items-center gap-1.5 border-b-2 text-[15px] transition-colors", on ? "border-accent font-semibold text-ink" : "border-transparent text-muted")}
+                  className={cx("-mb-px flex h-11 shrink-0 items-center gap-1.5 border-b-2 text-[15px] transition-colors", on ? "border-ink font-medium text-ink" : "border-transparent text-muted")}
                 >
                   {t.name}
                   {(t.count > 0 || t.has) && <span className="text-[13px] font-normal text-muted tabular-nums">{t.count || "✓"}</span>}
@@ -568,7 +568,7 @@ export function ListClient() {
         )}
       </header>
 
-      <div className="px-4">
+      <div className="px-5">
         <TonightCard key={tonightKey} />
         {loaded && !groups.length && !shown && (
           <Empty icon={<IconCart />} title="Your list is empty">
@@ -577,12 +577,12 @@ export function ListClient() {
         )}
 
         {groups.filter((g) => !shown || g.storeId === shown).map((g) => (
-          <section key={g.storeId} className="card mt-4 overflow-hidden">
-            <div className="flex items-center justify-between px-4 pt-3 pb-1">
+          <section key={g.storeId} className="mt-8">
+            <div className="flex items-center justify-between border-b border-ink pb-2">
               <div className="flex items-center gap-2.5">
                 <StoreBadge name={g.name} size={24} />
                 <div>
-                  <h2 className="recipe-title text-[22px] leading-tight font-semibold">{g.name}</h2>
+                  <h2 className="recipe-title text-[26px] leading-tight">{g.name}</h2>
                 </div>
               </div>
               <div className="-mr-2 flex items-center gap-1">
@@ -598,7 +598,7 @@ export function ListClient() {
 
             {g.sections.map((s) => (
               <div key={s.id}>
-                <div className="menu-label px-4 pt-4 pb-1 text-muted">{s.name}</div>
+                <div className="menu-label pt-5 pb-0.5 text-muted">{s.name}</div>
                 <ul>
                   {s.items.map((i) => (
                     <ItemRow key={i.id} item={i} onToggle={() => toggle(i)} onEdit={() => setEditing(i)} onQty={() => setQtyItem(i)} />
@@ -609,14 +609,14 @@ export function ListClient() {
             {g.storeId === shown && alsoHereBlock(g.storeId)}
             {/* Got it: stays visible, crossed out, at the bottom of the store. */}
             {g.inCart.length > 0 && (
-              <ul className={cx(g.sections.length > 0 && "mt-2 border-t hairline")}>
+              <ul className={cx(g.sections.length > 0 && "mt-3")}>
                 {g.inCart.map((i) => (
                   <ItemRow key={i.id} item={i} onToggle={() => toggle(i)} onEdit={() => setEditing(i)} onQty={() => setQtyItem(i)} />
                 ))}
               </ul>
             )}
             {g.inCart.length > 0 && g.storeId !== NO_STORE && (
-              <button onClick={() => (g.todoCount ? setDoneAt(g.storeId) : finishTrip(g.storeId, "keep"))} className="flex h-12 w-full items-center justify-center border-t hairline text-[16px] font-semibold text-accent active:bg-soft">
+              <button onClick={() => (g.todoCount ? setDoneAt(g.storeId) : finishTrip(g.storeId, "keep"))} className="mt-3 flex h-12 w-full items-center justify-center rounded-[10px] text-[16px] font-semibold text-ink ring-1 ring-line ring-inset active:bg-soft">
                 Done at {g.name}
               </button>
             )}
@@ -624,7 +624,7 @@ export function ListClient() {
               const usual = (favsByStore.get(g.storeId) ?? []).filter((f) => !f.onList);
               if (!usual.length) return null;
               return (
-                <div className="border-t hairline px-4 pt-3 pb-3.5">
+                <div className="pt-5">
                   <p className="menu-label mb-2 text-muted">Usually here</p>
                   <div className="flex flex-wrap gap-2">
                     {usual.slice(0, 6).map((f) => (
@@ -645,10 +645,10 @@ export function ListClient() {
           </section>
         ))}
         {shown && loaded && !groups.some((g) => g.storeId === shown) && extra.length > 0 && (
-          <section className="card mt-4 overflow-hidden">
-            <div className="flex items-center gap-2.5 px-4 pt-3 pb-1">
+          <section className="mt-8">
+            <div className="flex items-center gap-2.5 border-b border-ink pb-2">
               <StoreBadge name={stores.find((x) => x.id === shown)?.name ?? ""} size={24} />
-              <h2 className="recipe-title text-[22px] leading-tight font-semibold">{stores.find((x) => x.id === shown)?.name}</h2>
+              <h2 className="recipe-title text-[26px] leading-tight">{stores.find((x) => x.id === shown)?.name}</h2>
             </div>
             {alsoHereBlock(shown)}
           </section>
@@ -681,7 +681,7 @@ export function ListClient() {
       </div>
 
       {/* Add bar */}
-      <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+58px)] z-30 border-t hairline bg-bg px-3 pt-2 pb-2">
+      <div className="fixed inset-x-0 bottom-[calc(env(safe-area-inset-bottom)+58px)] z-30 border-t hairline bg-bg px-3 pt-1.5 pb-1.5">
         <div className="mx-auto max-w-xl">
           {spelled.corrections.length > 0 && (
             <button type="button" onClick={() => setKeepSpelling(true)} className="mb-2 ml-1 rounded-full bg-card px-3 py-1.5 text-[13px] shadow-sm ring-1 ring-line">
@@ -721,7 +721,7 @@ export function ListClient() {
               e.preventDefault();
               add();
             }}
-            className="card flex items-center gap-2 p-1.5 pl-4"
+            className="flex items-center gap-2 py-1 pl-2"
           >
             <input
               value={text}
@@ -759,7 +759,7 @@ export function ListClient() {
                 </button>
               </span>
             )}
-            <button disabled={!text.trim() || !listId} className="grid h-11 w-11 place-items-center rounded-full bg-ink text-2xl text-bg disabled:opacity-30" aria-label="Add">
+            <button disabled={!text.trim() || !listId} className="grid h-10 w-10 place-items-center rounded-full bg-ink text-2xl text-bg disabled:opacity-25" aria-label="Add">
               <IconPlus />
             </button>
           </form>
@@ -951,7 +951,7 @@ function ItemRow({ item, onToggle, onEdit, onQty }: { item: ListItem; onToggle: 
         {dx > 24 && <IconCheck strokeWidth={3} className="text-xl" />}
       </div>
       <div
-        className="relative flex items-stretch bg-card"
+        className="relative flex items-stretch border-b hairline bg-bg"
         style={{ transform: `translateX(${dx}px)`, transition: start.current?.swiping ? "none" : "transform 0.2s ease" }}
         onTouchStart={(e) => {
           start.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, swiping: false };
@@ -975,16 +975,16 @@ function ItemRow({ item, onToggle, onEdit, onQty }: { item: ListItem; onToggle: 
           onClick={() => {
             if (dxRef.current === 0) onToggle();
           }}
-          className="flex min-h-[60px] min-w-0 flex-1 items-center gap-3.5 pl-4 text-left active:bg-soft"
+          className="flex min-h-[56px] min-w-0 flex-1 items-center gap-3.5 text-left active:bg-soft"
           aria-pressed={item.checked}
         >
           <span
             className={cx(
-              "grid h-7 w-7 shrink-0 place-items-center rounded-full border-2 transition",
-              item.checked ? "check-pop border-ok bg-ok text-white" : "border-line",
+              "grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full border-[1.5px] transition",
+              item.checked ? "check-pop border-ink bg-ink text-bg" : "border-muted/50",
             )}
           >
-            {item.checked && <IconCheck className="text-[16px]" strokeWidth={3} />}
+            {item.checked && <IconCheck className="text-[13px]" strokeWidth={3} />}
           </span>
           <span className="min-w-0 flex-1 py-2">
             <span className={cx("block text-[17px] leading-snug", item.checked && "text-muted line-through decoration-1")}>
@@ -996,14 +996,14 @@ function ItemRow({ item, onToggle, onEdit, onQty }: { item: ListItem; onToggle: 
         {!item.checked && (
           <button
             onClick={onQty}
-            className={cx("my-auto shrink-0 rounded-full tabular-nums", item.display_qty ? "h-9 bg-soft px-3 text-[15px] font-semibold" : "grid h-9 w-9 place-items-center text-[18px] text-muted/60")}
+            className={cx("my-auto shrink-0 tabular-nums", item.display_qty ? "h-9 px-1 text-[15.5px] text-muted" : "grid h-9 w-9 place-items-center text-[17px] text-muted/50")}
             aria-label={item.display_qty ? `Amount of ${item.name}` : `Add an amount for ${item.name}`}
           >
             {item.display_qty || <IconPlus />}
           </button>
         )}
         {item.checked && item.display_qty && <span className="my-auto shrink-0 text-[14px] text-muted">{item.display_qty}</span>}
-        <button onClick={onEdit} className="flex shrink-0 items-center gap-2 pr-4 pl-2 text-muted" aria-label={`Edit ${item.name}`}>
+        <button onClick={onEdit} className="-mr-1 flex shrink-0 items-center gap-2 pr-1 pl-2 text-muted/70" aria-label={`Edit ${item.name}`}>
           <span className="text-[20px] leading-none">⋯</span>
         </button>
       </div>

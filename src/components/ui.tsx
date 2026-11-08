@@ -19,14 +19,14 @@ export function Button({
     <button
       {...props}
       className={cx(
-        "inline-flex items-center justify-center gap-2 rounded-xl font-semibold transition active:scale-[0.97] disabled:opacity-40 disabled:active:scale-100",
+        "inline-flex items-center justify-center gap-2 rounded-[10px] font-semibold transition active:scale-[0.97] disabled:opacity-40 disabled:active:scale-100",
         size === "sm" && "h-9 px-3.5 text-sm",
         size === "md" && "h-11 px-5 text-[15px]",
         size === "lg" && "h-14 px-6 text-[17px]",
         variant === "primary" && "bg-ink text-bg",
-        variant === "secondary" && "bg-soft text-ink",
+        variant === "secondary" && "text-ink ring-1 ring-line ring-inset",
         variant === "ghost" && "text-accent",
-        variant === "danger" && "bg-soft text-[#d23c3c]",
+        variant === "danger" && "text-[#c0392b] ring-1 ring-line ring-inset",
         className,
       )}
     />
@@ -40,7 +40,7 @@ export function Chip({ active, onClick, children, className }: { active?: boolea
       onClick={onClick}
       className={cx(
         "h-9 shrink-0 rounded-full px-3.5 text-[14px] font-medium transition active:scale-95",
-        active ? "bg-ink text-bg" : "bg-card text-ink ring-1 ring-line",
+        active ? "bg-ink text-bg" : "text-ink ring-1 ring-line",
         className,
       )}
     >
@@ -71,7 +71,7 @@ export function Toggle({ checked, onChange, label }: { checked: boolean; onChang
       aria-checked={checked}
       aria-label={label}
       onClick={() => onChange(!checked)}
-      className={cx("relative h-[31px] w-[51px] shrink-0 rounded-full transition-colors", checked ? "bg-ok" : "bg-line")}
+      className={cx("relative h-[31px] w-[51px] shrink-0 rounded-full transition-colors", checked ? "bg-ink" : "bg-line")}
     >
       <span className={cx("absolute top-[2px] h-[27px] w-[27px] rounded-full bg-white shadow transition-all", checked ? "left-[22px]" : "left-[2px]")} />
     </button>
@@ -100,7 +100,7 @@ export function PageHeader({ title, subtitle, back, right }: { title: string; su
     <header className="pt-safe px-5">
       <div className="flex h-11 items-center justify-between">
         {back ? (
-          <Link href={back} className="-ml-2 flex items-center text-[17px] text-accent">
+          <Link href={back} className="-ml-2 flex items-center text-[17px] text-ink">
             <IconBack className="text-2xl" />
             Back
           </Link>
@@ -110,7 +110,7 @@ export function PageHeader({ title, subtitle, back, right }: { title: string; su
         <div className="flex items-center gap-2">{right}</div>
       </div>
       <h1 className="large-title mt-1">{title}</h1>
-      {subtitle && <div className="mt-1 text-[15px] text-muted">{subtitle}</div>}
+      {subtitle && <div className="recipe-title mt-1 text-[17px] text-muted italic">{subtitle}</div>}
     </header>
   );
 }
