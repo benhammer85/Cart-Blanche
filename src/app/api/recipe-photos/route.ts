@@ -3,11 +3,13 @@ import { getAuthUser, supabaseServer } from "@/lib/supabase/server";
 import { AiError, getAiProvider } from "@/lib/ai/provider";
 import { scrubNames } from "@/lib/ai/aiPlanner";
 import { fetchPage, isPrivateHost } from "@/lib/import/fetchRecipe";
-import { pageImages, siteName } from "@/lib/import/pageRecipes";
+import { pageImages, roundupLinks, siteName } from "@/lib/import/pageRecipes";
+import { PHOTO_SITES, dishWords, matchScore, searchTerms } from "@/lib/photos";
 import { isBlockedSite } from "@/lib/discover";
 
-// Photo choices for a recipe: { source: true } reads the recipe's own page
-// (free); { web: true } also searches recipe sites for the dish (one AI search).
+// Photo choices for a recipe: the recipe's own page, and with { web: true }
+// photos of the same dish from recipe sites we can search directly (free).
+// Only when those come up short does it spend an AI search.
 
 export const maxDuration = 60;
 
@@ -31,6 +33,31 @@ async function photosFrom(url: string): Promise<Photo[]> {
   }
 }
 
+/** The same dish on recipe sites that have their own search: best matches first. */
+async function comparable(title: string): Promise<Photo[]> {
+  const words = dishWords(title);
+  const q = searchTerms(title);
+  if (!q) return [];
+  const found = await Promise.all(
+    PHOTO_SITES.map(async (site) => {
+      try {
+        const res = await fetchPage(new URL(`${site}/?s=${encodeURIComponent(q)}`), 8000);
+        if (!res.ok) return [];
+        return roundupLinks(await res.text(), res.url)
+          .map((l) => ({ url: l.url, score: matchScore(l.url, words) }))
+          .filter((l) => l.score >= 0.6)
+          .sort((a, b) => b.score - a.score || a.url.length - b.url.length)
+          .slice(0, 2);
+      } catch {
+        return [];
+      }
+    }),
+  );
+  // Take the best from each site in turn, then read each page's main photo.
+  const pages = [0, 1].flatMap((k) => found.map((f) => f[k]).filter(Boolean)).sort((a, b) => b.score - a.score || a.url.length - b.url.length).slice(0, 6);
+  return (await Promise.all(pages.map((p) => photosFrom(p.url)))).map((p) => p[0]).filter(Boolean) as Photo[];
+}
+
 export async function POST(request: NextRequest) {
   const db = await supabaseServer();
   if (!(await getAuthUser(db))) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
@@ -40,8 +67,10 @@ export async function POST(request: NextRequest) {
   const photos: Photo[] = sourceUrl ? await photosFrom(sourceUrl) : [];
   if (!web) return NextResponse.json({ ok: true, photos });
 
+  const seen0 = new Set(photos.map((p) => p.image));
+  for (const p of await comparable(title)) if (!seen0.has(p.image)) (seen0.add(p.image), photos.push(p));
   const ai = getAiProvider();
-  if (!ai) return NextResponse.json({ ok: true, photos, note: "Searching the web needs the Gemini key." });
+  if (photos.length >= 4 || !ai) return NextResponse.json({ ok: true, photos: photos.slice(0, 12) });
 
   // Never send household names: "Molly's chili" → "family chili".
   const [{ data: people }, { data: members }] = await Promise.all([db.from("household_people").select("name, kind"), db.from("household_members").select("display_name")]);

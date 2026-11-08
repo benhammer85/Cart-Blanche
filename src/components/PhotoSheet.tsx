@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Button, Sheet, cx } from "./ui";
+import { Sheet, cx } from "./ui";
 import { IconCamera, IconSearch } from "./icons";
 import { useMembership } from "./AppShell";
 import { supabaseBrowser } from "@/lib/supabase/client";
@@ -23,7 +23,6 @@ export function PhotoSheet({ recipe, open, onClose }: { recipe: { id: string; ti
   const { householdId } = useMembership();
   const [photos, setPhotos] = useState<Photo[] | null>(null);
   const [searching, setSearching] = useState(false);
-  const [searched, setSearched] = useState(false);
   const [note, setNote] = useState<string | null>(null);
   const [saving, setSaving] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -35,25 +34,30 @@ export function PhotoSheet({ recipe, open, onClose }: { recipe: { id: string; ti
     return r as { ok: boolean; photos?: Photo[]; note?: string; error?: string };
   };
 
+  // Open: the recipe's own page first (quick), then the same dish on recipe sites.
   useEffect(() => {
     if (!open || photos) return;
     ask(false).then((r) => {
       setPhotos(r.photos ?? []);
-      // Nothing on the recipe's own page: look on recipe sites straight away.
-      if (!r.photos?.length) searchWeb();
+      searchWeb(r.photos ?? []);
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  async function searchWeb() {
+  async function searchWeb(first: Photo[]) {
     setSearching(true);
     setNote(null);
     const r = await ask(true);
-    setPhotos(r.photos ?? photos ?? []);
-    setNote(r.note ?? (r.photos?.length ? null : "No photos found."));
-    setSearched(true);
+    const all = [...first];
+    for (const p of r.photos ?? []) if (!all.some((x) => x.image === p.image)) all.push(p);
+    setPhotos(all);
+    setNote(all.length ? null : (r.note ?? "No photos found."));
     setSearching(false);
   }
+
+  // Too small to look sharp: leave it out.
+  const [small, setSmall] = useState<Set<string>>(new Set());
+  const shown = (photos ?? []).filter((p) => !small.has(p.image));
 
   async function save(blob: Blob, key: string) {
     setSaving(key);
@@ -99,29 +103,40 @@ export function PhotoSheet({ recipe, open, onClose }: { recipe: { id: string; ti
 
   return (
     <Sheet open={open} onClose={onClose} title="Change photo">
-      <h3 className="menu-label mb-2 px-1 text-muted">{searching ? "Looking on recipe sites…" : recipe.source_url && !searched ? "From the recipe’s page" : "Photos of this dish"}</h3>
-      {photos == null || (searching && !photos.length) ? (
-        <div className="grid grid-cols-2 gap-2">{[0, 1].map((n) => <div key={n} className="skeleton aspect-[4/3]" />)}</div>
-      ) : photos.length ? (
-        <ul className="grid grid-cols-2 gap-2">
-          {photos.map((p) => (
-            <li key={p.image}>
-              <button onClick={() => choose(p)} disabled={!!saving} className="relative block w-full overflow-hidden rounded-xl bg-soft text-left active:scale-[0.98]">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={p.image} alt="" referrerPolicy="no-referrer" loading="lazy" className="aspect-[4/3] w-full object-cover" onError={(e) => ((e.currentTarget.closest("li") as HTMLElement).style.display = "none")} />
-                <span className="absolute inset-x-0 bottom-0 truncate bg-gradient-to-t from-black/70 to-transparent px-2 pt-5 pb-1.5 text-[11px] font-semibold text-white">{p.site}</span>
-                {saving === p.image && <span className="absolute inset-0 grid place-items-center bg-black/40 text-[14px] font-semibold text-white">Saving…</span>}
-              </button>
-            </li>
-          ))}
-        </ul>
+      {photos == null || (!shown.length && searching) ? (
+        <>
+          <div className="skeleton aspect-[4/3] w-full" />
+          <p className="mt-2 px-1 text-[14px] text-muted">Finding photos of this dish…</p>
+        </>
+      ) : shown.length ? (
+        <>
+          <ul className="grid grid-cols-2 gap-2">
+            {shown.map((p, k) => (
+              <li key={p.image} className={cx(k === 0 && "col-span-2")}>
+                <button onClick={() => choose(p)} disabled={!!saving} className="relative block w-full overflow-hidden rounded-xl bg-soft text-left active:scale-[0.98]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={p.image}
+                    alt=""
+                    referrerPolicy="no-referrer"
+                    loading={k < 3 ? "eager" : "lazy"}
+                    className="aspect-[4/3] w-full object-cover"
+                    onLoad={(e) => e.currentTarget.naturalWidth < 500 && setSmall((cur) => new Set(cur).add(p.image))}
+                    onError={() => setSmall((cur) => new Set(cur).add(p.image))}
+                  />
+                  <span className="absolute inset-x-0 bottom-0 flex items-end justify-between gap-2 bg-gradient-to-t from-black/70 to-transparent px-2.5 pt-6 pb-2 text-white">
+                    <span className="truncate text-[12px] font-semibold">{p.site}</span>
+                    {k === 0 && <span className="shrink-0 rounded-full bg-white px-3 py-1 text-[13px] font-semibold text-ink">Use this photo</span>}
+                  </span>
+                  {saving === p.image && <span className="absolute inset-0 grid place-items-center bg-black/40 text-[14px] font-semibold text-white">Saving…</span>}
+                </button>
+              </li>
+            ))}
+          </ul>
+          {searching && <p className="mt-2 px-1 text-[13px] text-muted">Finding more…</p>}
+        </>
       ) : (
-        <p className="px-1 text-[14px] text-muted">{recipe.source_url ? "No photo on the recipe’s page." : "This recipe has no web page."}</p>
-      )}
-      {!searched && !searching && (
-        <Button variant="secondary" className="mt-3 w-full" onClick={searchWeb} disabled={searching || !!saving}>
-          {searching ? "Searching recipe sites…" : "More photos from recipe sites"}
-        </Button>
+        <p className="px-1 text-[14px] text-muted">No photos of this dish found.</p>
       )}
       <div className="mt-5 grid grid-cols-2 gap-2">
         <button onClick={pastePhoto} disabled={!!saving} className="card flex min-h-[56px] items-center justify-center gap-2 text-[15px] font-semibold active:bg-soft disabled:opacity-60">
