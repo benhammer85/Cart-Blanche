@@ -93,3 +93,24 @@ describe("ingredient mentions in a step", () => {
     expect(one.find((s) => s.text === "cheese")?.ingredients?.map((i) => i.name_norm)).toEqual(["cheese"]);
   });
 });
+
+describe("step matching edge cases", () => {
+  const find = (step: string, ings: { name: string; name_norm: string }[], word: string) =>
+    stepSegments(step, ings).find((s) => s.text.toLowerCase() === word)?.ingredients?.map((i) => i.name_norm) ?? null;
+  test("a first word doesn't pull in vinegar, stock or powder", () => {
+    const ings = [{ name: "brown rice", name_norm: "brown rice" }, { name: "rice vinegar", name_norm: "rice vinegar" }];
+    expect(find("Cook the rice.", ings, "rice")).toEqual(["brown rice"]);
+    expect(find("Add chicken.", [{ name: "chicken thighs", name_norm: "chicken thigh" }, { name: "chicken stock", name_norm: "chicken stock" }], "chicken")).toEqual(["chicken thigh"]);
+  });
+  test("a vague or shape word falls back to the main word", () => {
+    expect(find("Drizzle with balsamic.", [{ name: "balsamic vinegar", name_norm: "balsamic vinegar" }], "balsamic")).toEqual(["balsamic vinegar"]);
+    expect(find("Toast the cumin.", [{ name: "whole cumin seeds", name_norm: "whole cumin seed" }], "cumin")).toEqual(["whole cumin seed"]);
+    expect(find("Fold in the walnuts.", [{ name: "walnut pieces", name_norm: "walnut piece" }], "walnuts")).toEqual(["walnut piece"]);
+    expect(find("Top with cheese.", [{ name: "Mexican cheese blend", name_norm: "mexican cheese blend" }], "cheese")).toEqual(["mexican cheese blend"]);
+  });
+  test("a main word two ingredients share stays unmarked", () => {
+    expect(find("Sprinkle with sesame.", [{ name: "white sesame seeds", name_norm: "white sesame seed" }, { name: "black sesame seeds", name_norm: "black sesame seed" }], "sesame")).toBeNull();
+    // Sesame oil answers to "oil", so "sesame" means the seeds.
+    expect(find("Sprinkle with sesame.", [{ name: "sesame oil", name_norm: "sesame oil" }, { name: "sesame seeds", name_norm: "sesame seed" }], "sesame")).toEqual(["sesame seed"]);
+  });
+});

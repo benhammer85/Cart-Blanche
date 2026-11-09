@@ -16,14 +16,34 @@ const LEADING = new Set(["chicken", "beef", "pork", "shrimp", "salmon", "tofu", 
 const esc = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const word = (w: string) => new RegExp(`\\b${esc(w)}(e?s)?\\b`, "i");
 
-function phrases(i: StepIngredient): string[] {
+// The last word is just a shape or cut ("walnut pieces", "broccoli florets").
+const FORM = new Set(["piece", "floret", "slice", "wedge", "thread", "rib", "sprig", "clove", "stalk", "leave", "leaf", "head", "bunch", "fillet", "strip", "chunk", "cube", "half", "halve", "round", "spear"]);
+// Words that describe rather than name ("toasted sesame seeds" is sesame).
+const DESC = new Set(["fresh", "dried", "ground", "whole", "large", "small", "medium", "toasted", "pure", "unsweetened", "light", "dark", "raw", "frozen", "boneless", "skinless", "extra", "virgin", "sweet", "mild", "chopped", "minced", "sliced", "diced", "shredded", "grated", "kosher", "fine", "coarse", "unsalted", "salted", "plain", "organic", "simmering", "aluminum-free"]);
+const single = (w: string) => w.replace(/(ies)$/, "y").replace(/(es|s)$/, "");
+
+type Phrase = { p: string; kind: "full" | "head" | "lead" | "main" };
+
+function tagged(i: StepIngredient): Phrase[] {
   const norm = i.name_norm.toLowerCase().trim();
   const words = norm.split(/\s+/).filter(Boolean);
-  const out = [norm];
+  const out: Phrase[] = [{ p: norm, kind: "full" }];
+  if (words.length < 2) return out;
   const head = words[words.length - 1];
-  if (words.length > 1 && head && head.length >= 3 && !VAGUE.has(head)) out.push(head);
-  if (words.length > 1 && LEADING.has(words[0])) out.push(words[0]);
+  const vagueHead = VAGUE.has(head) || FORM.has(single(head));
+  if (head.length >= 3 && !vagueHead) out.push({ p: head, kind: "head" });
+  // "chicken thighs" → chicken; but not "chicken stock", "rice vinegar", "garlic powder".
+  if (LEADING.has(words[0]) && !VAGUE.has(head)) out.push({ p: words[0], kind: "lead" });
+  // "balsamic vinegar" → balsamic, "walnut pieces" → walnut (only used when no other ingredient shares it).
+  if (vagueHead && head !== "stock" && head !== "broth") {
+    const main = words.slice(0, -1).reverse().find((w) => w.length >= 4 && !DESC.has(w) && !VAGUE.has(w));
+    if (main && !out.some((x) => x.p === main)) out.push({ p: main, kind: "main" });
+  }
   return out;
+}
+
+function phrases(i: StepIngredient): string[] {
+  return tagged(i).map((x) => x.p);
 }
 
 /** Ingredients mentioned in a step, in the order the step mentions them. */
@@ -63,11 +83,14 @@ export function stepSegments<T extends StepIngredient>(step: string, ingredients
   // Each word or phrase → the ingredients it can mean.
   const byTerm = new Map<string, T[]>();
   const exact = new Map<string, T>();
+  const mains = new Map<string, number>();
+  for (const i of ingredients) for (const t of tagged(i)) if (t.kind !== "main") mains.set(t.p, (mains.get(t.p) ?? 0) + 1);
+  for (const i of ingredients) for (const t of tagged(i)) if (t.kind === "main") mains.set(t.p, (mains.get(t.p) ?? 0) + 1);
   for (const i of ingredients) {
     const norm = i.name_norm.toLowerCase().trim();
     const w = norm.split(/\s+/);
     const h = w[w.length - 1];
-    const ps = new Set(phrases(i));
+    const ps = new Set(tagged(i).filter((t) => t.kind !== "main" || mains.get(t.p) === 1).map((t) => t.p));
     if (w.length > 1 && h && h.length >= 3 && VAGUE.has(h) && heads.get(h) === 1) ps.add(h);
     for (const p of ps) byTerm.set(p, [...(byTerm.get(p) ?? []), i]);
     exact.set(norm, i);
