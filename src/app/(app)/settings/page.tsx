@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { PageHeaderStatic } from "./_sections/Header";
-import { IconChevron, IconStore, IconUsers, IconX, IconBook, IconReceipt, IconPot, IconUpload, IconShare, IconDownload } from "@/components/icons";
+import { IconChevron, IconStore, IconUsers, IconX, IconBook, IconReceipt, IconPot, IconUpload, IconShare, IconDownload, IconCheck } from "@/components/icons";
 import type { ReactNode } from "react";
 
 type Item = { href: string; label: string; detail: string; icon: ReactNode };
@@ -29,6 +29,7 @@ const GROUPS: { title: string; items: Item[] }[] = [
     title: "Advanced",
     items: [
       { href: "/settings/ingredients", label: "Ingredients", detail: "Aisles, pack sizes, only-at items, synonyms", icon: <IconBook /> },
+      { href: "/settings/check", label: "Check ingredients", detail: "Fix lines that imported badly", icon: <IconCheck /> },
       { href: "/settings/receipts", label: "Learn from receipts", detail: "Teach which store you buy things at", icon: <IconReceipt /> },
       { href: "/recipes/import", label: "Import from Crouton", detail: ".crumb files or a .zip", icon: <IconUpload /> },
       { href: "/recipes/share-setup", label: "Share button setup", detail: "Save recipes from Safari", icon: <IconShare /> },
