@@ -9,11 +9,9 @@ import { checkIngredient, describeFix, type Issue } from "@/lib/ingredientCheck"
 interface Row {
   id: string;
   recipe_id: string;
-  household_id: string;
   position: number;
   raw_text: string;
   qty: number | null;
-  qty_max: number | null;
   unit: string | null;
   name: string;
   name_norm: string;
@@ -32,23 +30,25 @@ const readSkip = (): Set<string> => {
 
 /** Imported ingredient lines that read badly, each with a proposed fix you approve. */
 export function CheckIngredientsSettings() {
-  const { data, db } = useHousehold();
+  const { data, db, householdId } = useHousehold();
   const [rows, setRows] = useState<Row[] | null>(null);
   const [titles, setTitles] = useState<Map<string, string>>(new Map());
   const [skip, setSkip] = useState<Set<string>>(new Set());
   const [busy, setBusy] = useState<string | null>(null);
+  const [fixed, setFixed] = useState<Set<string>>(new Set());
   const [toast, setToast] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const all: Row[] = [];
-    for (let from = 0; ; from += 1000) {
-      const { data: page } = await db.from("recipe_ingredients").select("*").range(from, from + 999);
-      all.push(...((page ?? []) as Row[]));
-      if (!page || page.length < 1000) break;
-    }
-    const { data: recipes } = await db.from("recipes").select("id, title").eq("archived", false);
+    // How many lines, then every page at once (not one after another), only the columns we need.
+    const cols = "id, recipe_id, position, raw_text, qty, unit, name, note, parsed_ok";
+    const [{ count }, { data: recipes }] = await Promise.all([
+      db.from("recipe_ingredients").select("id", { count: "exact", head: true }),
+      db.from("recipes").select("id, title").eq("archived", false),
+    ]);
+    const pages = Math.max(1, Math.ceil((count ?? 0) / 1000));
+    const got = await Promise.all(Array.from({ length: pages }, (_, k) => db.from("recipe_ingredients").select(cols).range(k * 1000, k * 1000 + 999)));
     setTitles(new Map(((recipes ?? []) as { id: string; title: string }[]).map((r) => [r.id, r.title])));
-    setRows(all);
+    setRows(got.flatMap((g) => (g.data ?? []) as Row[]));
   }, [db]);
   useEffect(() => {
     setSkip(readSkip());
@@ -58,11 +58,11 @@ export function CheckIngredientsSettings() {
   const issues = useMemo(() => {
     if (!rows) return null;
     return rows
-      .filter((r) => titles.has(r.recipe_id) && !skip.has(r.id))
+      .filter((r) => titles.has(r.recipe_id) && !skip.has(r.id) && !fixed.has(r.id))
       .map((r) => ({ row: r, issue: checkIngredient({ ...r, qty: r.qty == null ? null : Number(r.qty) }) }))
       .filter((x): x is { row: Row; issue: Issue } => !!x.issue)
       .sort((a, b) => (titles.get(a.row.recipe_id) ?? "").localeCompare(titles.get(b.row.recipe_id) ?? "") || a.row.position - b.row.position);
-  }, [rows, titles, skip]);
+  }, [rows, titles, skip, fixed]);
 
   async function apply(row: Row, issue: Issue): Promise<boolean> {
     const syn = data?.synonyms ?? {};
@@ -76,7 +76,7 @@ export function CheckIngredientsSettings() {
       const { error } = await db.from("recipe_ingredients").update({ name: first, name_norm: normalizeName(first, syn), note: f.note }).eq("id", row.id);
       if (error) return false;
       const { error: e2 } = await db.from("recipe_ingredients").insert(
-        rest.map((n) => ({ household_id: row.household_id, recipe_id: row.recipe_id, position: row.position, raw_text: row.raw_text, qty: null, qty_max: null, unit: null, name: n, name_norm: normalizeName(n, syn), note: f.note, parsed_ok: true })),
+        rest.map((n) => ({ household_id: householdId, recipe_id: row.recipe_id, position: row.position, raw_text: row.raw_text, qty: null, qty_max: null, unit: null, name: n, name_norm: normalizeName(n, syn), note: f.note, parsed_ok: true })),
       );
       return !e2;
     }
@@ -91,17 +91,17 @@ export function CheckIngredientsSettings() {
     setBusy(row.id);
     const ok = await apply(row, issue);
     setToast(ok ? "Fixed" : "Couldn’t save that one");
+    if (ok) setFixed((cur) => new Set(cur).add(row.id));
     setBusy(null);
-    load();
   }
   async function fixAll() {
     if (!issues) return;
     setBusy("all");
-    let n = 0;
-    for (const { row, issue } of issues) if (issue.fix.kind !== "edit" && (await apply(row, issue))) n++;
-    setToast(`Fixed ${n} ${n === 1 ? "line" : "lines"}`);
+    const done: string[] = [];
+    for (const { row, issue } of issues) if (issue.fix.kind !== "edit" && (await apply(row, issue))) done.push(row.id);
+    setFixed((cur) => new Set([...cur, ...done]));
+    setToast(`Fixed ${done.length} ${done.length === 1 ? "line" : "lines"}`);
     setBusy(null);
-    load();
   }
   function skipOne(id: string) {
     const next = new Set(skip).add(id);

@@ -24,6 +24,33 @@ const TABS = [
 export function AppShell({ membership, children }: { membership: Membership; children: ReactNode }) {
   const path = usePathname();
   const router = useRouter();
+  // Opened from the saved copy (see sw.js): fetch fresh data for this screen once.
+  useEffect(() => {
+    if (!navigator.serviceWorker?.controller || !navigator.onLine) return;
+    const t = setTimeout(() => router.refresh(), 400);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // A saved page that points at files from an older version: reload once.
+  useEffect(() => {
+    const onError = (e: ErrorEvent | PromiseRejectionEvent) => {
+      const msg = String("reason" in e ? (e.reason?.message ?? e.reason) : e.message);
+      if (!/Loading chunk|ChunkLoadError|Failed to load chunk|dynamically imported module/i.test(msg)) return;
+      try {
+        if (sessionStorage.getItem("cb:reloaded")) return;
+        sessionStorage.setItem("cb:reloaded", "1");
+      } catch {
+        return;
+      }
+      location.reload();
+    };
+    window.addEventListener("error", onError);
+    window.addEventListener("unhandledrejection", onError);
+    return () => {
+      window.removeEventListener("error", onError);
+      window.removeEventListener("unhandledrejection", onError);
+    };
+  }, []);
   // Settings change what Plan and Recipes show: drop the cached tabs on the way out.
   const prev = useRef(path);
   useEffect(() => {

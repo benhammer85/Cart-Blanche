@@ -29,9 +29,18 @@ export const ASIAN_GROCERIES = [
 
 const HMART_SECTIONS = walkOrderFor("H Mart");
 
+// Bump when adding an upgrade below: once a household has this marker, a cold
+// start costs one read instead of a dozen.
+const ALL_DONE = "_upgradesV12";
+
 export async function applyUpgrades(db: SupabaseClient, householdId: string): Promise<void> {
   if (done.has(householdId)) return;
   try {
+    const { data: s0 } = await db.from("household_settings").select("planner_defaults").eq("household_id", householdId).maybeSingle();
+    if ((s0?.planner_defaults as Record<string, unknown> | null)?.[ALL_DONE]) {
+      done.add(householdId);
+      return;
+    }
     await addHMart(db, householdId);
     await addLovedBonus(db, householdId);
     await addEverydayItems(db, householdId);
@@ -44,6 +53,8 @@ export async function applyUpgrades(db: SupabaseClient, householdId: string): Pr
     await addCostcoCounts(db, householdId);
     await addFamilyWords(db, householdId);
     await cleanPastedNames(db, householdId);
+    const { data: s1 } = await db.from("household_settings").select("planner_defaults").eq("household_id", householdId).maybeSingle();
+    if (s1) await db.from("household_settings").update({ planner_defaults: { ...(s1.planner_defaults as object), [ALL_DONE]: true } }).eq("household_id", householdId);
     done.add(householdId);
   } catch (e) {
     console.error("household upgrade failed", e);

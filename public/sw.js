@@ -1,14 +1,17 @@
 // Cart Blanche service worker — keeps the shopping list usable offline.
-// • Pages: network first, fall back to the last cached copy (so /list opens
-//   in the store with no signal). Data itself lives in IndexedDB.
+// • Main tabs (/list, /plan, /recipes, /settings): open from the saved copy at
+//   once and refresh it in the background, so the app starts instantly (the
+//   page then fetches fresh data). Other pages: network first, saved copy offline.
+//   Data itself lives in IndexedDB.
 // • Next.js static assets & icons: cache first (they are content-hashed).
 // • Recipe photos (Supabase storage): cache first, so this week's recipes show offline.
 // • This week's recipe pages are saved ahead of time when the app asks (see OfflineRecipes).
 // • Supabase data / API calls are never cached.
-const VERSION = "cb-v2";
+const VERSION = "cb-v3";
 const PAGES = `${VERSION}-pages`;
 const ASSETS = `${VERSION}-assets`;
 const PHOTOS = `${VERSION}-photos`;
+const TABS = ["/list", "/plan", "/recipes", "/settings"];
 
 // Save pages and photos for offline use: { type: "save-offline", pages: [...], photos: [...] }.
 self.addEventListener("message", (event) => {
@@ -94,6 +97,19 @@ self.addEventListener("fetch", (event) => {
       (async () => {
         const cache = await caches.open(PAGES);
         const key = isRsc ? `${url.pathname}?__rsc` : url.pathname;
+        const refresh = () =>
+          fetch(req).then((res) => {
+            if (res.ok && !res.redirected) cache.put(key, res.clone());
+            return res;
+          });
+        // A main tab we've seen before: show it now, update the saved copy quietly.
+        if (isPage && TABS.includes(url.pathname)) {
+          const hit = await cache.match(key);
+          if (hit) {
+            event.waitUntil(refresh().catch(() => {}));
+            return hit;
+          }
+        }
         try {
           const res = await fetch(req);
           if (res.ok && !res.redirected) cache.put(key, res.clone());

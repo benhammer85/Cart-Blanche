@@ -11,6 +11,7 @@ import {
 
 import type { Membership } from "./types";
 import { applyUpgrades } from "./upgrades";
+import { after } from "next/server";
 export type { Membership };
 
 function initialsOf(name: string): string {
@@ -45,7 +46,8 @@ export async function ensureMembership(user: { id: string; email: string | null 
 
   const { data: existing } = await admin.from("household_members").select("household_id, display_name, initials").eq("user_id", user.id).maybeSingle();
   if (existing) {
-    await applyUpgrades(admin, existing.household_id);
+    // Don't hold up the page: one-time upgrades run after it's sent.
+    after(() => applyUpgrades(admin, existing.household_id));
     const m = { householdId: existing.household_id, displayName: existing.display_name, initials: existing.initials };
     cache.set(user.id, m);
     return m;
