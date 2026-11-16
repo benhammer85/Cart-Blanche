@@ -19,7 +19,7 @@ export async function proxy(request: NextRequest) {
   const user = data?.claims?.sub ? data.claims : null;
 
   const path = request.nextUrl.pathname;
-  const isPublic = path.startsWith("/login") || path.startsWith("/auth") || path.startsWith("/api/alexa");
+  const isPublic = path.startsWith("/login") || path.startsWith("/auth") || path.startsWith("/api/alexa") || path === "/api/keepalive";
   if (!user && !isPublic) {
     if (path.startsWith("/api/")) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
     const url = request.nextUrl.clone();
